@@ -29,7 +29,7 @@
             --text-secondary: #6b7280;
             --text-tertiary: #9ca3af;
 
-            --sidebar-width: 260px;
+            --sidebar-width: 300px;
             --detail-width: 420px;
         }
 
@@ -38,6 +38,21 @@
             background: var(--bg-secondary);
             color: var(--text-primary);
             overflow: hidden;
+        }
+
+        /* Text overflow fix for all cards */
+        .todo-card,
+        .mission-card,
+        .question-card {
+            word-break: break-word;
+            overflow-wrap: break-word;
+        }
+
+        .todo-card *,
+        .mission-card *,
+        .question-card * {
+            word-break: break-word;
+            overflow-wrap: break-word;
         }
 
         /* Layout */
@@ -178,6 +193,7 @@
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
+            word-break: keep-all;
         }
 
         .mission-progress {
@@ -306,12 +322,20 @@
 
         .board-column {
             width: 320px;
+            min-width: 280px;
             background: var(--bg-primary);
             border-radius: 8px;
             border: 1px solid var(--border-color);
             display: flex;
             flex-direction: column;
             flex-shrink: 0;
+        }
+
+        @media (max-width: 1200px) {
+            .board-column {
+                width: 300px;
+                min-width: 260px;
+            }
         }
 
         .column-header {
@@ -383,6 +407,8 @@
             font-weight: 500;
             color: var(--text-primary);
             line-height: 1.4;
+            word-break: keep-all;
+            overflow-wrap: break-word;
         }
 
         .todo-steps {
@@ -1215,7 +1241,7 @@
             </div>
 
             <!-- AI Question Alert Banner (Multiple Questions) -->
-            <div class="ai-question-alert" style="background: linear-gradient(135deg, rgba(236, 72, 153, 0.1), rgba(139, 92, 246, 0.1)); border-left: 4px solid var(--thread-accent); padding: 12px 16px; margin: 0 24px 16px; border-radius: 8px; display: flex; align-items: center; gap: 12px; cursor: pointer; transition: all 0.2s;" onclick="showAIQuestion()">
+            <div class="ai-question-alert" style="background: linear-gradient(135deg, rgba(236, 72, 153, 0.1), rgba(139, 92, 246, 0.1)); border-left: 4px solid var(--thread-accent); padding: 12px 16px; margin: 16px 24px; border-radius: 8px; display: flex; align-items: center; gap: 12px; cursor: pointer; transition: all 0.2s;" onclick="showAIQuestion()">
                 <div style="position: relative;">
                     <div style="font-size: 24px; animation: pulse 2s infinite;">🤔</div>
                     <div style="position: absolute; top: -4px; right: -4px; background: var(--thread-tangled); color: white; border-radius: 50%; width: 18px; height: 18px; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; border: 2px solid white;">3</div>

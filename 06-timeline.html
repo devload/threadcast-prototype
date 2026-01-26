@@ -28,7 +28,7 @@
             --text-secondary: #6b7280;
             --text-tertiary: #9ca3af;
 
-            --sidebar-width: 260px;
+            --sidebar-width: 300px;
         }
 
         body {
@@ -36,6 +36,13 @@
             background: var(--bg-secondary);
             color: var(--text-primary);
             overflow: hidden;
+        }
+
+        /* Text overflow fix */
+        .timeline-content,
+        .timeline-content * {
+            word-break: keep-all;
+            overflow-wrap: break-word;
         }
 
         .app-container {
