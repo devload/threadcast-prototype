@@ -1,6 +1,6 @@
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useEffect, useState } from 'react';
-import { useAuthStore, useUIStore } from '../stores';
+import { useAuthStore, useUIStore, useMissionStore } from '../stores';
 import { useWebSocket } from '../hooks/useWebSocket';
 import { Sidebar } from '../components/layout/Sidebar';
 import { ToastContainer } from '../components/feedback/Toast';
@@ -10,12 +10,26 @@ export function AppLayout() {
   const location = useLocation();
   const { isAuthenticated, user, fetchUser } = useAuthStore();
   const { currentWorkspaceId, toasts, removeToast } = useUIStore();
+  const { missions } = useMissionStore();
+
+  // Calculate real stats from missions
+  const stats = {
+    total: missions.length,
+    active: missions.filter(m => m.status === 'THREADING' || m.status === 'IN_PROGRESS').length,
+    successRate: missions.length > 0
+      ? Math.round((missions.filter(m => m.status === 'WOVEN' || m.status === 'COMPLETED').length / missions.length) * 100)
+      : 0,
+    remainingTime: `~${missions.filter(m => m.status === 'THREADING' || m.status === 'IN_PROGRESS').length * 2}h`,
+  };
 
   // Initialize WebSocket connection
   useWebSocket(currentWorkspaceId);
 
   // Local state for sidebar
   const [activeNav, setActiveNav] = useState<'all' | 'active' | 'completed' | 'archived'>('all');
+
+  // Check if current page has its own sidebar (like Timeline, Todos)
+  const hasOwnSidebar = location.pathname.includes('/timeline') || location.pathname.includes('/todos');
 
   // Check auth on mount
   useEffect(() => {
@@ -63,33 +77,25 @@ export function AppLayout() {
     }
   };
 
-  const handleCreateMission = () => {
-    // Navigate to mission creation or open modal
-    navigate('/missions/new');
-  };
-
   if (!isAuthenticated) {
     return null; // Or loading spinner
   }
 
   return (
     <div className="flex h-screen bg-slate-50">
-      <Sidebar
-        activeNav={activeNav}
-        onNavChange={handleNavChange}
-        workspace={
-          currentWorkspaceId
-            ? { id: currentWorkspaceId, name: user?.name ? `${user.name}'s Workspace` : 'My Workspace' }
-            : undefined
-        }
-        stats={{
-          total: 12,
-          active: 5,
-          successRate: 65,
-          remainingTime: '~24h',
-        }}
-        onCreateMission={handleCreateMission}
-      />
+      {/* Only show global Sidebar if page doesn't have its own */}
+      {!hasOwnSidebar && (
+        <Sidebar
+          activeNav={activeNav}
+          onNavChange={handleNavChange}
+          workspace={
+            currentWorkspaceId
+              ? { id: currentWorkspaceId, name: user?.name ? `${user.name}의 Workspace` : 'My Workspace' }
+              : undefined
+          }
+          stats={stats}
+        />
+      )}
 
       <main className="flex-1 overflow-hidden">
         <Outlet />

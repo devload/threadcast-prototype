@@ -16,3 +16,5 @@ export {
   type AIQuestionInlineProps,
   type AIQuestionDotProps,
 } from './AIQuestionBanner';
+
+export { AIQuestionPanel } from './AIQuestionPanel';

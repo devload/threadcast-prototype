@@ -1,0 +1,177 @@
+export const ko = {
+  // Common
+  common: {
+    cancel: '취소',
+    save: '저장',
+    close: '닫기',
+    loading: '로딩 중...',
+    back: '뒤로',
+    new: '새로 만들기',
+    edit: '수정',
+    delete: '삭제',
+    confirm: '확인',
+    search: '검색...',
+    noResults: '결과가 없습니다',
+    pressEscToClose: 'ESC를 눌러 닫기',
+    loadMore: '더 보기',
+    total: '전체',
+    filter: '필터',
+    export: '내보내기',
+    refresh: '새로고침',
+  },
+
+  // Navigation
+  nav: {
+    missions: 'Missions',
+    timeline: 'Timeline',
+    todos: 'Todos',
+    myWorkspace: '{{name}}의 Workspace',
+    myWorkspaceDefault: 'My Workspace',
+  },
+
+  // Mission related
+  mission: {
+    newMission: '+ New Mission',
+    createMission: 'Mission 생성',
+    createMissionTitle: '새 Mission 생성',
+    title: '제목',
+    titlePlaceholder: '예: 사용자 인증 시스템 구현',
+    description: '설명',
+    descriptionPlaceholder: '이 Mission이 달성하고자 하는 목표를 설명해주세요...',
+    priority: '우선순위',
+    priorityCritical: 'Critical (긴급)',
+    priorityHigh: 'High (높음)',
+    priorityMedium: 'Medium (보통)',
+    priorityLow: 'Low (낮음)',
+    quickTemplates: '빠른 템플릿',
+    templateFeature: '기능 개발',
+    templateFeatureDesc: '새로운 기능을 개발합니다',
+    templateBugfix: '버그 수정',
+    templateBugfixDesc: '발견된 버그를 수정합니다',
+    templateRefactor: '리팩토링',
+    templateRefactorDesc: '코드 품질을 개선합니다',
+    templateApi: 'API 연동',
+    templateApiDesc: '외부 API를 연동합니다',
+    startWeaving: 'Start Weaving',
+    pauseWeaving: 'Pause Weaving',
+    overallProgress: 'Overall Progress',
+    currentMission: 'Current Mission',
+    noTodos: 'No todos yet',
+    noTodosHint: 'Start weaving to generate todo threads',
+    todoThreads: 'Todo Threads',
+    steps: 'steps',
+  },
+
+  // Todo related
+  todo: {
+    addTodo: '+ Add Todo',
+    createTodo: 'Todo 추가',
+    createTodoTitle: '새 Todo 추가',
+    todoBoard: 'Todo Board',
+    titlePlaceholder: '예: 로그인 폼 구현',
+    descriptionPlaceholder: '작업 내용을 설명해주세요...',
+    complexity: '복잡도',
+    complexitySimple: 'Simple',
+    complexityMedium: 'Medium',
+    complexityComplex: 'Complex',
+    estimatedTime: '예상 시간 (분)',
+    filterByStatus: 'Filter by Status',
+    allTodos: 'All Todos',
+    backlog: 'Backlog',
+    pending: 'Pending',
+    threading: 'Threading',
+    woven: 'Woven',
+    tangled: 'Tangled',
+    overview: 'Overview',
+    noDescription: '설명이 없습니다',
+    noSteps: '진행 단계가 없습니다',
+    progressSteps: '진행 단계',
+  },
+
+  // Timeline related
+  timeline: {
+    activityTimeline: 'Activity Timeline',
+    allActivity: 'All Activity',
+    missions: 'Missions',
+    todos: 'Todos',
+    aiActivity: 'AI Activity',
+    systemEvents: 'System Events',
+    noActivity: 'No activity found',
+    noActivityHint: 'Try selecting a different filter',
+    overview: 'Overview',
+    aiActions: 'AI Actions',
+    totalEvents: 'Total Events',
+    today: 'Today',
+    yesterday: 'Yesterday',
+    // Event types
+    missionCreated: 'Mission 생성됨',
+    missionStarted: 'Mission 시작됨',
+    missionCompleted: 'Mission 완료',
+    missionArchived: 'Mission 보관됨',
+    todoCreated: 'Todo 생성됨',
+    todoStarted: 'Todo 시작됨',
+    todoCompleted: 'Todo 완료',
+    todoFailed: 'Todo 실패',
+    stepCompleted: 'Step 완료',
+    aiQuestion: 'AI 질문',
+    aiAnswer: 'AI 답변',
+    commentAdded: '코멘트 추가',
+    activity: '활동',
+    questionWaiting: '질문 대기',
+  },
+
+  // AI Question related
+  ai: {
+    aiWaitingQuestions: 'AI가 {{count}}개의 질문을 기다리고 있습니다',
+    blockedTasks: '{{count}}개 작업이 블로킹되어 AI가 대기 중입니다',
+    answerNow: '답변하기 ({{count}}) →',
+  },
+
+  // Settings
+  settings: {
+    title: '설정',
+    language: '언어',
+    languageKo: '한국어',
+    languageEn: 'English',
+    theme: '테마',
+    themeLight: '라이트',
+    themeDark: '다크',
+    themeSystem: '시스템',
+  },
+
+  // Toast messages
+  toast: {
+    missionCreated: 'Mission 생성 완료',
+    missionCreatedDesc: '새로운 Mission이 생성되었습니다',
+    missionCreateFailed: 'Mission을 생성할 수 없습니다',
+    weavingStarted: 'Weaving 시작',
+    weavingStartedDesc: 'AI가 작업을 시작합니다',
+    missionStartFailed: 'Mission을 시작할 수 없습니다',
+    todoCreated: 'Todo 생성 완료',
+    todoCreatedDesc: '새 Todo가 추가되었습니다',
+    todoCreateFailed: 'Todo를 생성할 수 없습니다',
+    stepUpdated: 'Step 업데이트',
+    stepUpdateFailed: 'Step 상태를 변경할 수 없습니다',
+    failed: '실패',
+  },
+
+  // Status badges
+  status: {
+    woven: 'Woven',
+    threading: 'Threading',
+    pending: 'Pending',
+    backlog: 'Backlog',
+    tangled: 'Tangled',
+    archived: 'Archived',
+    skipped: 'Skipped',
+    inProgress: 'In Progress',
+    completed: 'Completed',
+  },
+};
+
+// Type for translations - use deep readonly with string values
+type DeepStringRecord<T> = {
+  [K in keyof T]: T[K] extends Record<string, unknown> ? DeepStringRecord<T[K]> : string;
+};
+
+export type TranslationKeys = DeepStringRecord<typeof ko>;

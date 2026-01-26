@@ -8,8 +8,10 @@ interface MissionCardProps {
   onMenuClick?: () => void;
   selected?: boolean;
   draggable?: boolean;
+  isDragging?: boolean;
   onDragStart?: (e: React.DragEvent) => void;
   onDragEnd?: (e: React.DragEvent) => void;
+  aiQuestionCount?: number;
 }
 
 const statusDotColors: Record<MissionStatus, string> = {
@@ -37,10 +39,13 @@ export function MissionCard({
   onMenuClick,
   selected,
   draggable = false,
+  isDragging = false,
   onDragStart,
   onDragEnd,
+  aiQuestionCount = 0,
 }: MissionCardProps) {
   const { id, title, description, status, priority, progress, todoStats, tags } = mission;
+  const hasAIQuestion = aiQuestionCount > 0;
 
   const completedTodos = todoStats.woven;
   const totalTodos = todoStats.total;
@@ -49,9 +54,13 @@ export function MissionCard({
   return (
     <div
       className={clsx(
-        'bg-white border border-slate-200 rounded-lg p-4 card-interactive group',
+        'bg-white dark:bg-slate-800 border rounded-lg p-4 card-interactive group',
+        hasAIQuestion
+          ? 'border-pink-400 border-2 bg-gradient-to-br from-pink-50/30 to-purple-50/30 dark:from-pink-950/30 dark:to-purple-950/30'
+          : 'border-slate-200 dark:border-slate-700',
         selected && 'ring-2 ring-indigo-500',
-        draggable && 'cursor-grab active:cursor-grabbing'
+        draggable && 'cursor-grab active:cursor-grabbing',
+        isDragging && 'opacity-50 scale-105 rotate-2 shadow-lg'
       )}
       onClick={onClick}
       draggable={draggable}
@@ -60,7 +69,7 @@ export function MissionCard({
     >
       {/* Header */}
       <div className="flex items-start justify-between mb-2">
-        <span className="text-xs font-semibold text-slate-400">
+        <span className="text-xs font-semibold text-slate-400 dark:text-slate-500">
           MISSION-{id.slice(-4).toUpperCase()}
         </span>
         <div className="flex items-center gap-2">
@@ -80,20 +89,31 @@ export function MissionCard({
       </div>
 
       {/* Title */}
-      <h3 className="font-semibold text-slate-900 text-[15px] leading-snug mb-2 line-clamp-2 break-words">
+      <h3 className="font-semibold text-slate-900 dark:text-slate-100 text-[15px] leading-snug mb-2 line-clamp-2 break-words">
         {title}
       </h3>
 
+      {/* AI Question Badge */}
+      {hasAIQuestion && (
+        <div className="flex items-center gap-1.5 px-2.5 py-1.5 mb-2 rounded-md bg-gradient-to-r from-pink-100/80 to-purple-100/80 dark:from-pink-900/50 dark:to-purple-900/50">
+          <span className="text-sm animate-pulse">🤔</span>
+          <span className="text-[11px] font-semibold text-pink-600 dark:text-pink-400">AI 질문 대기 중</span>
+          <span className="ml-auto bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full">
+            {aiQuestionCount}
+          </span>
+        </div>
+      )}
+
       {/* Description */}
       {description && (
-        <p className="text-[13px] text-slate-500 mb-3 line-clamp-2 leading-relaxed break-words">
+        <p className="text-[13px] text-slate-500 dark:text-slate-400 mb-3 line-clamp-2 leading-relaxed break-words">
           {description}
         </p>
       )}
 
       {/* Progress */}
       <div className="mb-2.5">
-        <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden mb-1.5">
+        <div className="h-1.5 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden mb-1.5">
           <div
             className={clsx(
               'h-full rounded-full transition-all duration-300',
@@ -102,14 +122,14 @@ export function MissionCard({
             style={{ width: `${progress}%` }}
           />
         </div>
-        <div className="flex items-center justify-between text-xs text-slate-500">
+        <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
           <span>{completedTodos}/{totalTodos} woven</span>
           <span>{progress}%</span>
         </div>
       </div>
 
       {/* Footer */}
-      <div className="flex items-center gap-3 text-xs text-slate-500">
+      <div className="flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400">
         <div className="flex items-center gap-1">
           <CheckSquare size={12} />
           <span>{totalTodos} todos</span>
@@ -130,7 +150,7 @@ export function MissionCard({
           {tags?.slice(0, 2).map((tag) => (
             <span
               key={tag}
-              className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-slate-100 text-slate-500"
+              className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400"
             >
               {tag}
             </span>

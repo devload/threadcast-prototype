@@ -1,7 +1,8 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { User } from '../types';
-import { authService } from '../services';
+import { authService, workspaceService } from '../services';
+import { useUIStore } from './uiStore';
 
 interface AuthState {
   user: User | null;
@@ -31,6 +32,12 @@ export const useAuthStore = create<AuthState>()(
           localStorage.setItem('accessToken', response.accessToken);
           localStorage.setItem('refreshToken', response.refreshToken);
           set({ user: response.user, isAuthenticated: true, isLoading: false });
+
+          // Fetch and set default workspace
+          const workspaces = await workspaceService.getAll();
+          if (workspaces.length > 0) {
+            useUIStore.getState().setCurrentWorkspaceId(workspaces[0].id);
+          }
         } catch (error) {
           set({
             error: error instanceof Error ? error.message : 'Login failed',
@@ -47,6 +54,12 @@ export const useAuthStore = create<AuthState>()(
           localStorage.setItem('accessToken', response.accessToken);
           localStorage.setItem('refreshToken', response.refreshToken);
           set({ user: response.user, isAuthenticated: true, isLoading: false });
+
+          // Fetch and set default workspace
+          const workspaces = await workspaceService.getAll();
+          if (workspaces.length > 0) {
+            useUIStore.getState().setCurrentWorkspaceId(workspaces[0].id);
+          }
         } catch (error) {
           set({
             error: error instanceof Error ? error.message : 'Registration failed',
@@ -71,10 +84,11 @@ export const useAuthStore = create<AuthState>()(
         if (!token) return;
 
         set({ isLoading: true });
-        try {
-          const user = await authService.me();
+        const user = await authService.me();
+        if (user) {
           set({ user, isAuthenticated: true, isLoading: false });
-        } catch {
+        } else {
+          // Token invalid or expired - silently logout
           localStorage.removeItem('accessToken');
           localStorage.removeItem('refreshToken');
           set({ user: null, isAuthenticated: false, isLoading: false });

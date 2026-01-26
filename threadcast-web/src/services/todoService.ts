@@ -20,7 +20,7 @@ export interface UpdateTodoRequest {
 
 export const todoService = {
   getByMission: (missionId: string, params?: { status?: TodoStatus; page?: number; size?: number }) =>
-    api.get<PageResponse<Todo>>(`/todos`, { missionId, ...params }),
+    api.get<Todo[]>(`/todos`, { missionId, ...params }),
 
   getById: (id: string) =>
     api.get<Todo>(`/todos/${id}`),

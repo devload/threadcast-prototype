@@ -9,7 +9,17 @@ interface TodoColumnProps {
   onTodoClick?: (todo: Todo) => void;
   onAddClick?: () => void;
   selectedTodoId?: string;
+  highlightedTodoId?: string | null;
   isLoading?: boolean;
+  aiQuestionsByTodo?: Record<string, number>;
+  onAIQuestionClick?: (todoId: string) => void;
+  // Drag and drop props
+  onDragStart?: (todo: Todo) => void;
+  onDragEnd?: () => void;
+  onDragOver?: () => void;
+  onDrop?: () => void;
+  isDragOver?: boolean;
+  draggedTodoId?: string;
 }
 
 const statusConfig: Record<TodoStatus, { label: string; color: string; bgColor: string }> = {
@@ -66,13 +76,37 @@ export function TodoColumn({
   onTodoClick,
   onAddClick,
   selectedTodoId,
+  highlightedTodoId,
   isLoading = false,
+  aiQuestionsByTodo = {},
+  onAIQuestionClick,
+  // Drag and drop
+  onDragStart,
+  onDragEnd,
+  onDragOver,
+  onDrop,
+  isDragOver = false,
+  draggedTodoId,
 }: TodoColumnProps) {
   const config = statusConfig[status];
   const count = todos.length;
 
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    onDragOver?.();
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    onDrop?.();
+  };
+
   return (
-    <div className="kanban-column">
+    <div
+      className={`kanban-column drop-target ${isDragOver ? 'drag-over' : ''}`}
+      onDragOver={handleDragOver}
+      onDrop={handleDrop}
+    >
       {/* Header */}
       <div className="kanban-column-header">
         <div className="flex items-center gap-2">
@@ -87,7 +121,7 @@ export function TodoColumn({
             {count}
           </span>
         </div>
-        {onAddClick && status === 'PENDING' && (
+        {onAddClick && (status === 'BACKLOG' || status === 'PENDING') && (
           <button
             onClick={onAddClick}
             className="p-1 hover:bg-slate-100 rounded transition-colors"
@@ -113,6 +147,16 @@ export function TodoColumn({
               todo={todo}
               onClick={() => onTodoClick?.(todo)}
               selected={todo.id === selectedTodoId}
+              highlighted={todo.id === highlightedTodoId}
+              draggable={!!onDragStart}
+              isDragging={todo.id === draggedTodoId}
+              onDragStart={(e) => {
+                e.dataTransfer.effectAllowed = 'move';
+                onDragStart?.(todo);
+              }}
+              onDragEnd={() => onDragEnd?.()}
+              aiQuestionCount={aiQuestionsByTodo[todo.id] || 0}
+              onAIQuestionClick={() => onAIQuestionClick?.(todo.id)}
             />
           ))
         ) : (

@@ -2,8 +2,10 @@ import { useEffect, useRef, useCallback } from 'react';
 import { Client, IMessage } from '@stomp/stompjs';
 import { useMissionStore, useTodoStore, useTimelineStore, useAuthStore } from '../stores';
 import type { Mission, Todo, TimelineEvent } from '../types';
+import { DEMO_MODE } from '../services/api';
 
-const WS_URL = import.meta.env.VITE_WS_URL || 'ws://localhost:8080/ws';
+// WebSocket connects directly to backend (not through Vite proxy)
+const WS_URL = import.meta.env.VITE_WS_URL || 'ws://localhost:21000/ws';
 
 interface WebSocketMessage<T = unknown> {
   type: string;
@@ -53,7 +55,8 @@ export function useWebSocket(workspaceId: string | null) {
   }, [onNewEvent]);
 
   useEffect(() => {
-    if (!isAuthenticated || !workspaceId) return;
+    // Skip WebSocket in demo mode
+    if (DEMO_MODE || !isAuthenticated || !workspaceId) return;
 
     const token = localStorage.getItem('accessToken');
     const client = new Client({
@@ -64,20 +67,23 @@ export function useWebSocket(workspaceId: string | null) {
       reconnectDelay: 5000,
       heartbeatIncoming: 4000,
       heartbeatOutgoing: 4000,
+      // Disable debug logging
+      debug: () => {},
     });
 
     client.onConnect = () => {
-      console.log('WebSocket connected');
-
       // Subscribe to workspace topics
       client.subscribe(`/topic/workspace/${workspaceId}/missions`, handleMissionMessage);
       client.subscribe(`/topic/workspace/${workspaceId}/todos`, handleTodoMessage);
       client.subscribe(`/topic/workspace/${workspaceId}/timeline`, handleTimelineMessage);
     };
 
-    client.onStompError = (frame) => {
-      console.error('WebSocket error:', frame.headers['message']);
+    client.onStompError = () => {
+      // Silently ignore STOMP errors
     };
+
+    client.onWebSocketError = () => {};
+    client.onWebSocketClose = () => {};
 
     client.activate();
     clientRef.current = client;

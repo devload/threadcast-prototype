@@ -28,8 +28,22 @@
     --sidebar-width: 280px;
   }
 
+  .dark {
+    /* Background Colors */
+    --bg-primary: #1e1e2e;
+    --bg-secondary: #181825;
+    --bg-tertiary: #11111b;
+    --border-color: #313244;
+
+    /* Text Colors */
+    --text-primary: #cdd6f4;
+    --text-secondary: #a6adc8;
+    --text-tertiary: #6c7086;
+  }
+
   body {
     @apply bg-slate-50 text-slate-900 antialiased;
+    @apply dark:bg-slate-900 dark:text-slate-100;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', sans-serif;
   }
 }
@@ -41,53 +55,55 @@
   }
 
   .badge-backlog {
-    @apply bg-slate-100 text-slate-700;
+    @apply bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300;
   }
 
   .badge-pending {
-    @apply bg-slate-100 text-slate-700;
+    @apply bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300;
   }
 
   .badge-threading {
-    @apply bg-amber-100 text-amber-800;
+    @apply bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300;
   }
 
   .badge-woven {
-    @apply bg-green-100 text-green-800;
+    @apply bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300;
   }
 
   .badge-tangled {
-    @apply bg-red-100 text-red-800;
+    @apply bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300;
   }
 
   .badge-archived {
-    @apply bg-purple-100 text-purple-800;
+    @apply bg-purple-100 text-purple-800 dark:bg-purple-900/50 dark:text-purple-300;
   }
 
   /* Priority Badge */
   .priority-critical {
-    @apply text-red-600;
+    @apply text-red-600 dark:text-red-400;
   }
 
   .priority-high {
-    @apply text-orange-500;
+    @apply text-orange-500 dark:text-orange-400;
   }
 
   .priority-medium {
-    @apply text-yellow-500;
+    @apply text-yellow-500 dark:text-yellow-400;
   }
 
   .priority-low {
-    @apply text-blue-500;
+    @apply text-blue-500 dark:text-blue-400;
   }
 
   /* Card styles */
   .card {
     @apply bg-white rounded-lg border border-slate-200 shadow-sm;
+    @apply dark:bg-slate-800 dark:border-slate-700;
   }
 
   .card-hover {
     @apply hover:shadow-md hover:border-slate-300 transition-all duration-200;
+    @apply dark:hover:border-slate-600;
   }
 
   /* Button styles */
@@ -101,35 +117,45 @@
 
   .btn-secondary {
     @apply bg-slate-100 text-slate-700 hover:bg-slate-200;
+    @apply dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600;
   }
 
   .btn-ghost {
     @apply text-slate-600 hover:bg-slate-100;
+    @apply dark:text-slate-400 dark:hover:bg-slate-700;
   }
 
   .btn-sm {
     @apply px-3 py-1.5 text-sm;
   }
 
+  /* Kanban Board */
+  .kanban-board {
+    @apply flex gap-4 h-full min-w-min;
+  }
+
   /* Kanban Column */
   .kanban-column {
-    @apply flex flex-col bg-slate-100 rounded-xl p-4 min-w-[320px] max-w-[320px];
+    @apply flex flex-col bg-white rounded-lg border border-slate-200 min-w-[340px] max-w-[340px] flex-shrink-0;
+    @apply dark:bg-slate-800 dark:border-slate-700;
   }
 
   .kanban-column-header {
-    @apply flex items-center justify-between mb-4;
+    @apply flex items-center justify-between p-4 border-b border-slate-200;
+    @apply dark:border-slate-700;
   }
 
   .kanban-column-title {
-    @apply font-semibold text-slate-700;
+    @apply flex items-center gap-2 text-[13px] font-semibold uppercase tracking-wide;
   }
 
   .kanban-column-count {
-    @apply text-sm text-slate-500;
+    @apply bg-slate-100 px-2 py-0.5 rounded-full text-[11px] text-slate-500;
+    @apply dark:bg-slate-700 dark:text-slate-400;
   }
 
   .kanban-column-content {
-    @apply flex flex-col gap-2.5 overflow-y-auto;
+    @apply flex flex-col gap-3 p-3 overflow-y-auto flex-1;
   }
 
   /* Drag and Drop Styles */
@@ -151,6 +177,23 @@
     box-shadow: 0 4px 12px rgba(99, 102, 241, 0.15);
   }
 
+  /* Highlighted Card Animation */
+  .card-highlighted {
+    animation: card-pulse 1.5s ease-in-out 2;
+    @apply ring-2 ring-indigo-500 ring-offset-2;
+  }
+
+  @keyframes card-pulse {
+    0%, 100% {
+      box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.4);
+      transform: scale(1);
+    }
+    50% {
+      box-shadow: 0 0 0 8px rgba(99, 102, 241, 0);
+      transform: scale(1.02);
+    }
+  }
+
   /* Status Dot Animation */
   .status-dot-pulse {
     animation: pulse 2s infinite;
@@ -169,11 +212,13 @@
   /* Modal Overlay */
   .modal-overlay {
     @apply fixed inset-0 bg-black/50 z-50 flex items-center justify-content p-6;
+    @apply dark:bg-black/70;
     transition: opacity 0.3s ease;
   }
 
   .modal-content {
     @apply bg-white rounded-xl shadow-2xl max-w-[700px] w-full max-h-[85vh] flex flex-col;
+    @apply dark:bg-slate-800;
     transform: translateY(20px);
     transition: transform 0.3s ease;
   }
@@ -185,6 +230,7 @@
   /* Slide Panel */
   .slide-panel {
     @apply fixed top-0 right-0 h-full bg-white shadow-2xl z-50 flex flex-col;
+    @apply dark:bg-slate-800;
     width: 420px;
     transform: translateX(100%);
     transition: transform 0.3s ease;
@@ -197,6 +243,7 @@
   /* Questions Panel (Left) */
   .questions-panel {
     @apply fixed top-0 left-0 h-full bg-white shadow-2xl z-50 flex flex-col;
+    @apply dark:bg-slate-800;
     width: 420px;
     transform: translateX(-100%);
     transition: transform 0.3s ease;
@@ -204,6 +251,45 @@
 
   .questions-panel.active {
     transform: translateX(0);
+  }
+
+  /* Slide-in animation for panels */
+  @keyframes slideInLeft {
+    from {
+      transform: translateX(-100%);
+    }
+    to {
+      transform: translateX(0);
+    }
+  }
+
+  .animate-slide-in-left {
+    animation: slideInLeft 0.3s ease forwards;
+  }
+
+  /* Drag and Drop styles */
+  .draggable-card {
+    @apply cursor-grab transition-all duration-200;
+  }
+
+  .draggable-card:active {
+    @apply cursor-grabbing;
+  }
+
+  .draggable-card.dragging {
+    @apply opacity-50 scale-105 rotate-2 shadow-lg z-50;
+  }
+
+  .drop-target {
+    @apply transition-all duration-200;
+  }
+
+  .drop-target.drag-over {
+    @apply bg-indigo-50 border-2 border-dashed border-indigo-400 rounded-lg;
+  }
+
+  .drop-placeholder {
+    @apply h-24 border-2 border-dashed border-indigo-300 rounded-lg bg-indigo-50/50;
   }
 
   /* Timeline Styles */
@@ -218,6 +304,7 @@
 
   .timeline-icon-system {
     @apply bg-slate-100 text-slate-500;
+    @apply dark:bg-slate-700 dark:text-slate-400;
   }
 
   .timeline-icon-user {
@@ -227,6 +314,7 @@
 
   .timeline-connector {
     @apply absolute w-0.5 bg-slate-200;
+    @apply dark:bg-slate-700;
     top: 40px;
     left: 50%;
     transform: translateX(-50%);
@@ -240,23 +328,28 @@
 
   .meta-tag-mission {
     @apply bg-indigo-50 text-indigo-600;
+    @apply dark:bg-indigo-900/50 dark:text-indigo-400;
   }
 
   .meta-tag-todo {
     @apply bg-amber-50 text-amber-600;
+    @apply dark:bg-amber-900/50 dark:text-amber-400;
   }
 
   /* Complexity Badge */
   .complexity-low {
     @apply bg-green-100 text-green-800;
+    @apply dark:bg-green-900/50 dark:text-green-400;
   }
 
   .complexity-medium {
     @apply bg-yellow-100 text-yellow-800;
+    @apply dark:bg-yellow-900/50 dark:text-yellow-400;
   }
 
   .complexity-high {
     @apply bg-red-100 text-red-800;
+    @apply dark:bg-red-900/50 dark:text-red-400;
   }
 
   /* Toast Notification */
@@ -266,6 +359,7 @@
 
   .toast {
     @apply bg-white rounded-lg shadow-lg border border-slate-200 p-4 min-w-[300px];
+    @apply dark:bg-slate-800 dark:border-slate-700;
     animation: slideIn 0.3s ease;
   }
 
@@ -283,23 +377,28 @@
   /* View Switcher */
   .view-switcher {
     @apply flex bg-slate-100 rounded-md p-0.5;
+    @apply dark:bg-slate-700;
   }
 
   .view-btn {
     @apply px-3 py-1.5 rounded text-xs font-medium text-slate-500 transition-all duration-200;
+    @apply dark:text-slate-400;
   }
 
   .view-btn.active {
     @apply bg-white text-indigo-600 shadow-sm;
+    @apply dark:bg-slate-600 dark:text-indigo-400;
   }
 
   /* Filter Item */
   .filter-item {
     @apply px-3 py-2 rounded-md flex items-center gap-2 text-sm text-slate-600 cursor-pointer transition-all duration-150;
+    @apply dark:text-slate-400;
   }
 
   .filter-item:hover {
     @apply bg-slate-100 text-slate-900;
+    @apply dark:bg-slate-700 dark:text-slate-200;
   }
 
   .filter-item.active {
@@ -309,14 +408,17 @@
   /* Stats Card */
   .stat-card {
     @apply bg-slate-50 rounded-md p-3 text-center;
+    @apply dark:bg-slate-700/50;
   }
 
   .stat-value {
     @apply text-xl font-bold text-indigo-600;
+    @apply dark:text-indigo-400;
   }
 
   .stat-label {
     @apply text-xs text-slate-500 mt-1;
+    @apply dark:text-slate-400;
   }
 
   /* Custom Scrollbar */
@@ -330,9 +432,11 @@
 
   .custom-scrollbar::-webkit-scrollbar-thumb {
     @apply bg-slate-300 rounded-full;
+    @apply dark:bg-slate-600;
   }
 
   .custom-scrollbar::-webkit-scrollbar-thumb:hover {
     @apply bg-slate-400;
+    @apply dark:bg-slate-500;
   }
 }

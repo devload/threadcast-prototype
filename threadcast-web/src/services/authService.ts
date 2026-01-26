@@ -12,7 +12,7 @@ export const authService = {
     api.post<void>('/auth/logout'),
 
   me: () =>
-    api.get<User>('/auth/me'),
+    api.silentGet<User>('/auth/me'),
 
   refresh: (refreshToken: string) =>
     api.post<AuthResponse>('/auth/refresh', { refreshToken }),

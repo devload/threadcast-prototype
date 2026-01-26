@@ -1,4 +1,3 @@
-import { Plus } from 'lucide-react';
 import {
   WorkspaceSelector,
   AutonomySlider,
@@ -24,8 +23,6 @@ interface SidebarProps {
     successRate: number;
     remainingTime?: string;
   };
-  onCreateMission?: () => void;
-  createButtonLabel?: string;
 }
 
 const defaultNavItems: NavItem[] = [
@@ -46,11 +43,9 @@ export function Sidebar({
   onNavChange,
   navItems = defaultNavItems,
   stats = { total: 0, active: 0, successRate: 0, remainingTime: '~0h' },
-  onCreateMission,
-  createButtonLabel = 'Thread New Mission',
 }: SidebarProps) {
   return (
-    <aside className="flex flex-col h-screen w-[300px] bg-white border-r border-slate-200 overflow-y-auto">
+    <aside className="flex flex-col h-screen w-[260px] bg-white border-r border-slate-200 overflow-y-auto">
       {/* Header - Logo & Workspace */}
       <div className="p-4 pb-4 border-b border-slate-200">
         {/* Logo */}
@@ -100,17 +95,6 @@ export function Sidebar({
             remainingTime={stats.remainingTime}
           />
         </div>
-      </div>
-
-      {/* Create Mission Button */}
-      <div className="p-3">
-        <button
-          onClick={onCreateMission}
-          className="w-full flex items-center justify-center gap-1.5 px-3 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md text-[13px] font-medium transition-all duration-200 hover:-translate-y-0.5"
-        >
-          <Plus size={16} />
-          <span>{createButtonLabel}</span>
-        </button>
       </div>
     </aside>
   );

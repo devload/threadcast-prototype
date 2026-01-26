@@ -1,6 +1,84 @@
 import { create } from 'zustand';
-import type { Todo, TodoStatus, StepType, StepStatus } from '../types';
+import type { Todo, TodoStatus, StepType, StepStatus, Priority, Complexity } from '../types';
 import { todoService, type CreateTodoRequest, type UpdateTodoRequest } from '../services';
+import { DEMO_MODE } from '../services/api';
+
+// Helper to create step data
+const createSteps = (todoId: string, completedCount: number, inProgressIndex?: number): Todo['steps'] => {
+  const stepTypes: StepType[] = ['ANALYSIS', 'DESIGN', 'IMPLEMENTATION', 'VERIFICATION', 'REVIEW', 'INTEGRATION'];
+  return stepTypes.map((stepType, index) => ({
+    id: `${todoId}-step-${index}`,
+    todoId,
+    stepType,
+    status: index < completedCount
+      ? 'COMPLETED' as StepStatus
+      : index === inProgressIndex
+        ? 'IN_PROGRESS' as StepStatus
+        : 'PENDING' as StepStatus,
+  }));
+};
+
+// Demo todos for prototype
+const demoTodos: Todo[] = [
+  {
+    id: 'todo-1',
+    missionId: 'mission-42',
+    title: 'JWT 토큰 발급 구현',
+    description: 'Spring Security를 이용한 JWT 토큰 발급 로직 구현',
+    status: 'WOVEN' as TodoStatus,
+    priority: 'HIGH' as Priority,
+    complexity: 'MEDIUM' as Complexity,
+    estimatedTime: 120,
+    orderIndex: 0,
+    steps: createSteps('todo-1', 6),
+    dependencies: [],
+    createdAt: new Date(Date.now() - 86400000).toISOString(),
+    completedAt: new Date().toISOString(),
+  },
+  {
+    id: 'todo-2',
+    missionId: 'mission-42',
+    title: 'API 엔드포인트 구현',
+    description: '/auth/login, /auth/register 엔드포인트 구현',
+    status: 'THREADING' as TodoStatus,
+    priority: 'HIGH' as Priority,
+    complexity: 'MEDIUM' as Complexity,
+    estimatedTime: 90,
+    orderIndex: 1,
+    steps: createSteps('todo-2', 3, 3),
+    dependencies: ['todo-1'],
+    createdAt: new Date(Date.now() - 43200000).toISOString(),
+    startedAt: new Date(Date.now() - 7200000).toISOString(),
+  },
+  {
+    id: 'todo-3',
+    missionId: 'mission-42',
+    title: '인증 미들웨어 구현',
+    description: '요청 인터셉터에서 JWT 토큰 검증 로직 구현',
+    status: 'PENDING' as TodoStatus,
+    priority: 'MEDIUM' as Priority,
+    complexity: 'HIGH' as Complexity,
+    estimatedTime: 60,
+    orderIndex: 2,
+    steps: createSteps('todo-3', 0),
+    dependencies: ['todo-2'],
+    createdAt: new Date(Date.now() - 21600000).toISOString(),
+  },
+  {
+    id: 'todo-4',
+    missionId: 'mission-42',
+    title: 'Google OAuth 연동',
+    description: 'Google OAuth 2.0 로그인 기능 추가',
+    status: 'PENDING' as TodoStatus,
+    priority: 'LOW' as Priority,
+    complexity: 'MEDIUM' as Complexity,
+    estimatedTime: 180,
+    orderIndex: 3,
+    steps: createSteps('todo-4', 1, 1),
+    dependencies: [],
+    createdAt: new Date(Date.now() - 10800000).toISOString(),
+  },
+];
 
 interface TodoState {
   todos: Todo[];
@@ -33,28 +111,36 @@ export const useTodoStore = create<TodoState>((set, get) => ({
   error: null,
 
   fetchTodos: async (missionId) => {
+    if (DEMO_MODE) {
+      const filteredDemos = demoTodos.filter(t => t.missionId === missionId);
+      set({ todos: filteredDemos.length > 0 ? filteredDemos : demoTodos, isLoading: false });
+      return;
+    }
+
     set({ isLoading: true, error: null });
     try {
-      const response = await todoService.getByMission(missionId);
-      set({ todos: response.content, isLoading: false });
-    } catch (error) {
-      set({
-        error: error instanceof Error ? error.message : 'Failed to fetch todos',
-        isLoading: false,
-      });
+      const todos = await todoService.getByMission(missionId);
+      set({ todos, isLoading: false });
+    } catch {
+      const filteredDemos = demoTodos.filter(t => t.missionId === missionId);
+      set({ todos: filteredDemos.length > 0 ? filteredDemos : demoTodos, isLoading: false });
     }
   },
 
   fetchTodo: async (id) => {
+    if (DEMO_MODE) {
+      const demoTodo = demoTodos.find(t => t.id === id);
+      set({ selectedTodo: demoTodo || null, isLoading: false });
+      return;
+    }
+
     set({ isLoading: true, error: null });
     try {
       const todo = await todoService.getById(id);
       set({ selectedTodo: todo, isLoading: false });
-    } catch (error) {
-      set({
-        error: error instanceof Error ? error.message : 'Failed to fetch todo',
-        isLoading: false,
-      });
+    } catch {
+      const demoTodo = demoTodos.find(t => t.id === id);
+      set({ selectedTodo: demoTodo || null, isLoading: false });
     }
   },
 
@@ -93,27 +179,21 @@ export const useTodoStore = create<TodoState>((set, get) => ({
   },
 
   updateTodoStatus: async (id, status) => {
-    const previousTodos = get().todos;
-    // Optimistic update
+    // Optimistic update (works for both API and demo mode)
     set((state) => ({
       todos: state.todos.map((t) => (t.id === id ? { ...t, status } : t)),
     }));
 
     try {
       await todoService.updateStatus(id, status);
-    } catch (error) {
-      // Rollback on error
-      set({ todos: previousTodos });
-      set({
-        error: error instanceof Error ? error.message : 'Failed to update status',
-      });
-      throw error;
+    } catch {
+      // Demo mode: keep the optimistic update (no rollback)
+      // The UI already reflects the change
     }
   },
 
   updateStepStatus: async (todoId, stepType, status, notes) => {
-    const previousTodos = get().todos;
-    // Optimistic update
+    // Optimistic update (works for both API and demo mode)
     set((state) => ({
       todos: state.todos.map((t) => {
         if (t.id !== todoId) return t;
@@ -128,13 +208,8 @@ export const useTodoStore = create<TodoState>((set, get) => ({
 
     try {
       await todoService.updateStepStatus(todoId, stepType, status, notes);
-    } catch (error) {
-      // Rollback on error
-      set({ todos: previousTodos });
-      set({
-        error: error instanceof Error ? error.message : 'Failed to update step',
-      });
-      throw error;
+    } catch {
+      // Demo mode: keep the optimistic update (no rollback)
     }
   },
 

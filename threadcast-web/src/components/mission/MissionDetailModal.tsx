@@ -3,6 +3,7 @@ import { Play, Pause } from 'lucide-react';
 import type { Mission, Todo, MissionStatus } from '../../types';
 import { Modal } from '../feedback/Modal';
 import { Button } from '../common/Button';
+import { useTranslation } from '../../hooks/useTranslation';
 
 interface MissionDetailModalProps {
   isOpen: boolean;
@@ -12,6 +13,7 @@ interface MissionDetailModalProps {
   onStartWeaving?: () => void;
   onPauseWeaving?: () => void;
   onTodoClick?: (todoId: string) => void;
+  aiQuestionsByTodo?: Record<string, number>;
 }
 
 const statusBadgeStyles: Record<MissionStatus, { label: string; className: string }> = {
@@ -44,7 +46,10 @@ export function MissionDetailModal({
   onStartWeaving,
   onPauseWeaving,
   onTodoClick,
+  aiQuestionsByTodo = {},
 }: MissionDetailModalProps) {
+  const { t } = useTranslation();
+
   if (!mission) return null;
 
   const { id, title, description, status, progress, todoStats, tags } = mission;
@@ -54,7 +59,7 @@ export function MissionDetailModal({
   const footer = (
     <>
       <span className="text-xs text-slate-400">
-        Press ESC to close
+        {t('common.pressEscToClose')}
       </span>
       <div className="flex gap-2">
         {isThreading ? (
@@ -63,7 +68,7 @@ export function MissionDetailModal({
             leftIcon={<Pause size={16} />}
             onClick={onPauseWeaving}
           >
-            Pause Weaving
+            {t('mission.pauseWeaving')}
           </Button>
         ) : !isWoven && (
           <Button
@@ -71,7 +76,7 @@ export function MissionDetailModal({
             leftIcon={<Play size={16} />}
             onClick={onStartWeaving}
           >
-            Start Weaving
+            {t('mission.startWeaving')}
           </Button>
         )}
       </div>
@@ -113,7 +118,7 @@ export function MissionDetailModal({
 
       {/* Progress Section */}
       <div className="bg-slate-50 rounded-lg p-4 mb-6">
-        <p className="text-xs text-slate-500 mb-2">Overall Progress</p>
+        <p className="text-xs text-slate-500 mb-2">{t('mission.overallProgress')}</p>
         <div className="h-2 bg-slate-200 rounded-full overflow-hidden mb-3">
           <div
             className={clsx(
@@ -126,19 +131,19 @@ export function MissionDetailModal({
         <div className="grid grid-cols-4 gap-3">
           <div className="text-center">
             <div className="text-xl font-bold text-indigo-600">{todoStats.total}</div>
-            <div className="text-[10px] text-slate-500 uppercase">Total</div>
+            <div className="text-[10px] text-slate-500 uppercase">{t('common.total')}</div>
           </div>
           <div className="text-center">
             <div className="text-xl font-bold text-amber-500">{todoStats.threading}</div>
-            <div className="text-[10px] text-slate-500 uppercase">Threading</div>
+            <div className="text-[10px] text-slate-500 uppercase">{t('status.threading')}</div>
           </div>
           <div className="text-center">
             <div className="text-xl font-bold text-green-500">{todoStats.woven}</div>
-            <div className="text-[10px] text-slate-500 uppercase">Woven</div>
+            <div className="text-[10px] text-slate-500 uppercase">{t('status.woven')}</div>
           </div>
           <div className="text-center">
             <div className="text-xl font-bold text-slate-400">{todoStats.pending}</div>
-            <div className="text-[10px] text-slate-500 uppercase">Pending</div>
+            <div className="text-[10px] text-slate-500 uppercase">{t('status.pending')}</div>
           </div>
         </div>
       </div>
@@ -146,51 +151,67 @@ export function MissionDetailModal({
       {/* Todo List */}
       <div>
         <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-3">
-          Todo Threads ({todos.length})
+          {t('mission.todoThreads')} ({todos.length})
         </h4>
-        <div className="flex flex-col gap-2">
-          {todos.map((todo) => (
-            <div
-              key={todo.id}
-              className={clsx(
-                'bg-slate-50 rounded-lg p-3 cursor-pointer border border-transparent transition-all',
-                'hover:bg-white hover:border-indigo-500 hover:translate-x-1',
-                (todo.status === 'THREADING' || todo.status === 'IN_PROGRESS') && 'bg-white border-amber-400'
-              )}
-              onClick={() => onTodoClick?.(todo.id)}
-            >
-              <div className="flex items-center justify-between mb-1.5">
-                <div className="flex items-center gap-2">
-                  <div className={clsx('w-2 h-2 rounded-full', todoStatusDot[todo.status] || 'bg-slate-400')} />
-                  <span className="text-[11px] font-semibold text-slate-400">
-                    TODO-{todo.id.slice(-4).toUpperCase()}
-                  </span>
-                </div>
-                {todo.complexity && (
-                  <span className={clsx(
-                    'px-1.5 py-0.5 rounded text-[9px] font-semibold uppercase',
-                    todo.complexity === 'HIGH' ? 'bg-red-100 text-red-700' :
-                    todo.complexity === 'MEDIUM' ? 'bg-yellow-100 text-yellow-700' :
-                    'bg-green-100 text-green-700'
-                  )}>
-                    {todo.complexity}
-                  </span>
+        <div className="flex flex-col gap-2 max-h-[300px] overflow-y-auto pr-1">
+          {todos.map((todo) => {
+            const questionCount = aiQuestionsByTodo[todo.id] || 0;
+            const hasAIQuestion = questionCount > 0;
+            return (
+              <div
+                key={todo.id}
+                className={clsx(
+                  'bg-slate-50 dark:bg-slate-700/50 rounded-lg p-3 cursor-pointer border transition-all',
+                  'hover:bg-white dark:hover:bg-slate-700 hover:border-indigo-500 hover:translate-x-1',
+                  hasAIQuestion
+                    ? 'border-pink-400 border-2 bg-gradient-to-br from-pink-50/50 to-purple-50/50 dark:from-pink-950/30 dark:to-purple-950/30'
+                    : (todo.status === 'THREADING' || todo.status === 'IN_PROGRESS')
+                    ? 'bg-white dark:bg-slate-700 border-amber-400'
+                    : 'border-transparent'
                 )}
+                onClick={() => onTodoClick?.(todo.id)}
+              >
+                <div className="flex items-center justify-between mb-1.5">
+                  <div className="flex items-center gap-2">
+                    <div className={clsx('w-2 h-2 rounded-full', todoStatusDot[todo.status] || 'bg-slate-400')} />
+                    <span className="text-[11px] font-semibold text-slate-400 dark:text-slate-500">
+                      TODO-{todo.id.slice(-4).toUpperCase()}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {hasAIQuestion && (
+                      <span className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-pink-100 dark:bg-pink-900/50 text-pink-600 dark:text-pink-400">
+                        <span className="text-[10px] animate-pulse">🤔</span>
+                        <span className="text-[9px] font-semibold">{questionCount}</span>
+                      </span>
+                    )}
+                    {todo.complexity && (
+                      <span className={clsx(
+                        'px-1.5 py-0.5 rounded text-[9px] font-semibold uppercase',
+                        todo.complexity === 'HIGH' ? 'bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-400' :
+                        todo.complexity === 'MEDIUM' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/50 dark:text-yellow-400' :
+                        'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-400'
+                      )}>
+                        {todo.complexity}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <h5 className="text-sm font-medium text-slate-900 dark:text-slate-100 mb-1">
+                  {todo.title}
+                </h5>
+                <div className="flex items-center gap-3 text-xs text-slate-400 dark:text-slate-500">
+                  <span>{todo.steps?.filter(s => s.status === 'COMPLETED').length ?? 0}/{todo.steps?.length ?? 6} {t('mission.steps')}</span>
+                  {todo.estimatedTime && <span>{todo.estimatedTime}min</span>}
+                </div>
               </div>
-              <h5 className="text-sm font-medium text-slate-900 mb-1">
-                {todo.title}
-              </h5>
-              <div className="flex items-center gap-3 text-xs text-slate-400">
-                <span>{todo.steps?.filter(s => s.status === 'COMPLETED').length ?? 0}/{todo.steps?.length ?? 6} steps</span>
-                {todo.estimatedTime && <span>{todo.estimatedTime}min</span>}
-              </div>
-            </div>
-          ))}
+            );
+          })}
 
           {todos.length === 0 && (
             <div className="text-center py-8 text-slate-400">
-              <p className="text-sm">No todos yet</p>
-              <p className="text-xs mt-1">Start weaving to generate todo threads</p>
+              <p className="text-sm">{t('mission.noTodos')}</p>
+              <p className="text-xs mt-1">{t('mission.noTodosHint')}</p>
             </div>
           )}
         </div>

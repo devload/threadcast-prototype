@@ -7,10 +7,14 @@ interface TodoCardProps {
   onClick?: () => void;
   onMenuClick?: () => void;
   selected?: boolean;
+  highlighted?: boolean;
   showSteps?: boolean;
   draggable?: boolean;
+  isDragging?: boolean;
   onDragStart?: (e: React.DragEvent) => void;
   onDragEnd?: (e: React.DragEvent) => void;
+  aiQuestionCount?: number;
+  onAIQuestionClick?: () => void;
 }
 
 const statusDotColors: Record<TodoStatus, string> = {
@@ -47,12 +51,17 @@ export function TodoCard({
   onClick,
   onMenuClick,
   selected,
+  highlighted = false,
   showSteps = true,
   draggable = false,
+  isDragging = false,
   onDragStart,
   onDragEnd,
+  aiQuestionCount = 0,
+  onAIQuestionClick,
 }: TodoCardProps) {
   const { id, title, description, status, steps, estimatedTime, complexity } = todo;
+  const hasAIQuestion = aiQuestionCount > 0;
 
   const completedSteps = steps?.filter((s) => s.status === 'COMPLETED').length ?? 0;
   const currentStep = steps?.find((s) => s.status === 'IN_PROGRESS');
@@ -67,10 +76,16 @@ export function TodoCard({
   return (
     <div
       className={clsx(
-        'bg-white border rounded-lg p-3 card-interactive group',
+        'bg-white dark:bg-slate-800 border rounded-lg p-3 card-interactive group',
         selected && 'ring-2 ring-indigo-500',
-        isThreading ? 'border-amber-400' : 'border-slate-200',
-        draggable && 'cursor-grab active:cursor-grabbing'
+        highlighted && 'card-highlighted',
+        hasAIQuestion
+          ? 'border-pink-400 border-2 bg-gradient-to-br from-pink-50/30 to-purple-50/30 dark:from-pink-950/30 dark:to-purple-950/30'
+          : isThreading
+          ? 'border-amber-400'
+          : 'border-slate-200 dark:border-slate-700',
+        draggable && 'cursor-grab active:cursor-grabbing',
+        isDragging && 'opacity-50 scale-105 rotate-2 shadow-lg'
       )}
       onClick={onClick}
       draggable={draggable}
@@ -99,7 +114,24 @@ export function TodoCard({
       </div>
 
       {/* Title */}
-      <h4 className="font-medium text-slate-900 text-sm mb-1 line-clamp-2 break-words">{title}</h4>
+      <h4 className="font-medium text-slate-900 dark:text-slate-100 text-sm mb-1 line-clamp-2 break-words">{title}</h4>
+
+      {/* AI Question Badge */}
+      {hasAIQuestion && (
+        <div
+          className="flex items-center gap-1.5 px-2 py-1 mb-2 rounded-md bg-gradient-to-r from-pink-100/80 to-purple-100/80 dark:from-pink-900/50 dark:to-purple-900/50 cursor-pointer hover:from-pink-200 hover:to-purple-200 dark:hover:from-pink-800/50 dark:hover:to-purple-800/50 transition-all"
+          onClick={(e) => {
+            e.stopPropagation();
+            onAIQuestionClick?.();
+          }}
+        >
+          <span className="text-xs animate-pulse">🤔</span>
+          <span className="text-[10px] font-semibold text-pink-600 dark:text-pink-400">AI 질문 대기 - 클릭하여 답변</span>
+          <span className="ml-auto bg-red-500 text-white text-[8px] font-bold px-1 py-0.5 rounded-full">
+            {aiQuestionCount}
+          </span>
+        </div>
+      )}
 
       {/* Description */}
       {description && (

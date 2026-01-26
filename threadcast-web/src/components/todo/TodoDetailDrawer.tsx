@@ -1,9 +1,10 @@
 import { clsx } from 'clsx';
-import { Clock, History, ChevronRight } from 'lucide-react';
+import { Clock, History, ChevronRight, MessageCircleQuestion } from 'lucide-react';
 import { useState } from 'react';
 import type { Todo, StepType, TimelineEvent } from '../../types';
 import { Drawer } from '../feedback/Modal';
 import { Button } from '../common/Button';
+import { useAIQuestionStore } from '../../stores/aiQuestionStore';
 
 interface TodoDetailDrawerProps {
   isOpen: boolean;
@@ -42,10 +43,15 @@ export function TodoDetailDrawer({
   onViewTimeline,
 }: TodoDetailDrawerProps) {
   const [activeTab, setActiveTab] = useState<TabType>('details');
+  const { questions, openPanelForTodo } = useAIQuestionStore();
 
   if (!todo) return null;
 
   const { id, title, description, status, steps, estimatedTime, complexity, aiContext } = todo;
+
+  // Get AI questions for this todo
+  const todoQuestions = questions.filter(q => q.todoId === id);
+  const hasAIQuestions = todoQuestions.length > 0;
   const sortedSteps = steps ? [...steps].sort((a, b) =>
     stepOrder.indexOf(a.stepType) - stepOrder.indexOf(b.stepType)
   ) : [];
@@ -118,9 +124,42 @@ export function TodoDetailDrawer({
             )}
           </div>
 
+          {/* AI Question Waiting Banner */}
+          {hasAIQuestions && (
+            <div
+              className="mb-5 p-4 rounded-lg bg-gradient-to-r from-pink-50 to-purple-50 dark:from-pink-950/50 dark:to-purple-950/50 border-2 border-pink-300 dark:border-pink-700 cursor-pointer hover:from-pink-100 hover:to-purple-100 dark:hover:from-pink-900/50 dark:hover:to-purple-900/50 transition-all"
+              onClick={() => openPanelForTodo(id)}
+            >
+              <div className="flex items-start gap-3">
+                <div className="relative">
+                  <span className="text-2xl animate-pulse">🤔</span>
+                  <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                    {todoQuestions.length}
+                  </span>
+                </div>
+                <div className="flex-1">
+                  <h4 className="font-semibold text-pink-700 dark:text-pink-400 text-sm mb-1">
+                    AI가 답변을 기다리고 있습니다
+                  </h4>
+                  <p className="text-xs text-pink-600/80 dark:text-pink-400/80 mb-2">
+                    작업을 계속하려면 아래 질문에 답변해주세요
+                  </p>
+                  {/* Show first question preview */}
+                  <div className="bg-white/60 dark:bg-slate-800/60 rounded-md p-2 text-xs text-slate-700 dark:text-slate-300">
+                    <span className="font-medium">Q:</span> {todoQuestions[0]?.question?.slice(0, 60)}...
+                  </div>
+                  <button className="mt-2 text-xs font-semibold text-pink-600 dark:text-pink-400 hover:text-pink-700 dark:hover:text-pink-300 flex items-center gap-1">
+                    <MessageCircleQuestion size={14} />
+                    클릭하여 답변하기
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Description */}
           {description && (
-            <p className="text-sm text-slate-600 leading-relaxed mb-5">
+            <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed mb-5">
               {description}
             </p>
           )}
@@ -131,42 +170,54 @@ export function TodoDetailDrawer({
               Step Progress ({completedSteps}/{sortedSteps.length})
             </h4>
             <div className="flex flex-col gap-2">
-              {sortedSteps.map((step, index) => (
-                <div
-                  key={step.id}
-                  className={clsx(
-                    'flex items-center gap-3 p-3 rounded-lg border',
-                    step.status === 'COMPLETED' ? 'bg-green-50 border-green-200' :
-                    step.status === 'IN_PROGRESS' ? 'bg-amber-50 border-amber-300' :
-                    'bg-slate-50 border-slate-200'
-                  )}
-                >
-                  <div className={clsx(
-                    'w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold',
-                    step.status === 'COMPLETED' ? 'bg-green-500 text-white' :
-                    step.status === 'IN_PROGRESS' ? 'bg-amber-500 text-white' :
-                    'bg-slate-300 text-slate-600'
-                  )}>
-                    {step.status === 'COMPLETED' ? '✓' : index + 1}
-                  </div>
-                  <div className="flex-1">
-                    <div className="text-sm font-medium text-slate-900">
-                      {stepLabels[step.stepType]}
-                    </div>
+              {sortedSteps.map((step, index) => {
+                const isWaitingForAI = step.status === 'IN_PROGRESS' && hasAIQuestions;
+                return (
+                  <div
+                    key={step.id}
+                    className={clsx(
+                      'flex items-center gap-3 p-3 rounded-lg border transition-all',
+                      step.status === 'COMPLETED' ? 'bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-800' :
+                      isWaitingForAI ? 'bg-pink-50 dark:bg-pink-950/30 border-pink-300 dark:border-pink-700 cursor-pointer hover:bg-pink-100 dark:hover:bg-pink-900/30' :
+                      step.status === 'IN_PROGRESS' ? 'bg-amber-50 dark:bg-amber-950/30 border-amber-300 dark:border-amber-700' :
+                      'bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700'
+                    )}
+                    onClick={isWaitingForAI ? () => openPanelForTodo(id) : undefined}
+                  >
                     <div className={clsx(
-                      'text-xs',
-                      statusStyles[step.status]?.text || 'text-slate-500'
+                      'w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold',
+                      step.status === 'COMPLETED' ? 'bg-green-500 text-white' :
+                      isWaitingForAI ? 'bg-pink-500 text-white' :
+                      step.status === 'IN_PROGRESS' ? 'bg-amber-500 text-white' :
+                      'bg-slate-300 dark:bg-slate-600 text-slate-600 dark:text-slate-300'
                     )}>
-                      {statusStyles[step.status]?.label || step.status}
+                      {step.status === 'COMPLETED' ? '✓' : isWaitingForAI ? '🤔' : index + 1}
                     </div>
+                    <div className="flex-1">
+                      <div className="text-sm font-medium text-slate-900 dark:text-slate-100">
+                        {stepLabels[step.stepType]}
+                      </div>
+                      <div className={clsx(
+                        'text-xs',
+                        isWaitingForAI ? 'text-pink-600 dark:text-pink-400' :
+                        statusStyles[step.status]?.text || 'text-slate-500 dark:text-slate-400'
+                      )}>
+                        {isWaitingForAI ? 'AI 답변 대기 중' : statusStyles[step.status]?.label || step.status}
+                      </div>
+                    </div>
+                    {isWaitingForAI ? (
+                      <div className="flex items-center gap-1 text-xs text-pink-600 dark:text-pink-400 font-medium animate-pulse">
+                        <MessageCircleQuestion size={14} />
+                        답변 필요
+                      </div>
+                    ) : step.status === 'IN_PROGRESS' && (
+                      <div className="text-xs text-amber-600 dark:text-amber-400 font-medium animate-pulse">
+                        Active
+                      </div>
+                    )}
                   </div>
-                  {step.status === 'IN_PROGRESS' && (
-                    <div className="text-xs text-amber-600 font-medium animate-pulse">
-                      Active
-                    </div>
-                  )}
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
 

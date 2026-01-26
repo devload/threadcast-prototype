@@ -9,6 +9,8 @@ interface Toast {
   duration?: number;
 }
 
+export type Language = 'ko' | 'en';
+
 interface UIState {
   // Sidebar
   sidebarCollapsed: boolean;
@@ -30,6 +32,10 @@ interface UIState {
   // Theme
   theme: 'light' | 'dark' | 'system';
   setTheme: (theme: 'light' | 'dark' | 'system') => void;
+
+  // Language
+  language: Language;
+  setLanguage: (language: Language) => void;
 
   // Current workspace
   currentWorkspaceId: string | null;
@@ -77,6 +83,10 @@ export const useUIStore = create<UIState>()(
       theme: 'light',
       setTheme: (theme) => set({ theme }),
 
+      // Language
+      language: 'ko',
+      setLanguage: (language) => set({ language }),
+
       // Workspace
       currentWorkspaceId: null,
       setCurrentWorkspaceId: (id) => set({ currentWorkspaceId: id }),
@@ -86,6 +96,7 @@ export const useUIStore = create<UIState>()(
       partialize: (state) => ({
         sidebarCollapsed: state.sidebarCollapsed,
         theme: state.theme,
+        language: state.language,
         currentWorkspaceId: state.currentWorkspaceId,
       }),
     }

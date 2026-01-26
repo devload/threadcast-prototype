@@ -73,7 +73,7 @@ export function Modal({
       {/* Modal */}
       <div
         className={clsx(
-          'relative w-full bg-white rounded-xl shadow-xl transform transition-all',
+          'relative w-full bg-white dark:bg-slate-800 rounded-xl shadow-xl transform transition-all',
           sizeStyles[size]
         )}
         role="dialog"
@@ -81,21 +81,21 @@ export function Modal({
       >
         {/* Header */}
         {(title || showCloseButton) && (
-          <div className="flex items-start justify-between p-4 border-b border-slate-200">
+          <div className="flex items-start justify-between p-4 border-b border-slate-200 dark:border-slate-700">
             <div>
               {title && (
-                <h2 className="text-lg font-semibold text-slate-900">{title}</h2>
+                <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">{title}</h2>
               )}
               {description && (
-                <p className="mt-1 text-sm text-slate-500">{description}</p>
+                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{description}</p>
               )}
             </div>
             {showCloseButton && (
               <button
                 onClick={onClose}
-                className="p-1 hover:bg-slate-100 rounded-lg transition-colors"
+                className="p-1 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
               >
-                <X size={20} className="text-slate-400" />
+                <X size={20} className="text-slate-400 dark:text-slate-500" />
               </button>
             )}
           </div>
@@ -106,7 +106,7 @@ export function Modal({
 
         {/* Footer */}
         {footer && (
-          <div className="flex items-center justify-end gap-2 p-4 border-t border-slate-200 bg-slate-50 rounded-b-xl">
+          <div className="flex items-center justify-end gap-2 p-4 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 rounded-b-xl">
             {footer}
           </div>
         )}
@@ -250,7 +250,7 @@ export function Drawer({
       {/* Drawer */}
       <div
         className={clsx(
-          'absolute top-0 h-full bg-white shadow-xl transition-transform duration-300 ease-out',
+          'absolute top-0 h-full bg-white dark:bg-slate-800 shadow-xl transition-transform duration-300 ease-out',
           sizeStyles[size],
           position === 'right' ? 'right-0' : 'left-0',
           isAnimating
@@ -261,13 +261,13 @@ export function Drawer({
         )}
       >
         {/* Header */}
-        <div className="flex items-center justify-between h-14 px-4 border-b border-slate-200">
-          {title && <h2 className="font-semibold text-slate-900">{title}</h2>}
+        <div className="flex items-center justify-between h-14 px-4 border-b border-slate-200 dark:border-slate-700">
+          {title && <h2 className="font-semibold text-slate-900 dark:text-slate-100">{title}</h2>}
           <button
             onClick={onClose}
-            className="p-1 hover:bg-slate-100 rounded-lg transition-colors ml-auto"
+            className="p-1 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors ml-auto"
           >
-            <X size={20} className="text-slate-400" />
+            <X size={20} className="text-slate-400 dark:text-slate-500" />
           </button>
         </div>
 
