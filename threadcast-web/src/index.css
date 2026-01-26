@@ -1,0 +1,338 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* ThreadCast Design System Colors */
+    --thread-primary: #6366F1;
+    --thread-secondary: #8B5CF6;
+    --thread-accent: #EC4899;
+    --thread-woven: #22C55E;
+    --thread-threading: #F59E0B;
+    --thread-tangled: #EF4444;
+    --thread-pending: #6B7280;
+
+    /* Background Colors */
+    --bg-primary: #ffffff;
+    --bg-secondary: #f9fafb;
+    --bg-tertiary: #f3f4f6;
+    --border-color: #e5e7eb;
+
+    /* Text Colors */
+    --text-primary: #111827;
+    --text-secondary: #6b7280;
+    --text-tertiary: #9ca3af;
+
+    /* Layout */
+    --sidebar-width: 280px;
+  }
+
+  body {
+    @apply bg-slate-50 text-slate-900 antialiased;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', sans-serif;
+  }
+}
+
+@layer components {
+  /* Status Badge */
+  .badge {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+  }
+
+  .badge-backlog {
+    @apply bg-slate-100 text-slate-700;
+  }
+
+  .badge-pending {
+    @apply bg-slate-100 text-slate-700;
+  }
+
+  .badge-threading {
+    @apply bg-amber-100 text-amber-800;
+  }
+
+  .badge-woven {
+    @apply bg-green-100 text-green-800;
+  }
+
+  .badge-tangled {
+    @apply bg-red-100 text-red-800;
+  }
+
+  .badge-archived {
+    @apply bg-purple-100 text-purple-800;
+  }
+
+  /* Priority Badge */
+  .priority-critical {
+    @apply text-red-600;
+  }
+
+  .priority-high {
+    @apply text-orange-500;
+  }
+
+  .priority-medium {
+    @apply text-yellow-500;
+  }
+
+  .priority-low {
+    @apply text-blue-500;
+  }
+
+  /* Card styles */
+  .card {
+    @apply bg-white rounded-lg border border-slate-200 shadow-sm;
+  }
+
+  .card-hover {
+    @apply hover:shadow-md hover:border-slate-300 transition-all duration-200;
+  }
+
+  /* Button styles */
+  .btn {
+    @apply inline-flex items-center justify-center px-4 py-2 rounded-lg font-medium transition-colors duration-200;
+  }
+
+  .btn-primary {
+    @apply bg-indigo-600 text-white hover:bg-indigo-700;
+  }
+
+  .btn-secondary {
+    @apply bg-slate-100 text-slate-700 hover:bg-slate-200;
+  }
+
+  .btn-ghost {
+    @apply text-slate-600 hover:bg-slate-100;
+  }
+
+  .btn-sm {
+    @apply px-3 py-1.5 text-sm;
+  }
+
+  /* Kanban Column */
+  .kanban-column {
+    @apply flex flex-col bg-slate-100 rounded-xl p-4 min-w-[320px] max-w-[320px];
+  }
+
+  .kanban-column-header {
+    @apply flex items-center justify-between mb-4;
+  }
+
+  .kanban-column-title {
+    @apply font-semibold text-slate-700;
+  }
+
+  .kanban-column-count {
+    @apply text-sm text-slate-500;
+  }
+
+  .kanban-column-content {
+    @apply flex flex-col gap-2.5 overflow-y-auto;
+  }
+
+  /* Drag and Drop Styles */
+  .dragging {
+    @apply opacity-50 rotate-2;
+  }
+
+  .drag-over {
+    @apply bg-indigo-50 border-2 border-dashed border-indigo-500 rounded-lg;
+  }
+
+  /* Mission/Todo Card hover effect */
+  .card-interactive {
+    @apply cursor-pointer transition-all duration-200;
+  }
+
+  .card-interactive:hover {
+    @apply border-indigo-500 shadow-lg -translate-y-0.5;
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.15);
+  }
+
+  /* Status Dot Animation */
+  .status-dot-pulse {
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+  }
+
+  /* Progress Bar Gradient */
+  .progress-gradient {
+    background: linear-gradient(90deg, var(--thread-threading), var(--thread-woven));
+  }
+
+  /* Modal Overlay */
+  .modal-overlay {
+    @apply fixed inset-0 bg-black/50 z-50 flex items-center justify-content p-6;
+    transition: opacity 0.3s ease;
+  }
+
+  .modal-content {
+    @apply bg-white rounded-xl shadow-2xl max-w-[700px] w-full max-h-[85vh] flex flex-col;
+    transform: translateY(20px);
+    transition: transform 0.3s ease;
+  }
+
+  .modal-overlay.active .modal-content {
+    transform: translateY(0);
+  }
+
+  /* Slide Panel */
+  .slide-panel {
+    @apply fixed top-0 right-0 h-full bg-white shadow-2xl z-50 flex flex-col;
+    width: 420px;
+    transform: translateX(100%);
+    transition: transform 0.3s ease;
+  }
+
+  .slide-panel.active {
+    transform: translateX(0);
+  }
+
+  /* Questions Panel (Left) */
+  .questions-panel {
+    @apply fixed top-0 left-0 h-full bg-white shadow-2xl z-50 flex flex-col;
+    width: 420px;
+    transform: translateX(-100%);
+    transition: transform 0.3s ease;
+  }
+
+  .questions-panel.active {
+    transform: translateX(0);
+  }
+
+  /* Timeline Styles */
+  .timeline-icon {
+    @apply w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center text-base relative;
+  }
+
+  .timeline-icon-ai {
+    background: linear-gradient(135deg, var(--thread-primary), var(--thread-secondary));
+    @apply text-white;
+  }
+
+  .timeline-icon-system {
+    @apply bg-slate-100 text-slate-500;
+  }
+
+  .timeline-icon-user {
+    background: var(--thread-accent);
+    @apply text-white;
+  }
+
+  .timeline-connector {
+    @apply absolute w-0.5 bg-slate-200;
+    top: 40px;
+    left: 50%;
+    transform: translateX(-50%);
+    height: calc(100% + 16px);
+  }
+
+  /* Tag Styles */
+  .meta-tag {
+    @apply px-2 py-0.5 rounded-full text-xs font-medium;
+  }
+
+  .meta-tag-mission {
+    @apply bg-indigo-50 text-indigo-600;
+  }
+
+  .meta-tag-todo {
+    @apply bg-amber-50 text-amber-600;
+  }
+
+  /* Complexity Badge */
+  .complexity-low {
+    @apply bg-green-100 text-green-800;
+  }
+
+  .complexity-medium {
+    @apply bg-yellow-100 text-yellow-800;
+  }
+
+  .complexity-high {
+    @apply bg-red-100 text-red-800;
+  }
+
+  /* Toast Notification */
+  .toast-container {
+    @apply fixed bottom-6 right-6 z-[9999] flex flex-col gap-2;
+  }
+
+  .toast {
+    @apply bg-white rounded-lg shadow-lg border border-slate-200 p-4 min-w-[300px];
+    animation: slideIn 0.3s ease;
+  }
+
+  @keyframes slideIn {
+    from {
+      transform: translateX(100%);
+      opacity: 0;
+    }
+    to {
+      transform: translateX(0);
+      opacity: 1;
+    }
+  }
+
+  /* View Switcher */
+  .view-switcher {
+    @apply flex bg-slate-100 rounded-md p-0.5;
+  }
+
+  .view-btn {
+    @apply px-3 py-1.5 rounded text-xs font-medium text-slate-500 transition-all duration-200;
+  }
+
+  .view-btn.active {
+    @apply bg-white text-indigo-600 shadow-sm;
+  }
+
+  /* Filter Item */
+  .filter-item {
+    @apply px-3 py-2 rounded-md flex items-center gap-2 text-sm text-slate-600 cursor-pointer transition-all duration-150;
+  }
+
+  .filter-item:hover {
+    @apply bg-slate-100 text-slate-900;
+  }
+
+  .filter-item.active {
+    @apply bg-indigo-500 text-white;
+  }
+
+  /* Stats Card */
+  .stat-card {
+    @apply bg-slate-50 rounded-md p-3 text-center;
+  }
+
+  .stat-value {
+    @apply text-xl font-bold text-indigo-600;
+  }
+
+  .stat-label {
+    @apply text-xs text-slate-500 mt-1;
+  }
+
+  /* Custom Scrollbar */
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    @apply bg-slate-300 rounded-full;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    @apply bg-slate-400;
+  }
+}
