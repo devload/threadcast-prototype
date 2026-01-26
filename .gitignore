@@ -9,6 +9,7 @@ desktop.ini
 *.swp
 *.swo
 *~
+.obsidian/
 
 # Logs
 *.log
