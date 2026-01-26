@@ -229,3 +229,50 @@ export const FullBoard: Story = {
     ],
   },
 };
+
+export const WithAIQuestions: Story = {
+  args: {
+    todos: allTodos,
+    aiQuestionsByTodo: {
+      '3': 2, // Implement JWT validation - 2 questions
+      '4': 1, // Add user registration - 1 question
+    },
+    onAIQuestionClick: (todoId: string) => alert(`AI 질문 패널 열기: ${todoId}`),
+  },
+  parameters: {
+    docs: {
+      description: {
+        story: 'AI가 질문을 기다리고 있는 Todo들을 표시합니다. Threading 상태의 Todo 중 AI 질문이 있는 카드에 분홍색 테두리와 클릭 가능한 배지가 표시됩니다.',
+      },
+    },
+  },
+};
+
+export const MixedAIQuestions: Story = {
+  args: {
+    todos: [
+      ...allTodos,
+      createMockTodo({
+        id: '11',
+        title: 'OAuth2 연동 구현',
+        description: 'Google, GitHub OAuth2 인증 추가',
+        status: 'THREADING',
+        priority: 'HIGH',
+        steps: createSteps(1, 1),
+        estimatedTime: 90,
+      }),
+    ],
+    aiQuestionsByTodo: {
+      '3': 3, // 3 questions
+      '11': 1, // 1 question
+    },
+    onAIQuestionClick: (todoId: string) => alert(`AI 질문 패널 열기: ${todoId}`),
+  },
+  parameters: {
+    docs: {
+      description: {
+        story: 'AI 질문이 있는 Todo와 없는 Todo가 섞여 있는 상태. AI 질문 배지를 클릭하면 해당 Todo의 질문만 필터링된 AI 패널이 열립니다.',
+      },
+    },
+  },
+};

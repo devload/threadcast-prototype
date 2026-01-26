@@ -224,3 +224,60 @@ export const LoadingGrid: Story = {
     </div>
   ),
 };
+
+export const WithAIQuestion: Story = {
+  args: {
+    mission: {
+      ...mockMission,
+      status: 'THREADING',
+    },
+    aiQuestionCount: 2,
+  },
+  parameters: {
+    docs: {
+      description: {
+        story: 'AI가 질문을 기다리고 있는 상태의 미션 카드. 분홍색 테두리와 AI 질문 배지가 표시됩니다.',
+      },
+    },
+  },
+};
+
+export const WithSingleAIQuestion: Story = {
+  args: {
+    mission: {
+      ...mockMission,
+      status: 'THREADING',
+      title: 'API 인증 구현',
+    },
+    aiQuestionCount: 1,
+  },
+};
+
+export const AIQuestionComparison: Story = {
+  render: () => (
+    <div className="flex flex-col gap-4 w-80">
+      <div className="text-xs text-slate-500 mb-2">AI 질문 없음</div>
+      <MissionCard
+        mission={{
+          ...mockMission,
+          status: 'THREADING',
+        }}
+      />
+      <div className="text-xs text-slate-500 mt-4 mb-2">AI 질문 2개 대기 중</div>
+      <MissionCard
+        mission={{
+          ...mockMission,
+          status: 'THREADING',
+        }}
+        aiQuestionCount={2}
+      />
+    </div>
+  ),
+  parameters: {
+    docs: {
+      description: {
+        story: 'AI 질문이 있는 카드와 없는 카드의 비교. AI 질문이 있으면 분홍색 강조 표시가 됩니다.',
+      },
+    },
+  },
+};

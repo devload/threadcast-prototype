@@ -247,3 +247,67 @@ export const LoadingList: Story = {
     </div>
   ),
 };
+
+export const WithAIQuestion: Story = {
+  args: {
+    todo: {
+      ...mockTodo,
+      status: 'THREADING',
+      steps: createSteps(2, 2),
+    },
+    aiQuestionCount: 1,
+    onAIQuestionClick: () => alert('AI 질문 패널 열기'),
+  },
+  parameters: {
+    docs: {
+      description: {
+        story: 'AI가 질문을 기다리고 있는 상태의 Todo 카드. 분홍색 테두리와 클릭 가능한 AI 질문 배지가 표시됩니다.',
+      },
+    },
+  },
+};
+
+export const WithMultipleAIQuestions: Story = {
+  args: {
+    todo: {
+      ...mockTodo,
+      status: 'THREADING',
+      title: 'API 인증 미들웨어 구현',
+      steps: createSteps(3, 3),
+    },
+    aiQuestionCount: 3,
+    onAIQuestionClick: () => alert('AI 질문 패널 열기'),
+  },
+};
+
+export const AIQuestionComparison: Story = {
+  render: () => (
+    <div className="flex flex-col gap-3 w-72">
+      <div className="text-xs text-slate-500 mb-1">AI 질문 없음</div>
+      <TodoCard
+        todo={{
+          ...mockTodo,
+          status: 'THREADING',
+          steps: createSteps(2, 2),
+        }}
+      />
+      <div className="text-xs text-slate-500 mt-3 mb-1">AI 질문 2개 대기 중</div>
+      <TodoCard
+        todo={{
+          ...mockTodo,
+          status: 'THREADING',
+          steps: createSteps(2, 2),
+        }}
+        aiQuestionCount={2}
+        onAIQuestionClick={() => alert('AI 질문 패널 열기')}
+      />
+    </div>
+  ),
+  parameters: {
+    docs: {
+      description: {
+        story: 'AI 질문이 있는 카드와 없는 카드의 비교. AI 질문 배지를 클릭하면 AI 패널이 열립니다.',
+      },
+    },
+  },
+};

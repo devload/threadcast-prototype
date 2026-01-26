@@ -199,3 +199,47 @@ export const FullBoard: Story = {
     ],
   },
 };
+
+export const WithAIQuestions: Story = {
+  args: {
+    missions: allMissions,
+    aiQuestionsByMission: {
+      '3': 2, // Implement User Authentication - 2 questions
+      '4': 1, // Build REST API Endpoints - 1 question
+    },
+  },
+  parameters: {
+    docs: {
+      description: {
+        story: 'AI가 질문을 기다리고 있는 미션들을 표시합니다. Threading 상태의 미션 중 AI 질문이 있는 카드에 분홍색 테두리와 배지가 표시됩니다.',
+      },
+    },
+  },
+};
+
+export const MixedAIQuestions: Story = {
+  args: {
+    missions: [
+      ...allMissions,
+      createMockMission({
+        id: '8',
+        title: 'WebSocket Integration',
+        status: 'THREADING',
+        priority: 'HIGH',
+        progress: 30,
+        todoStats: { total: 4, pending: 1, threading: 2, woven: 1, tangled: 0 },
+      }),
+    ],
+    aiQuestionsByMission: {
+      '3': 3, // 3 questions
+      '8': 1, // 1 question
+    },
+  },
+  parameters: {
+    docs: {
+      description: {
+        story: 'AI 질문이 있는 미션과 없는 미션이 섞여 있는 상태. AI 답변이 필요한 미션을 쉽게 구분할 수 있습니다.',
+      },
+    },
+  },
+};
