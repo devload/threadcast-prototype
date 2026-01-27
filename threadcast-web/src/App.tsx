@@ -7,7 +7,10 @@ import {
   MissionsPage,
   TodosPage,
   TimelinePage,
+  HomePage,
+  ProjectDashboardPage,
 } from './pages';
+import { WorkspaceDashboardPage } from './pages/WorkspaceDashboardPage';
 
 function App() {
   return (
@@ -18,9 +21,13 @@ function App() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
 
-          {/* Protected routes */}
+          {/* Home page - workspace selection */}
+          <Route path="/" element={<HomePage />} />
+
+          {/* Protected routes with layout */}
           <Route element={<AppLayout />}>
-            <Route path="/" element={<MissionsPage />} />
+            <Route path="/dashboard" element={<WorkspaceDashboardPage />} />
+            <Route path="/projects/:projectId" element={<ProjectDashboardPage />} />
             <Route path="/missions" element={<MissionsPage />} />
             <Route path="/missions/:missionId/todos" element={<TodosPage />} />
             <Route path="/timeline" element={<TimelinePage />} />
