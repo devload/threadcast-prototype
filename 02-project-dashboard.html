@@ -1,0 +1,1040 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ThreadCast - Project Dashboard</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --thread-primary: #6366F1;
+            --thread-secondary: #8B5CF6;
+            --thread-accent: #EC4899;
+            --thread-woven: #22C55E;
+            --thread-threading: #F59E0B;
+            --thread-tangled: #EF4444;
+            --thread-pending: #6B7280;
+            --bg-primary: #ffffff;
+            --bg-secondary: #f8fafc;
+            --bg-tertiary: #f1f5f9;
+            --border-color: #e2e8f0;
+            --text-primary: #0f172a;
+            --text-secondary: #64748b;
+            --text-tertiary: #94a3b8;
+            --sidebar-width: 240px;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            overflow: hidden;
+            font-size: 13px;
+        }
+
+        .app { display: flex; height: 100vh; }
+
+        /* Sidebar */
+        .sidebar {
+            width: var(--sidebar-width);
+            background: var(--bg-primary);
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .sidebar-header {
+            padding: 16px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 17px;
+            font-weight: 700;
+            color: var(--thread-primary);
+        }
+
+        .workspace-select {
+            margin-top: 12px;
+            padding: 10px 12px;
+            background: var(--bg-tertiary);
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        .workspace-name { font-weight: 600; font-size: 13px; }
+        .workspace-path { font-size: 10px; color: var(--text-tertiary); font-family: monospace; }
+
+        /* Project Card in Sidebar */
+        .project-card {
+            margin: 12px;
+            padding: 14px;
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.08), rgba(139, 92, 246, 0.08));
+            border: 1px solid rgba(99, 102, 241, 0.2);
+            border-radius: 10px;
+        }
+
+        .project-card-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .project-card-icon {
+            width: 36px;
+            height: 36px;
+            background: linear-gradient(135deg, var(--thread-primary), var(--thread-secondary));
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+        }
+
+        .project-card-info { flex: 1; }
+        .project-card-name { font-weight: 600; font-size: 14px; }
+        .project-card-path { font-size: 10px; font-family: monospace; color: var(--text-tertiary); }
+
+        .project-badges { display: flex; gap: 6px; }
+
+        .badge {
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: 600;
+        }
+
+        .badge-language { background: rgba(99, 102, 241, 0.15); color: var(--thread-primary); }
+        .badge-build { background: rgba(34, 197, 94, 0.15); color: var(--thread-woven); }
+
+        /* Nav */
+        .sidebar-nav { flex: 1; padding: 8px 12px; }
+
+        .nav-title {
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+            color: var(--text-tertiary);
+            padding: 8px 8px 6px;
+            letter-spacing: 0.5px;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            color: var(--text-secondary);
+            transition: all 0.15s;
+            margin-bottom: 2px;
+            font-size: 13px;
+        }
+
+        .nav-item:hover { background: var(--bg-tertiary); color: var(--text-primary); }
+        .nav-item.active { background: var(--thread-primary); color: white; }
+
+        .nav-badge {
+            margin-left: auto;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 11px;
+            font-weight: 600;
+            background: var(--bg-tertiary);
+        }
+
+        .nav-item.active .nav-badge { background: rgba(255,255,255,0.2); color: white; }
+
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
+
+        /* Sidebar Stats */
+        .sidebar-stats {
+            padding: 12px;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .mini-stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+
+        .mini-stat {
+            background: var(--bg-tertiary);
+            padding: 10px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .mini-stat-value { font-size: 18px; font-weight: 700; color: var(--thread-primary); }
+        .mini-stat-label { font-size: 10px; color: var(--text-tertiary); }
+
+        /* Main */
+        .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+        /* Top Bar */
+        .topbar {
+            height: 52px;
+            background: var(--bg-primary);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            justify-content: space-between;
+        }
+
+        .topbar-left { display: flex; align-items: center; gap: 12px; }
+
+        .back-btn {
+            padding: 6px 12px;
+            background: var(--bg-tertiary);
+            border: none;
+            border-radius: 6px;
+            font-size: 12px;
+            cursor: pointer;
+            color: var(--text-secondary);
+        }
+
+        .back-btn:hover { background: var(--border-color); }
+
+        .topbar-title { font-size: 16px; font-weight: 600; }
+
+        .topbar-actions { display: flex; align-items: center; gap: 6px; }
+
+        .btn {
+            padding: 7px 14px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            border: none;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .btn-primary { background: var(--thread-primary); color: white; }
+        .btn-primary:hover { background: var(--thread-secondary); }
+        .btn-ghost { background: transparent; color: var(--text-secondary); padding: 7px 10px; }
+        .btn-ghost:hover { background: var(--bg-tertiary); }
+
+        /* Content */
+        .content { flex: 1; overflow-y: auto; padding: 16px 20px; }
+
+        /* Stats Row */
+        .stats-row {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .stat-card {
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 16px;
+            text-align: center;
+        }
+
+        .stat-icon { font-size: 20px; margin-bottom: 6px; }
+        .stat-value { font-size: 24px; font-weight: 700; color: var(--thread-primary); }
+        .stat-label { font-size: 11px; color: var(--text-secondary); }
+        .stat-sub { font-size: 10px; color: var(--thread-threading); font-weight: 500; margin-top: 2px; }
+
+        /* Main Grid - 3 columns */
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 320px;
+            gap: 16px;
+        }
+
+        /* Cards */
+        .card {
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .card-header {
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .card-title { font-weight: 600; font-size: 13px; display: flex; align-items: center; gap: 6px; }
+        .card-action { font-size: 11px; color: var(--thread-primary); cursor: pointer; font-weight: 500; }
+        .card-body { padding: 12px; }
+
+        /* Todo List */
+        .todo-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 12px;
+            border-radius: 6px;
+            margin-bottom: 6px;
+            background: var(--bg-secondary);
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .todo-item:hover { background: var(--bg-tertiary); transform: translateX(2px); }
+        .todo-item:last-child { margin-bottom: 0; }
+
+        .todo-item.threading {
+            background: rgba(245, 158, 11, 0.06);
+            border: 1px solid rgba(245, 158, 11, 0.3);
+        }
+
+        .todo-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .todo-dot.pending { background: var(--thread-pending); }
+        .todo-dot.threading { background: var(--thread-threading); animation: pulse 2s infinite; }
+        .todo-dot.woven { background: var(--thread-woven); }
+
+        .todo-info { flex: 1; min-width: 0; }
+        .todo-title { font-size: 12px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+        .todo-meta { display: flex; align-items: center; gap: 6px; font-size: 10px; color: var(--text-tertiary); margin-top: 3px; }
+
+        .todo-steps { display: flex; gap: 2px; }
+        .step { width: 10px; height: 3px; border-radius: 1px; background: var(--bg-tertiary); }
+        .step.done { background: var(--thread-woven); }
+        .step.active { background: var(--thread-threading); }
+
+        .complexity {
+            padding: 1px 5px;
+            border-radius: 3px;
+            font-size: 9px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .complexity.low { background: #dcfce7; color: #166534; }
+        .complexity.medium { background: #fef3c7; color: #92400e; }
+        .complexity.high { background: #fee2e2; color: #991b1b; }
+
+        .mission-tag {
+            padding: 1px 5px;
+            border-radius: 3px;
+            font-size: 9px;
+            font-weight: 500;
+            background: rgba(99, 102, 241, 0.1);
+            color: var(--thread-primary);
+        }
+
+        .todo-step-label { font-size: 10px; font-weight: 500; color: var(--thread-threading); }
+
+        /* Mission List */
+        .mission-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 12px;
+            border-radius: 6px;
+            margin-bottom: 6px;
+            background: var(--bg-secondary);
+            cursor: pointer;
+        }
+
+        .mission-item:hover { background: var(--bg-tertiary); }
+        .mission-item:last-child { margin-bottom: 0; }
+
+        .mission-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+
+        .mission-dot.threading { background: var(--thread-threading); animation: pulse 2s infinite; }
+        .mission-dot.woven { background: var(--thread-woven); }
+
+        .mission-info { flex: 1; min-width: 0; }
+        .mission-title { font-size: 12px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .mission-meta { font-size: 10px; color: var(--text-tertiary); }
+
+        .mission-progress { font-size: 12px; font-weight: 600; color: var(--thread-primary); }
+
+        /* File List */
+        .file-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 10px;
+            border-bottom: 1px solid var(--border-color);
+            font-size: 11px;
+        }
+
+        .file-item:last-child { border-bottom: none; }
+
+        .file-icon { font-size: 14px; }
+        .file-name { flex: 1; font-family: monospace; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .file-add { color: var(--thread-woven); font-weight: 500; }
+        .file-del { color: var(--thread-tangled); font-weight: 500; }
+
+        /* Git Info */
+        .git-info { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+
+        .git-stat {
+            background: var(--bg-secondary);
+            padding: 10px;
+            border-radius: 6px;
+            text-align: center;
+        }
+
+        .git-stat-value { font-size: 16px; font-weight: 700; color: var(--thread-primary); }
+        .git-stat-label { font-size: 9px; color: var(--text-tertiary); }
+
+        .git-branch {
+            grid-column: span 2;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px;
+            background: var(--bg-secondary);
+            border-radius: 6px;
+        }
+
+        .git-branch-name { font-family: monospace; font-size: 11px; color: var(--thread-primary); font-weight: 600; }
+        .git-branch-label { font-size: 9px; color: var(--text-tertiary); }
+
+        /* Activity */
+        .activity-item {
+            display: flex;
+            gap: 10px;
+            padding: 8px 0;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .activity-item:last-child { border-bottom: none; }
+
+        .activity-icon {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            flex-shrink: 0;
+        }
+
+        .activity-icon.ai { background: linear-gradient(135deg, var(--thread-primary), var(--thread-secondary)); color: white; }
+        .activity-icon.system { background: var(--bg-tertiary); }
+        .activity-icon.git { background: #24292e; color: white; }
+        .activity-icon.woven { background: var(--thread-woven); color: white; }
+        .activity-icon.user { background: var(--thread-accent); color: white; }
+
+        .activity-content { flex: 1; min-width: 0; }
+        .activity-title { font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .activity-time { font-size: 10px; color: var(--text-tertiary); }
+
+        /* Progress Section */
+        .progress-section {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 12px;
+            background: var(--bg-secondary);
+            border-radius: 8px;
+            margin-bottom: 12px;
+        }
+
+        .progress-ring {
+            width: 56px;
+            height: 56px;
+            position: relative;
+        }
+
+        .progress-ring svg { transform: rotate(-90deg); }
+        .progress-ring-bg { fill: none; stroke: var(--bg-tertiary); stroke-width: 6; }
+        .progress-ring-fill { fill: none; stroke: var(--thread-primary); stroke-width: 6; stroke-linecap: round; stroke-dasharray: 144; stroke-dashoffset: 60; }
+        .progress-ring-text { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 13px; font-weight: 700; color: var(--thread-primary); }
+
+        .progress-info { flex: 1; }
+        .progress-label { font-size: 12px; font-weight: 600; margin-bottom: 2px; }
+        .progress-detail { font-size: 10px; color: var(--text-secondary); }
+
+        /* Code Stats */
+        .code-stats { display: flex; gap: 10px; }
+
+        .code-stat {
+            flex: 1;
+            padding: 10px;
+            background: var(--bg-secondary);
+            border-radius: 6px;
+            text-align: center;
+        }
+
+        .code-stat-value { font-size: 16px; font-weight: 700; }
+        .code-stat-value.add { color: var(--thread-woven); }
+        .code-stat-value.del { color: var(--thread-tangled); }
+        .code-stat-label { font-size: 9px; color: var(--text-tertiary); }
+
+        /* AI Stats */
+        .ai-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+
+        .ai-stat {
+            padding: 10px;
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.06), rgba(139, 92, 246, 0.06));
+            border-radius: 6px;
+            text-align: center;
+        }
+
+        .ai-stat-value { font-size: 16px; font-weight: 700; color: var(--thread-primary); }
+        .ai-stat-label { font-size: 9px; color: var(--text-secondary); }
+
+        /* Quick Actions */
+        .quick-action {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 12px;
+            background: var(--bg-secondary);
+            border: 1px solid transparent;
+            border-radius: 6px;
+            cursor: pointer;
+            margin-bottom: 6px;
+        }
+
+        .quick-action:hover { border-color: var(--thread-primary); background: var(--bg-primary); }
+        .quick-action:last-child { margin-bottom: 0; }
+
+        .quick-action-icon {
+            width: 28px;
+            height: 28px;
+            background: var(--bg-tertiary);
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .quick-action-text { flex: 1; }
+        .quick-action-title { font-size: 12px; font-weight: 500; }
+        .quick-action-desc { font-size: 10px; color: var(--text-tertiary); }
+
+        /* Worktree Info */
+        .worktree-info {
+            padding: 12px;
+            background: var(--bg-secondary);
+            border-radius: 8px;
+        }
+
+        .worktree-label { font-size: 10px; color: var(--text-tertiary); margin-bottom: 4px; }
+        .worktree-path { font-family: monospace; font-size: 11px; color: var(--thread-primary); }
+    </style>
+</head>
+<body>
+    <div class="app">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <span>🧵</span>
+                    <span>ThreadCast</span>
+                </div>
+                <div class="workspace-select">
+                    <div class="workspace-name">whatap-server</div>
+                    <div class="workspace-path">~/Documents/whatap-server</div>
+                </div>
+            </div>
+
+            <!-- Project Card -->
+            <div class="project-card">
+                <div class="project-card-header">
+                    <div class="project-card-icon">☕</div>
+                    <div class="project-card-info">
+                        <div class="project-card-name">agent-core</div>
+                        <div class="project-card-path">./agent/core</div>
+                    </div>
+                </div>
+                <div class="project-badges">
+                    <span class="badge badge-language">Java 17</span>
+                    <span class="badge badge-build">Gradle</span>
+                </div>
+            </div>
+
+            <nav class="sidebar-nav">
+                <div class="nav-title">Filter Todos</div>
+                <div class="nav-item active">
+                    <span>📋</span>
+                    <span>All Todos</span>
+                    <span class="nav-badge">12</span>
+                </div>
+                <div class="nav-item">
+                    <span>🧵</span>
+                    <span>Threading</span>
+                    <span class="nav-badge">3</span>
+                </div>
+                <div class="nav-item">
+                    <span>✅</span>
+                    <span>Woven</span>
+                    <span class="nav-badge">7</span>
+                </div>
+                <div class="nav-item">
+                    <span>⏸️</span>
+                    <span>Pending</span>
+                    <span class="nav-badge">2</span>
+                </div>
+            </nav>
+
+            <div class="sidebar-stats">
+                <div class="nav-title">Overview</div>
+                <div class="mini-stats">
+                    <div class="mini-stat">
+                        <div class="mini-stat-value">12</div>
+                        <div class="mini-stat-label">Total</div>
+                    </div>
+                    <div class="mini-stat">
+                        <div class="mini-stat-value">58%</div>
+                        <div class="mini-stat-label">Done</div>
+                    </div>
+                    <div class="mini-stat">
+                        <div class="mini-stat-value">3</div>
+                        <div class="mini-stat-label">Active</div>
+                    </div>
+                    <div class="mini-stat">
+                        <div class="mini-stat-value">7</div>
+                        <div class="mini-stat-label">Woven</div>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main">
+            <div class="topbar">
+                <div class="topbar-left">
+                    <button class="back-btn">← Workspace</button>
+                    <h1 class="topbar-title">Project Dashboard</h1>
+                </div>
+                <div class="topbar-actions">
+                    <button class="btn btn-ghost">⚙️</button>
+                    <button class="btn btn-ghost">🔄</button>
+                    <button class="btn btn-primary">+ Add Todo</button>
+                </div>
+            </div>
+
+            <div class="content">
+                <!-- Stats Row -->
+                <div class="stats-row">
+                    <div class="stat-card">
+                        <div class="stat-icon">📋</div>
+                        <div class="stat-value">12</div>
+                        <div class="stat-label">Total Todos</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">🧵</div>
+                        <div class="stat-value">3</div>
+                        <div class="stat-label">Threading</div>
+                        <div class="stat-sub">Active</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">✅</div>
+                        <div class="stat-value">7</div>
+                        <div class="stat-label">Woven</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">🎯</div>
+                        <div class="stat-value">3</div>
+                        <div class="stat-label">Missions</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">⎇</div>
+                        <div class="stat-value">8</div>
+                        <div class="stat-label">Commits</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">🤖</div>
+                        <div class="stat-value">24</div>
+                        <div class="stat-label">AI Actions</div>
+                    </div>
+                </div>
+
+                <!-- Main Grid -->
+                <div class="main-grid">
+                    <!-- Todo List -->
+                    <div class="card">
+                        <div class="card-header">
+                            <div class="card-title">📋 Project Todos</div>
+                            <span class="card-action">View All →</span>
+                        </div>
+                        <div class="card-body">
+                            <div class="todo-item threading">
+                                <div class="todo-dot threading"></div>
+                                <div class="todo-info">
+                                    <div class="todo-title">메트릭 수집 로직 리팩토링</div>
+                                    <div class="todo-meta">
+                                        <div class="todo-steps">
+                                            <div class="step done"></div>
+                                            <div class="step done"></div>
+                                            <div class="step active"></div>
+                                            <div class="step"></div>
+                                            <div class="step"></div>
+                                            <div class="step"></div>
+                                        </div>
+                                        <span class="complexity high">High</span>
+                                        <span class="mission-tag">M-42</span>
+                                    </div>
+                                </div>
+                                <div class="todo-step-label">3/6</div>
+                            </div>
+                            <div class="todo-item threading">
+                                <div class="todo-dot threading"></div>
+                                <div class="todo-info">
+                                    <div class="todo-title">JVM 메모리 모니터링 추가</div>
+                                    <div class="todo-meta">
+                                        <div class="todo-steps">
+                                            <div class="step done"></div>
+                                            <div class="step active"></div>
+                                            <div class="step"></div>
+                                            <div class="step"></div>
+                                            <div class="step"></div>
+                                            <div class="step"></div>
+                                        </div>
+                                        <span class="complexity medium">Med</span>
+                                        <span class="mission-tag">M-51</span>
+                                    </div>
+                                </div>
+                                <div class="todo-step-label">2/6</div>
+                            </div>
+                            <div class="todo-item threading">
+                                <div class="todo-dot threading"></div>
+                                <div class="todo-info">
+                                    <div class="todo-title">데이터 파이프라인 구축</div>
+                                    <div class="todo-meta">
+                                        <div class="todo-steps">
+                                            <div class="step active"></div>
+                                            <div class="step"></div>
+                                            <div class="step"></div>
+                                            <div class="step"></div>
+                                            <div class="step"></div>
+                                            <div class="step"></div>
+                                        </div>
+                                        <span class="complexity high">High</span>
+                                        <span class="mission-tag">M-42</span>
+                                    </div>
+                                </div>
+                                <div class="todo-step-label">1/6</div>
+                            </div>
+                            <div class="todo-item">
+                                <div class="todo-dot pending"></div>
+                                <div class="todo-info">
+                                    <div class="todo-title">단위 테스트 작성</div>
+                                    <div class="todo-meta">
+                                        <div class="todo-steps">
+                                            <div class="step"></div>
+                                            <div class="step"></div>
+                                            <div class="step"></div>
+                                            <div class="step"></div>
+                                            <div class="step"></div>
+                                            <div class="step"></div>
+                                        </div>
+                                        <span class="complexity low">Low</span>
+                                        <span class="mission-tag">M-42</span>
+                                    </div>
+                                </div>
+                                <div style="font-size: 10px; color: var(--text-tertiary);">Pending</div>
+                            </div>
+                            <div class="todo-item">
+                                <div class="todo-dot woven"></div>
+                                <div class="todo-info">
+                                    <div class="todo-title">기존 코드 분석</div>
+                                    <div class="todo-meta">
+                                        <div class="todo-steps">
+                                            <div class="step done"></div>
+                                            <div class="step done"></div>
+                                            <div class="step done"></div>
+                                            <div class="step done"></div>
+                                            <div class="step done"></div>
+                                            <div class="step done"></div>
+                                        </div>
+                                        <span class="complexity low">Low</span>
+                                        <span class="mission-tag">M-42</span>
+                                    </div>
+                                </div>
+                                <div style="font-size: 10px; color: var(--thread-woven);">✓ Done</div>
+                            </div>
+                            <div class="todo-item">
+                                <div class="todo-dot woven"></div>
+                                <div class="todo-info">
+                                    <div class="todo-title">인터페이스 설계</div>
+                                    <div class="todo-meta">
+                                        <div class="todo-steps">
+                                            <div class="step done"></div>
+                                            <div class="step done"></div>
+                                            <div class="step done"></div>
+                                            <div class="step done"></div>
+                                            <div class="step done"></div>
+                                            <div class="step done"></div>
+                                        </div>
+                                        <span class="complexity medium">Med</span>
+                                        <span class="mission-tag">M-42</span>
+                                    </div>
+                                </div>
+                                <div style="font-size: 10px; color: var(--thread-woven);">✓ Done</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Middle Column: Missions + Files -->
+                    <div style="display: flex; flex-direction: column; gap: 12px;">
+                        <!-- Linked Missions -->
+                        <div class="card">
+                            <div class="card-header">
+                                <div class="card-title">🎯 Linked Missions</div>
+                            </div>
+                            <div class="card-body">
+                                <div class="mission-item">
+                                    <div class="mission-dot threading"></div>
+                                    <div class="mission-info">
+                                        <div class="mission-title">메트릭 수집 시스템 개선</div>
+                                        <div class="mission-meta">MISSION-42 • 5 todos</div>
+                                    </div>
+                                    <div class="mission-progress">60%</div>
+                                </div>
+                                <div class="mission-item">
+                                    <div class="mission-dot threading"></div>
+                                    <div class="mission-info">
+                                        <div class="mission-title">JVM 모니터링 강화</div>
+                                        <div class="mission-meta">MISSION-51 • 3 todos</div>
+                                    </div>
+                                    <div class="mission-progress">33%</div>
+                                </div>
+                                <div class="mission-item">
+                                    <div class="mission-dot woven"></div>
+                                    <div class="mission-info">
+                                        <div class="mission-title">로깅 시스템 리팩토링</div>
+                                        <div class="mission-meta">MISSION-38 • 4 todos</div>
+                                    </div>
+                                    <div class="mission-progress">100%</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Recent Files -->
+                        <div class="card">
+                            <div class="card-header">
+                                <div class="card-title">📝 Recent Changes</div>
+                            </div>
+                            <div class="card-body" style="padding: 8px;">
+                                <div class="file-item">
+                                    <span class="file-icon">☕</span>
+                                    <span class="file-name">MetricCollector.java</span>
+                                    <span class="file-add">+45</span>
+                                    <span class="file-del">-12</span>
+                                </div>
+                                <div class="file-item">
+                                    <span class="file-icon">☕</span>
+                                    <span class="file-name">JvmMonitor.java</span>
+                                    <span class="file-add">+128</span>
+                                    <span class="file-del">-0</span>
+                                </div>
+                                <div class="file-item">
+                                    <span class="file-icon">☕</span>
+                                    <span class="file-name">DataProcessor.java</span>
+                                    <span class="file-add">+23</span>
+                                    <span class="file-del">-8</span>
+                                </div>
+                                <div class="file-item">
+                                    <span class="file-icon">📄</span>
+                                    <span class="file-name">build.gradle</span>
+                                    <span class="file-add">+5</span>
+                                    <span class="file-del">-2</span>
+                                </div>
+                                <div class="file-item">
+                                    <span class="file-icon">☕</span>
+                                    <span class="file-name">AgentConfig.java</span>
+                                    <span class="file-add">+15</span>
+                                    <span class="file-del">-3</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Worktree Info -->
+                        <div class="card">
+                            <div class="card-header">
+                                <div class="card-title">🌿 Active Worktrees</div>
+                            </div>
+                            <div class="card-body">
+                                <div class="worktree-info">
+                                    <div class="worktree-label">TODO-42-3</div>
+                                    <div class="worktree-path">.worktrees/todo-42-3</div>
+                                </div>
+                                <div class="worktree-info" style="margin-top: 8px;">
+                                    <div class="worktree-label">TODO-51-2</div>
+                                    <div class="worktree-path">.worktrees/todo-51-2</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right Column -->
+                    <div style="display: flex; flex-direction: column; gap: 12px;">
+                        <!-- Progress -->
+                        <div class="card">
+                            <div class="card-header">
+                                <div class="card-title">📊 Progress</div>
+                            </div>
+                            <div class="card-body">
+                                <div class="progress-section">
+                                    <div class="progress-ring">
+                                        <svg width="56" height="56" viewBox="0 0 56 56">
+                                            <circle class="progress-ring-bg" cx="28" cy="28" r="23"/>
+                                            <circle class="progress-ring-fill" cx="28" cy="28" r="23"/>
+                                        </svg>
+                                        <div class="progress-ring-text">58%</div>
+                                    </div>
+                                    <div class="progress-info">
+                                        <div class="progress-label">Overall Progress</div>
+                                        <div class="progress-detail">7 of 12 todos completed</div>
+                                        <div class="progress-detail" style="color: var(--thread-threading);">3 currently active</div>
+                                    </div>
+                                </div>
+                                <div class="code-stats">
+                                    <div class="code-stat">
+                                        <div class="code-stat-value add">+216</div>
+                                        <div class="code-stat-label">Lines Added</div>
+                                    </div>
+                                    <div class="code-stat">
+                                        <div class="code-stat-value del">-25</div>
+                                        <div class="code-stat-label">Lines Removed</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- AI Activity -->
+                        <div class="card">
+                            <div class="card-header">
+                                <div class="card-title">🤖 AI Activity</div>
+                            </div>
+                            <div class="card-body">
+                                <div class="ai-stats">
+                                    <div class="ai-stat">
+                                        <div class="ai-stat-value">24</div>
+                                        <div class="ai-stat-label">Actions</div>
+                                    </div>
+                                    <div class="ai-stat">
+                                        <div class="ai-stat-value">8</div>
+                                        <div class="ai-stat-label">Commits</div>
+                                    </div>
+                                    <div class="ai-stat">
+                                        <div class="ai-stat-value">2</div>
+                                        <div class="ai-stat-label">Questions</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Git Status -->
+                        <div class="card">
+                            <div class="card-header">
+                                <div class="card-title">⎇ Git Status</div>
+                            </div>
+                            <div class="card-body">
+                                <div class="git-info">
+                                    <div class="git-stat">
+                                        <div class="git-stat-value">8</div>
+                                        <div class="git-stat-label">Commits</div>
+                                    </div>
+                                    <div class="git-stat">
+                                        <div class="git-stat-value">3</div>
+                                        <div class="git-stat-label">Branches</div>
+                                    </div>
+                                    <div class="git-branch">
+                                        <span>🌿</span>
+                                        <div>
+                                            <div class="git-branch-name">feature/metric-refactor</div>
+                                            <div class="git-branch-label">Current Branch</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Recent Activity -->
+                        <div class="card">
+                            <div class="card-header">
+                                <div class="card-title">⏱️ Activity</div>
+                            </div>
+                            <div class="card-body" style="padding: 6px 12px;">
+                                <div class="activity-item">
+                                    <div class="activity-icon ai">🤖</div>
+                                    <div class="activity-content">
+                                        <div class="activity-title">TODO-42-3 Implementation</div>
+                                        <div class="activity-time">5분 전</div>
+                                    </div>
+                                </div>
+                                <div class="activity-item">
+                                    <div class="activity-icon git">⎇</div>
+                                    <div class="activity-content">
+                                        <div class="activity-title">Commit: Add metric collector</div>
+                                        <div class="activity-time">15분 전</div>
+                                    </div>
+                                </div>
+                                <div class="activity-item">
+                                    <div class="activity-icon woven">✓</div>
+                                    <div class="activity-content">
+                                        <div class="activity-title">TODO-42-2 완료</div>
+                                        <div class="activity-time">1시간 전</div>
+                                    </div>
+                                </div>
+                                <div class="activity-item">
+                                    <div class="activity-icon system">⚙️</div>
+                                    <div class="activity-content">
+                                        <div class="activity-title">Worktree 생성</div>
+                                        <div class="activity-time">2시간 전</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Quick Actions -->
+                        <div class="card">
+                            <div class="card-header">
+                                <div class="card-title">⚡ Quick Actions</div>
+                            </div>
+                            <div class="card-body">
+                                <div class="quick-action">
+                                    <div class="quick-action-icon">➕</div>
+                                    <div class="quick-action-text">
+                                        <div class="quick-action-title">Create Todo</div>
+                                        <div class="quick-action-desc">Add new todo</div>
+                                    </div>
+                                </div>
+                                <div class="quick-action">
+                                    <div class="quick-action-icon">📊</div>
+                                    <div class="quick-action-text">
+                                        <div class="quick-action-title">Timeline</div>
+                                        <div class="quick-action-desc">View activity</div>
+                                    </div>
+                                </div>
+                                <div class="quick-action">
+                                    <div class="quick-action-icon">⚙️</div>
+                                    <div class="quick-action-text">
+                                        <div class="quick-action-title">Settings</div>
+                                        <div class="quick-action-desc">Configure</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+</body>
+</html>

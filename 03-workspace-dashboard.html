@@ -1,0 +1,897 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ThreadCast - Main Dashboard</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --thread-primary: #6366F1;
+            --thread-secondary: #8B5CF6;
+            --thread-accent: #EC4899;
+            --thread-woven: #22C55E;
+            --thread-threading: #F59E0B;
+            --thread-tangled: #EF4444;
+            --thread-pending: #6B7280;
+            --bg-primary: #ffffff;
+            --bg-secondary: #f8fafc;
+            --bg-tertiary: #f1f5f9;
+            --border-color: #e2e8f0;
+            --text-primary: #0f172a;
+            --text-secondary: #64748b;
+            --text-tertiary: #94a3b8;
+            --sidebar-width: 240px;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            overflow: hidden;
+            font-size: 13px;
+        }
+
+        .app { display: flex; height: 100vh; }
+
+        /* Sidebar */
+        .sidebar {
+            width: var(--sidebar-width);
+            background: var(--bg-primary);
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .sidebar-header {
+            padding: 16px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 17px;
+            font-weight: 700;
+            color: var(--thread-primary);
+        }
+
+        .workspace-select {
+            margin-top: 12px;
+            padding: 10px 12px;
+            background: var(--bg-tertiary);
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .workspace-name { font-weight: 600; font-size: 13px; }
+        .workspace-path { font-size: 10px; color: var(--text-tertiary); font-family: monospace; }
+
+        .sidebar-nav { flex: 1; padding: 12px; }
+
+        .nav-section { margin-bottom: 16px; }
+        .nav-title {
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+            color: var(--text-tertiary);
+            padding: 0 8px 8px;
+            letter-spacing: 0.5px;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            color: var(--text-secondary);
+            transition: all 0.15s;
+            margin-bottom: 2px;
+        }
+
+        .nav-item:hover { background: var(--bg-tertiary); color: var(--text-primary); }
+        .nav-item.active { background: var(--thread-primary); color: white; }
+
+        .nav-badge {
+            margin-left: auto;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 11px;
+            font-weight: 600;
+            background: var(--bg-tertiary);
+        }
+
+        .nav-item.active .nav-badge { background: rgba(255,255,255,0.2); color: white; }
+
+        .nav-badge.alert {
+            background: var(--thread-tangled);
+            color: white;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
+
+        /* Stats in Sidebar */
+        .sidebar-stats {
+            padding: 12px;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .mini-stats {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+        }
+
+        .mini-stat {
+            background: var(--bg-tertiary);
+            padding: 10px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .mini-stat-value { font-size: 18px; font-weight: 700; color: var(--thread-primary); }
+        .mini-stat-label { font-size: 10px; color: var(--text-tertiary); }
+
+        /* Main */
+        .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+        /* Top Bar */
+        .topbar {
+            height: 56px;
+            background: var(--bg-primary);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            padding: 0 24px;
+            justify-content: space-between;
+        }
+
+        .topbar-left { display: flex; align-items: center; gap: 16px; }
+        .topbar-title { font-size: 18px; font-weight: 700; }
+
+        .topbar-actions { display: flex; align-items: center; gap: 8px; }
+
+        .btn {
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            border: none;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn-primary { background: var(--thread-primary); color: white; }
+        .btn-primary:hover { background: var(--thread-secondary); }
+        .btn-ghost { background: transparent; color: var(--text-secondary); }
+        .btn-ghost:hover { background: var(--bg-tertiary); }
+
+        /* Content */
+        .content { flex: 1; overflow-y: auto; padding: 20px 24px; }
+
+        /* AI Alert Banner */
+        .ai-alert {
+            background: linear-gradient(135deg, rgba(236, 72, 153, 0.1), rgba(139, 92, 246, 0.1));
+            border: 1px solid rgba(236, 72, 153, 0.3);
+            border-radius: 12px;
+            padding: 16px 20px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            cursor: pointer;
+        }
+
+        .ai-alert:hover { border-color: var(--thread-accent); }
+
+        .ai-alert-icon {
+            position: relative;
+            font-size: 28px;
+            animation: pulse 2s infinite;
+        }
+
+        .ai-alert-badge {
+            position: absolute;
+            top: -4px;
+            right: -4px;
+            width: 20px;
+            height: 20px;
+            background: var(--thread-tangled);
+            color: white;
+            border-radius: 50%;
+            font-size: 11px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .ai-alert-content { flex: 1; }
+        .ai-alert-title { font-weight: 600; color: var(--thread-accent); margin-bottom: 4px; }
+        .ai-alert-desc { font-size: 12px; color: var(--text-secondary); }
+
+        .ai-alert-btn {
+            padding: 10px 20px;
+            background: var(--thread-accent);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        /* Stats Row */
+        .stats-row {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .stat-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+        }
+
+        .stat-icon.projects { background: rgba(99, 102, 241, 0.1); }
+        .stat-icon.missions { background: rgba(245, 158, 11, 0.1); }
+        .stat-icon.todos { background: rgba(34, 197, 94, 0.1); }
+        .stat-icon.ai { background: rgba(139, 92, 246, 0.1); }
+        .stat-icon.commits { background: rgba(15, 23, 42, 0.1); }
+
+        .stat-info { flex: 1; }
+        .stat-value { font-size: 28px; font-weight: 700; color: var(--thread-primary); }
+        .stat-label { font-size: 12px; color: var(--text-secondary); }
+        .stat-sub { font-size: 11px; color: var(--thread-threading); font-weight: 500; }
+
+        /* Grid Layout */
+        .grid { display: grid; grid-template-columns: 1fr 1fr 360px; gap: 20px; }
+
+        /* Cards */
+        .card {
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .card-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .card-title { font-weight: 600; display: flex; align-items: center; gap: 8px; }
+        .card-action { font-size: 12px; color: var(--thread-primary); cursor: pointer; font-weight: 500; }
+        .card-action:hover { text-decoration: underline; }
+
+        .card-body { padding: 16px; }
+
+        /* Project List */
+        .project-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-bottom: 8px;
+            background: var(--bg-secondary);
+            transition: all 0.15s;
+        }
+
+        .project-item:hover { background: var(--bg-tertiary); transform: translateX(4px); }
+        .project-item:last-child { margin-bottom: 0; }
+
+        .project-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            background: linear-gradient(135deg, var(--thread-primary), var(--thread-secondary));
+        }
+
+        .project-info { flex: 1; min-width: 0; }
+        .project-name { font-weight: 600; margin-bottom: 2px; }
+        .project-path { font-size: 11px; color: var(--text-tertiary); font-family: monospace; }
+
+        .project-stats { text-align: right; }
+        .project-todos { font-size: 12px; color: var(--text-secondary); }
+        .project-active { font-size: 11px; color: var(--thread-threading); font-weight: 500; }
+
+        /* Mission List */
+        .mission-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            background: var(--bg-secondary);
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .mission-item:hover { background: var(--bg-tertiary); }
+        .mission-item.threading { border-left: 3px solid var(--thread-threading); }
+        .mission-item.woven { border-left: 3px solid var(--thread-woven); }
+        .mission-item:last-child { margin-bottom: 0; }
+
+        .mission-status {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .mission-status.threading { background: var(--thread-threading); animation: pulse 2s infinite; }
+        .mission-status.woven { background: var(--thread-woven); }
+        .mission-status.pending { background: var(--thread-pending); }
+
+        .mission-info { flex: 1; min-width: 0; }
+        .mission-title { font-weight: 500; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+        .mission-meta { display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--text-tertiary); }
+
+        .mission-progress-bar {
+            width: 60px;
+            height: 4px;
+            background: var(--bg-tertiary);
+            border-radius: 2px;
+            overflow: hidden;
+        }
+
+        .mission-progress-fill { height: 100%; border-radius: 2px; }
+        .mission-progress-fill.threading { background: var(--thread-threading); }
+        .mission-progress-fill.woven { background: var(--thread-woven); }
+
+        .mission-percent { font-size: 12px; font-weight: 600; color: var(--thread-primary); min-width: 36px; text-align: right; }
+
+        /* Activity */
+        .activity-item {
+            display: flex;
+            gap: 12px;
+            padding: 10px 0;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .activity-item:last-child { border-bottom: none; }
+
+        .activity-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            flex-shrink: 0;
+        }
+
+        .activity-icon.ai { background: linear-gradient(135deg, var(--thread-primary), var(--thread-secondary)); color: white; }
+        .activity-icon.system { background: var(--bg-tertiary); }
+        .activity-icon.user { background: var(--thread-accent); color: white; }
+        .activity-icon.git { background: #24292e; color: white; }
+        .activity-icon.woven { background: var(--thread-woven); color: white; }
+
+        .activity-content { flex: 1; min-width: 0; }
+        .activity-title { font-size: 12px; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .activity-time { font-size: 11px; color: var(--text-tertiary); }
+
+        /* Quick Actions */
+        .quick-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+        .quick-action {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 14px;
+            background: var(--bg-secondary);
+            border: 1px solid transparent;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .quick-action:hover { border-color: var(--thread-primary); background: var(--bg-primary); }
+
+        .quick-action-icon {
+            width: 36px;
+            height: 36px;
+            background: var(--bg-tertiary);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+        }
+
+        .quick-action-text { flex: 1; }
+        .quick-action-title { font-weight: 500; font-size: 12px; }
+        .quick-action-desc { font-size: 10px; color: var(--text-tertiary); }
+
+        /* Threading Todos */
+        .threading-todo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 12px;
+            background: rgba(245, 158, 11, 0.05);
+            border: 1px solid rgba(245, 158, 11, 0.3);
+            border-radius: 8px;
+            margin-bottom: 8px;
+            cursor: pointer;
+        }
+
+        .threading-todo:hover { background: rgba(245, 158, 11, 0.1); }
+        .threading-todo:last-child { margin-bottom: 0; }
+
+        .threading-dot {
+            width: 8px;
+            height: 8px;
+            background: var(--thread-threading);
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        .threading-info { flex: 1; min-width: 0; }
+        .threading-title { font-size: 12px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .threading-meta { font-size: 10px; color: var(--text-tertiary); }
+
+        .threading-step { font-size: 11px; color: var(--thread-threading); font-weight: 500; }
+    </style>
+</head>
+<body>
+    <div class="app">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <span>🧵</span>
+                    <span>ThreadCast</span>
+                </div>
+                <div class="workspace-select">
+                    <div>
+                        <div class="workspace-name">whatap-server</div>
+                        <div class="workspace-path">~/Documents/whatap-server</div>
+                    </div>
+                    <span>▼</span>
+                </div>
+            </div>
+
+            <nav class="sidebar-nav">
+                <div class="nav-section">
+                    <div class="nav-title">Main</div>
+                    <div class="nav-item active">
+                        <span>🏠</span>
+                        <span>Dashboard</span>
+                    </div>
+                    <div class="nav-item">
+                        <span>📁</span>
+                        <span>Projects</span>
+                        <span class="nav-badge">5</span>
+                    </div>
+                    <div class="nav-item">
+                        <span>🎯</span>
+                        <span>Missions</span>
+                        <span class="nav-badge">8</span>
+                    </div>
+                    <div class="nav-item">
+                        <span>📊</span>
+                        <span>Timeline</span>
+                    </div>
+                </div>
+
+                <div class="nav-section">
+                    <div class="nav-title">Status</div>
+                    <div class="nav-item">
+                        <span>🧵</span>
+                        <span>Threading</span>
+                        <span class="nav-badge" style="background: rgba(245, 158, 11, 0.2); color: var(--thread-threading);">4</span>
+                    </div>
+                    <div class="nav-item">
+                        <span>🤔</span>
+                        <span>AI Questions</span>
+                        <span class="nav-badge alert">3</span>
+                    </div>
+                </div>
+            </nav>
+
+            <div class="sidebar-stats">
+                <div class="nav-title">Overview</div>
+                <div class="mini-stats">
+                    <div class="mini-stat">
+                        <div class="mini-stat-value">5</div>
+                        <div class="mini-stat-label">Projects</div>
+                    </div>
+                    <div class="mini-stat">
+                        <div class="mini-stat-value">8</div>
+                        <div class="mini-stat-label">Missions</div>
+                    </div>
+                    <div class="mini-stat">
+                        <div class="mini-stat-value">32</div>
+                        <div class="mini-stat-label">Todos</div>
+                    </div>
+                    <div class="mini-stat">
+                        <div class="mini-stat-value">68%</div>
+                        <div class="mini-stat-label">Progress</div>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main">
+            <div class="topbar">
+                <div class="topbar-left">
+                    <h1 class="topbar-title">Workspace Dashboard</h1>
+                </div>
+                <div class="topbar-actions">
+                    <button class="btn btn-ghost">⚙️</button>
+                    <button class="btn btn-ghost">🔄</button>
+                    <button class="btn btn-primary">+ New Mission</button>
+                </div>
+            </div>
+
+            <div class="content">
+                <!-- AI Alert -->
+                <div class="ai-alert">
+                    <div class="ai-alert-icon">
+                        🤔
+                        <div class="ai-alert-badge">3</div>
+                    </div>
+                    <div class="ai-alert-content">
+                        <div class="ai-alert-title">AI가 3개의 질문을 기다리고 있습니다</div>
+                        <div class="ai-alert-desc">MISSION-42, MISSION-51, MISSION-38에서 답변이 필요합니다 • 3개 작업이 블로킹됨</div>
+                    </div>
+                    <button class="ai-alert-btn">답변하기 →</button>
+                </div>
+
+                <!-- Stats Row -->
+                <div class="stats-row">
+                    <div class="stat-card">
+                        <div class="stat-icon projects">📁</div>
+                        <div class="stat-info">
+                            <div class="stat-value">5</div>
+                            <div class="stat-label">Projects</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon missions">🎯</div>
+                        <div class="stat-info">
+                            <div class="stat-value">8</div>
+                            <div class="stat-label">Missions</div>
+                            <div class="stat-sub">4 active</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon todos">📋</div>
+                        <div class="stat-info">
+                            <div class="stat-value">32</div>
+                            <div class="stat-label">Todos</div>
+                            <div class="stat-sub">6 threading</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon ai">🤖</div>
+                        <div class="stat-info">
+                            <div class="stat-value">156</div>
+                            <div class="stat-label">AI Actions</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon commits">⎇</div>
+                        <div class="stat-info">
+                            <div class="stat-value">28</div>
+                            <div class="stat-label">Commits</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Main Grid -->
+                <div class="grid">
+                    <!-- Projects Column -->
+                    <div class="card">
+                        <div class="card-header">
+                            <div class="card-title">📁 Projects</div>
+                            <span class="card-action">View All →</span>
+                        </div>
+                        <div class="card-body">
+                            <div class="project-item">
+                                <div class="project-icon">☕</div>
+                                <div class="project-info">
+                                    <div class="project-name">agent-core</div>
+                                    <div class="project-path">./agent/core</div>
+                                </div>
+                                <div class="project-stats">
+                                    <div class="project-todos">12 todos</div>
+                                    <div class="project-active">3 active</div>
+                                </div>
+                            </div>
+                            <div class="project-item">
+                                <div class="project-icon">☕</div>
+                                <div class="project-info">
+                                    <div class="project-name">collector-server</div>
+                                    <div class="project-path">./collector</div>
+                                </div>
+                                <div class="project-stats">
+                                    <div class="project-todos">8 todos</div>
+                                    <div class="project-active">2 active</div>
+                                </div>
+                            </div>
+                            <div class="project-item">
+                                <div class="project-icon">📜</div>
+                                <div class="project-info">
+                                    <div class="project-name">web-frontend</div>
+                                    <div class="project-path">./web</div>
+                                </div>
+                                <div class="project-stats">
+                                    <div class="project-todos">6 todos</div>
+                                    <div class="project-active">1 active</div>
+                                </div>
+                            </div>
+                            <div class="project-item">
+                                <div class="project-icon">🐍</div>
+                                <div class="project-info">
+                                    <div class="project-name">analytics-engine</div>
+                                    <div class="project-path">./analytics</div>
+                                </div>
+                                <div class="project-stats">
+                                    <div class="project-todos">4 todos</div>
+                                    <div class="project-active">0 active</div>
+                                </div>
+                            </div>
+                            <div class="project-item">
+                                <div class="project-icon">🐹</div>
+                                <div class="project-info">
+                                    <div class="project-name">gateway-service</div>
+                                    <div class="project-path">./gateway</div>
+                                </div>
+                                <div class="project-stats">
+                                    <div class="project-todos">2 todos</div>
+                                    <div class="project-active">0 active</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Missions Column -->
+                    <div class="card">
+                        <div class="card-header">
+                            <div class="card-title">🎯 Active Missions</div>
+                            <span class="card-action">View All →</span>
+                        </div>
+                        <div class="card-body">
+                            <div class="mission-item threading">
+                                <div class="mission-status threading"></div>
+                                <div class="mission-info">
+                                    <div class="mission-title">메트릭 수집 시스템 개선</div>
+                                    <div class="mission-meta">
+                                        <span>MISSION-42</span>
+                                        <span>•</span>
+                                        <span>5 todos</span>
+                                    </div>
+                                </div>
+                                <div class="mission-progress-bar">
+                                    <div class="mission-progress-fill threading" style="width: 60%"></div>
+                                </div>
+                                <div class="mission-percent">60%</div>
+                            </div>
+                            <div class="mission-item threading">
+                                <div class="mission-status threading"></div>
+                                <div class="mission-info">
+                                    <div class="mission-title">JVM 모니터링 강화</div>
+                                    <div class="mission-meta">
+                                        <span>MISSION-51</span>
+                                        <span>•</span>
+                                        <span>3 todos</span>
+                                    </div>
+                                </div>
+                                <div class="mission-progress-bar">
+                                    <div class="mission-progress-fill threading" style="width: 33%"></div>
+                                </div>
+                                <div class="mission-percent">33%</div>
+                            </div>
+                            <div class="mission-item threading">
+                                <div class="mission-status threading"></div>
+                                <div class="mission-info">
+                                    <div class="mission-title">대시보드 UI 리디자인</div>
+                                    <div class="mission-meta">
+                                        <span>MISSION-55</span>
+                                        <span>•</span>
+                                        <span>8 todos</span>
+                                    </div>
+                                </div>
+                                <div class="mission-progress-bar">
+                                    <div class="mission-progress-fill threading" style="width: 25%"></div>
+                                </div>
+                                <div class="mission-percent">25%</div>
+                            </div>
+                            <div class="mission-item woven">
+                                <div class="mission-status woven"></div>
+                                <div class="mission-info">
+                                    <div class="mission-title">로깅 시스템 리팩토링</div>
+                                    <div class="mission-meta">
+                                        <span>MISSION-38</span>
+                                        <span>•</span>
+                                        <span>4 todos</span>
+                                    </div>
+                                </div>
+                                <div class="mission-progress-bar">
+                                    <div class="mission-progress-fill woven" style="width: 100%"></div>
+                                </div>
+                                <div class="mission-percent">100%</div>
+                            </div>
+                            <div class="mission-item">
+                                <div class="mission-status pending"></div>
+                                <div class="mission-info">
+                                    <div class="mission-title">API 문서 자동화</div>
+                                    <div class="mission-meta">
+                                        <span>MISSION-60</span>
+                                        <span>•</span>
+                                        <span>6 todos</span>
+                                    </div>
+                                </div>
+                                <div class="mission-progress-bar">
+                                    <div class="mission-progress-fill" style="width: 0%"></div>
+                                </div>
+                                <div class="mission-percent">0%</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right Column -->
+                    <div style="display: flex; flex-direction: column; gap: 16px;">
+                        <!-- Threading Todos -->
+                        <div class="card">
+                            <div class="card-header">
+                                <div class="card-title">🧵 Threading Now</div>
+                            </div>
+                            <div class="card-body">
+                                <div class="threading-todo">
+                                    <div class="threading-dot"></div>
+                                    <div class="threading-info">
+                                        <div class="threading-title">메트릭 수집 로직 리팩토링</div>
+                                        <div class="threading-meta">agent-core • M-42</div>
+                                    </div>
+                                    <div class="threading-step">3/6</div>
+                                </div>
+                                <div class="threading-todo">
+                                    <div class="threading-dot"></div>
+                                    <div class="threading-info">
+                                        <div class="threading-title">JVM 메모리 모니터링</div>
+                                        <div class="threading-meta">agent-core • M-51</div>
+                                    </div>
+                                    <div class="threading-step">2/6</div>
+                                </div>
+                                <div class="threading-todo">
+                                    <div class="threading-dot"></div>
+                                    <div class="threading-info">
+                                        <div class="threading-title">대시보드 레이아웃</div>
+                                        <div class="threading-meta">web-frontend • M-55</div>
+                                    </div>
+                                    <div class="threading-step">4/6</div>
+                                </div>
+                                <div class="threading-todo">
+                                    <div class="threading-dot"></div>
+                                    <div class="threading-info">
+                                        <div class="threading-title">데이터 파이프라인 구축</div>
+                                        <div class="threading-meta">collector • M-42</div>
+                                    </div>
+                                    <div class="threading-step">1/6</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Recent Activity -->
+                        <div class="card">
+                            <div class="card-header">
+                                <div class="card-title">⏱️ Recent Activity</div>
+                            </div>
+                            <div class="card-body" style="padding: 8px 16px;">
+                                <div class="activity-item">
+                                    <div class="activity-icon ai">🤖</div>
+                                    <div class="activity-content">
+                                        <div class="activity-title">TODO-42-3 Implementation 진행 중</div>
+                                        <div class="activity-time">5분 전</div>
+                                    </div>
+                                </div>
+                                <div class="activity-item">
+                                    <div class="activity-icon git">⎇</div>
+                                    <div class="activity-content">
+                                        <div class="activity-title">Commit: Add metric collector</div>
+                                        <div class="activity-time">15분 전</div>
+                                    </div>
+                                </div>
+                                <div class="activity-item">
+                                    <div class="activity-icon woven">✓</div>
+                                    <div class="activity-content">
+                                        <div class="activity-title">TODO-42-2 Woven 완료</div>
+                                        <div class="activity-time">1시간 전</div>
+                                    </div>
+                                </div>
+                                <div class="activity-item">
+                                    <div class="activity-icon user">👤</div>
+                                    <div class="activity-content">
+                                        <div class="activity-title">MISSION-55 생성됨</div>
+                                        <div class="activity-time">2시간 전</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Quick Actions -->
+                        <div class="card">
+                            <div class="card-header">
+                                <div class="card-title">⚡ Quick Actions</div>
+                            </div>
+                            <div class="card-body">
+                                <div class="quick-actions">
+                                    <div class="quick-action">
+                                        <div class="quick-action-icon">➕</div>
+                                        <div class="quick-action-text">
+                                            <div class="quick-action-title">New Mission</div>
+                                            <div class="quick-action-desc">Create mission</div>
+                                        </div>
+                                    </div>
+                                    <div class="quick-action">
+                                        <div class="quick-action-icon">📁</div>
+                                        <div class="quick-action-text">
+                                            <div class="quick-action-title">Add Project</div>
+                                            <div class="quick-action-desc">Register project</div>
+                                        </div>
+                                    </div>
+                                    <div class="quick-action">
+                                        <div class="quick-action-icon">📊</div>
+                                        <div class="quick-action-text">
+                                            <div class="quick-action-title">Timeline</div>
+                                            <div class="quick-action-desc">View activity</div>
+                                        </div>
+                                    </div>
+                                    <div class="quick-action">
+                                        <div class="quick-action-icon">⚙️</div>
+                                        <div class="quick-action-text">
+                                            <div class="quick-action-title">Settings</div>
+                                            <div class="quick-action-desc">Configure</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+</body>
+</html>
