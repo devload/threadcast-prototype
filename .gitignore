@@ -9,6 +9,7 @@ desktop.ini
 *.swp
 *.swo
 *~
+.obsidian/
 
 # Logs
 *.log
@@ -17,3 +18,18 @@ npm-debug.log*
 # Temporary files
 *.tmp
 .cache/
+
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+build/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Storybook
+storybook-static/
