@@ -2,6 +2,7 @@ package io.threadcast.controller;
 
 import io.threadcast.domain.enums.StepStatus;
 import io.threadcast.domain.enums.StepType;
+import io.threadcast.dto.request.SessionMappingRequest;
 import io.threadcast.dto.request.StepUpdateWebhookRequest;
 import io.threadcast.dto.request.SwiftcastWebhookRequest;
 import io.threadcast.dto.response.StepProgressResponse;
@@ -57,6 +58,59 @@ public class WebhookController {
         }
     }
 
+    /**
+     * Session mapping from SwiftCast Custom Task.
+     * Called when Claude Code starts and sends "/tasks register_session" command.
+     * Maps Claude's session_id to our todoId for Hook validation.
+     *
+     * @param request Contains session_id (Claude's) and args (--todo-id=XXX)
+     */
+    @PostMapping("/session-mapping")
+    public ResponseEntity<Map<String, Object>> handleSessionMapping(
+            @RequestBody SessionMappingRequest request) {
+
+        log.info("Received session mapping: sessionId={}, args={}",
+            request.getSessionId() != null ? request.getSessionId().substring(0, Math.min(12, request.getSessionId().length())) + "..." : "null",
+            request.getArgs());
+
+        try {
+            // Parse args: --todo-id=XXX --session-name=YYY
+            String todoId = null;
+            String sessionName = null;
+
+            if (request.getArgs() != null) {
+                for (String arg : request.getArgs().split("\\s+")) {
+                    if (arg.startsWith("--todo-id=")) {
+                        todoId = arg.substring("--todo-id=".length());
+                    } else if (arg.startsWith("--session-name=")) {
+                        sessionName = arg.substring("--session-name=".length());
+                    }
+                }
+            }
+
+            if (todoId == null || request.getSessionId() == null) {
+                log.warn("Missing todoId or sessionId in session mapping request");
+                return ResponseEntity.badRequest().body(Map.of("error", "Missing todoId or sessionId"));
+            }
+
+            // Save the mapping: SwiftCast session_id -> todoId
+            terminalService.registerSwiftCastSessionId(todoId, request.getSessionId());
+
+            log.info("Session mapping registered: todoId={}, swiftcastSessionId={}",
+                todoId, request.getSessionId().substring(0, Math.min(12, request.getSessionId().length())) + "...");
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("status", "ok");
+            response.put("todoId", todoId);
+            response.put("sessionName", sessionName);
+
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            log.error("Failed to process session mapping: {}", e.getMessage(), e);
+            return ResponseEntity.internalServerError().body(Map.of("error", e.getMessage()));
+        }
+    }
+
     @PostMapping("/swiftcast")
     public ResponseEntity<Void> handleSwiftcastWebhook(
             @RequestBody SwiftcastWebhookRequest request) {
@@ -81,6 +135,9 @@ public class WebhookController {
                     break;
                 case "step_update":
                     handleStepUpdateFromSwiftcast(request);
+                    break;
+                case "session_complete":
+                    handleSessionComplete(request);
                     break;
                 default:
                     log.warn("Unknown webhook event: {}", request.getEvent());
@@ -145,54 +202,31 @@ public class WebhookController {
 
     /**
      * Handle step_update event from SwiftCast webhook.
-     * Converts SwiftCast format to StepUpdateWebhookRequest.
+     *
+     * NOTE: SwiftCast's step_update is based on tool usage (Read → ANALYSIS, Edit → IMPLEMENTATION),
+     * NOT on actual step progression. This causes incorrect step status when Claude uses tools
+     * that don't match the current PM-assigned step.
+     *
+     * Current approach: Log only, don't process. PM controls step progression via session_complete.
+     * Future: SwiftCast should only report the PM-assigned step, not infer from tool usage.
      */
     private void handleStepUpdateFromSwiftcast(SwiftcastWebhookRequest request) {
         if (request.getTodoId() == null) {
-            log.warn("Step update without todoId, skipping");
+            log.debug("Step update without todoId, skipping");
             return;
         }
 
         var data = request.getData();
+        String stepType = data.has("step_type") ? data.get("step_type").asText() : "unknown";
+        String status = data.has("status") ? data.get("status").asText() : "unknown";
+        String message = data.has("message") ? data.get("message").asText() : "";
 
-        StepUpdateWebhookRequest stepRequest = new StepUpdateWebhookRequest();
-        stepRequest.setTodoId(request.getTodoId());
-        stepRequest.setSessionId(request.getSessionId());
-        stepRequest.setTimestamp(request.getTimestamp());
+        // Log for debugging but don't process - PM manages step progression via session_complete
+        log.debug("SwiftCast step_update (ignored for now): todoId={}, step={}, status={}, message={}",
+            request.getTodoId(), stepType, status, message);
 
-        // Parse step type
-        if (data.has("step_type")) {
-            try {
-                stepRequest.setStepType(StepType.valueOf(data.get("step_type").asText().toUpperCase()));
-            } catch (IllegalArgumentException e) {
-                log.warn("Invalid step_type: {}", data.get("step_type").asText());
-                return;
-            }
-        }
-
-        // Parse status
-        if (data.has("status")) {
-            try {
-                stepRequest.setStatus(StepStatus.valueOf(data.get("status").asText().toUpperCase()));
-            } catch (IllegalArgumentException e) {
-                log.warn("Invalid status: {}", data.get("status").asText());
-                return;
-            }
-        }
-
-        // Parse optional fields
-        if (data.has("progress")) {
-            stepRequest.setProgress(data.get("progress").asInt());
-        }
-        if (data.has("message")) {
-            stepRequest.setMessage(data.get("message").asText());
-        }
-        if (data.has("output")) {
-            stepRequest.setOutput(data.get("output").asText());
-        }
-
-        // Process the step update
-        stepProgressService.processStepUpdate(stepRequest);
+        // TODO: In the future, SwiftCast should send step_update only for PM-assigned steps
+        // For now, only session_complete triggers PM step progression
     }
 
     /**
@@ -223,6 +257,82 @@ public class WebhookController {
 
         Map<String, Object> event = new HashMap<>();
         event.put("eventType", "AI_QUESTION_DETECTED");
+        event.put("payload", payload);
+
+        messagingTemplate.convertAndSend("/topic/todos/" + todoId, event);
+    }
+
+    /**
+     * Handle session_complete event from SwiftCast.
+     * Called when Claude finishes with stop_reason "end_turn".
+     *
+     * Session 검증: Hook의 sessionId가 해당 todoId에 등록된 SwiftCast session ID와 매칭되는지 확인
+     */
+    private void handleSessionComplete(SwiftcastWebhookRequest request) {
+        if (request.getTodoId() == null) {
+            log.warn("Session complete without todoId, skipping");
+            return;
+        }
+
+        String sessionId = request.getSessionId();
+        String todoId = request.getTodoId();
+
+        if (sessionId == null) {
+            log.warn("Session complete without sessionId, skipping: todoId={}", todoId);
+            return;
+        }
+
+        // Session 검증: Hook의 sessionId가 등록된 SwiftCast session ID와 매칭되는지 확인
+        var mappingOpt = terminalService.getMapping(todoId);
+        if (mappingOpt.isEmpty()) {
+            log.warn("No session mapping found for todoId={}, processing anyway", todoId);
+        } else {
+            var mapping = mappingOpt.get();
+            String registeredSessionId = mapping.getSwiftcastSessionId();
+
+            if (registeredSessionId == null) {
+                // 아직 Custom Task로 session ID 등록 안됨 - 초기 상태
+                log.info("Session ID not yet registered via Custom Task for todoId={}, processing anyway", todoId);
+            } else if (!registeredSessionId.equals(sessionId)) {
+                // 다른 Claude session에서 온 Hook - 무시
+                log.warn("Session mismatch! Hook sessionId={} does not match registered sessionId={} for todoId={}",
+                    sessionId.substring(0, Math.min(12, sessionId.length())) + "...",
+                    registeredSessionId.substring(0, Math.min(12, registeredSessionId.length())) + "...",
+                    todoId);
+                return;
+            } else {
+                log.debug("Session verified: todoId={}, sessionId={}...", todoId,
+                    sessionId.substring(0, Math.min(12, sessionId.length())));
+            }
+        }
+
+        var data = request.getData();
+        String stopReason = data.has("stop_reason") ? data.get("stop_reason").asText() : "unknown";
+
+        log.info("Session complete: todoId={}, stop_reason={}", todoId, stopReason);
+
+        try {
+            // Complete the session - mark current step as COMPLETED and start next step
+            stepProgressService.completeSession(UUID.fromString(todoId));
+
+            // Notify frontend via WebSocket
+            notifySessionComplete(todoId, stopReason);
+        } catch (Exception e) {
+            log.error("Failed to complete session: {}", e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Notify frontend about session completion via WebSocket.
+     */
+    private void notifySessionComplete(String todoId, String stopReason) {
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("todoId", todoId);
+        payload.put("stopReason", stopReason);
+        payload.put("status", "WOVEN");
+
+        Map<String, Object> event = new HashMap<>();
+        event.put("eventType", "SESSION_COMPLETE");
         event.put("payload", payload);
 
         messagingTemplate.convertAndSend("/topic/todos/" + todoId, event);
