@@ -58,4 +58,14 @@ public interface TodoRepository extends JpaRepository<Todo, UUID> {
      * Count total todos by project ID.
      */
     long countByProjectId(UUID projectId);
+
+    /**
+     * Find todo by ID with mission and workspace (for weaving operations).
+     */
+    @Query("SELECT t FROM Todo t " +
+           "LEFT JOIN FETCH t.mission m " +
+           "LEFT JOIN FETCH m.workspace " +
+           "LEFT JOIN FETCH t.steps " +
+           "WHERE t.id = :id")
+    Optional<Todo> findByIdWithMissionAndWorkspace(@Param("id") UUID id);
 }

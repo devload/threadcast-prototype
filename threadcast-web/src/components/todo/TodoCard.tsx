@@ -133,9 +133,9 @@ export function TodoCard({
         </div>
       )}
 
-      {/* Description */}
+      {/* Description - 3줄까지 표시 */}
       {description && (
-        <p className="text-xs text-slate-500 mb-2 line-clamp-1 break-words">{description}</p>
+        <p className="text-xs text-slate-500 dark:text-slate-400 mb-2 line-clamp-3 break-words leading-relaxed">{description}</p>
       )}
 
       {/* Step Progress */}
@@ -146,21 +146,38 @@ export function TodoCard({
               <div
                 key={step.id}
                 className={clsx(
-                  'h-1.5 flex-1 rounded-full transition-colors',
+                  'h-1.5 flex-1 rounded-full transition-all duration-300 relative overflow-hidden',
                   step.status === 'COMPLETED'
                     ? 'bg-green-500'
                     : step.status === 'IN_PROGRESS'
-                    ? 'bg-amber-500'
+                    ? 'bg-slate-200'
                     : 'bg-slate-200'
                 )}
-                title={`${stepLabels[step.stepType]}: ${step.status}`}
-              />
+                title={`${stepLabels[step.stepType]}: ${step.status}${step.progress ? ` (${step.progress}%)` : ''}`}
+              >
+                {/* Progress fill for IN_PROGRESS steps */}
+                {step.status === 'IN_PROGRESS' && (
+                  <div
+                    className="absolute inset-y-0 left-0 bg-amber-500 transition-all duration-500 ease-out"
+                    style={{ width: `${step.progress || 0}%` }}
+                  />
+                )}
+                {/* Animated pulse for active step without progress */}
+                {step.status === 'IN_PROGRESS' && !step.progress && (
+                  <div className="absolute inset-0 bg-amber-500 animate-pulse" />
+                )}
+              </div>
             ))}
           </div>
           {currentStep && (
             <div className="flex items-center gap-1 mt-1 text-xs text-amber-600">
-              <ChevronRight size={12} />
-              <span>{stepLabels[currentStep.stepType]}</span>
+              <ChevronRight size={12} className={clsx(currentStep.progress && 'animate-bounce')} />
+              <span className="flex-1 truncate">
+                {currentStep.message || stepLabels[currentStep.stepType]}
+              </span>
+              {currentStep.progress !== undefined && currentStep.progress > 0 && (
+                <span className="font-semibold tabular-nums">{currentStep.progress}%</span>
+              )}
             </div>
           )}
         </div>

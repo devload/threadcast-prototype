@@ -2,7 +2,7 @@
 export type MissionStatus = 'BACKLOG' | 'PENDING' | 'THREADING' | 'IN_PROGRESS' | 'WOVEN' | 'COMPLETED' | 'TANGLED' | 'ARCHIVED' | 'SKIPPED';
 export type TodoStatus = 'BACKLOG' | 'PENDING' | 'THREADING' | 'IN_PROGRESS' | 'WOVEN' | 'COMPLETED' | 'TANGLED' | 'ARCHIVED' | 'SKIPPED';
 export type StepType = 'ANALYSIS' | 'DESIGN' | 'IMPLEMENTATION' | 'VERIFICATION' | 'REVIEW' | 'INTEGRATION';
-export type StepStatus = 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'SKIPPED';
+export type StepStatus = 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'FAILED' | 'SKIPPED';
 export type Priority = 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
 export type Complexity = 'LOW' | 'MEDIUM' | 'HIGH' | 'SIMPLE' | 'COMPLEX' | 'UNKNOWN';
 export type ActorType = 'AI' | 'USER' | 'SYSTEM';
@@ -24,7 +24,51 @@ export interface Workspace {
   id: string;
   name: string;
   description?: string;
+  path: string;
   ownerId: string;
+  stats?: WorkspaceStats;
+  projects?: ProjectSummary[];
+  recentMissions?: MissionSummary[];
+  createdAt?: string;
+}
+
+export interface WorkspaceStats {
+  projectCount: number;
+  missionCount: number;
+  activeMissionCount: number;
+  completedMissionCount: number;
+  totalTodoCount: number;
+  activeTodoCount: number;
+}
+
+export interface ProjectSummary {
+  id: string;
+  name: string;
+  path: string;
+  language?: string;
+  todoCount: number;
+}
+
+export interface MissionSummary {
+  id: string;
+  title: string;
+  status: MissionStatus;
+  progress: number;
+  createdAt: string;
+}
+
+export interface Project {
+  id: string;
+  workspaceId: string;
+  name: string;
+  description?: string;
+  path: string;
+  absolutePath: string;
+  language?: string;
+  buildTool?: string;
+  todoCount: number;
+  activeTodoCount: number;
+  createdAt: string;
 }
 
 export interface Mission {
@@ -53,6 +97,11 @@ export interface TodoStats {
 export interface Todo {
   id: string;
   missionId: string;
+  missionTitle?: string;
+  projectId?: string;
+  projectName?: string;
+  workingPath?: string;
+  worktreePath?: string;
   title: string;
   description?: string;
   status: TodoStatus;
@@ -75,7 +124,30 @@ export interface TodoStep {
   stepType: StepType;
   status: StepStatus;
   notes?: string;
+  startedAt?: string;
   completedAt?: string;
+  /** Real-time progress percentage (0-100) for IN_PROGRESS steps */
+  progress?: number;
+  /** Real-time activity message */
+  message?: string;
+}
+
+/**
+ * Real-time step progress update from WebSocket.
+ */
+export interface StepProgressUpdate {
+  todoId: string;
+  missionId: string;
+  stepId: string;
+  stepType: StepType;
+  status: StepStatus;
+  progress?: number;
+  message?: string;
+  output?: string;
+  startedAt?: string;
+  completedAt?: string;
+  completedSteps: number;
+  totalSteps: number;
 }
 
 export interface TimelineEvent {
@@ -118,6 +190,74 @@ export interface Comment {
   createdAt: string;
 }
 
+// Project Dashboard Types
+export interface ProjectDashboard {
+  id: string;
+  workspaceId: string;
+  name: string;
+  description?: string;
+  path: string;
+  absolutePath: string;
+  language?: string;
+  buildTool?: string;
+  createdAt: string;
+  stats: ProjectStats;
+  todos: ProjectTodoSummary[];
+  linkedMissions: ProjectLinkedMission[];
+  activeWorktrees: ProjectWorktree[];
+  gitStatus: ProjectGitStatus;
+}
+
+export interface ProjectStats {
+  totalTodos: number;
+  threadingTodos: number;
+  wovenTodos: number;
+  pendingTodos: number;
+  tangledTodos: number;
+  linkedMissions: number;
+  commits: number;
+  aiActions: number;
+  linesAdded: number;
+  linesRemoved: number;
+  progress: number;
+}
+
+export interface ProjectTodoSummary {
+  id: string;
+  title: string;
+  status: TodoStatus;
+  priority: Priority;
+  complexity: Complexity;
+  stepProgress: string;
+  completedSteps: number;
+  totalSteps: number;
+  missionId?: string;
+  missionTitle?: string;
+}
+
+export interface ProjectLinkedMission {
+  id: string;
+  title: string;
+  status: MissionStatus;
+  todoCount: number;
+  progress: number;
+}
+
+export interface ProjectWorktree {
+  todoId: string;
+  todoTitle: string;
+  path: string;
+  branch: string;
+}
+
+export interface ProjectGitStatus {
+  currentBranch: string;
+  lastCommit?: string;
+  commitCount: number;
+  branchCount: number;
+  uncommittedChanges: number;
+}
+
 // API Response Types
 export interface ApiResponse<T> {
   success: boolean;
@@ -154,4 +294,31 @@ export interface RegisterRequest {
   email: string;
   password: string;
   name: string;
+}
+
+// AI Analysis Types
+export interface AIAnalysisResult {
+  missionId: string;
+  suggestedTodos: SuggestedTodo[];
+  questions: AIQuestionSuggestion[];
+  confidence: number;
+  analysisTime: number;
+}
+
+export interface SuggestedTodo {
+  id: string;              // Temporary ID
+  title: string;
+  description: string;
+  complexity: Complexity;
+  estimatedTime: number;
+  isUncertain: boolean;    // Flag for uncertain items
+  uncertainReason?: string;
+}
+
+export interface AIQuestionSuggestion {
+  id: string;
+  question: string;
+  context: string;
+  relatedTodoId: string;   // Connected SuggestedTodo ID
+  options: string[];
 }

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { Client, IMessage } from '@stomp/stompjs';
 import { useMissionStore, useTodoStore, useTimelineStore, useAuthStore } from '../stores';
-import type { Mission, Todo, TimelineEvent } from '../types';
+import type { Mission, Todo, TimelineEvent, StepProgressUpdate } from '../types';
 import { DEMO_MODE } from '../services/api';
 
 // WebSocket connects directly to backend (not through Vite proxy)
@@ -16,7 +16,7 @@ export function useWebSocket(workspaceId: string | null) {
   const clientRef = useRef<Client | null>(null);
   const { isAuthenticated } = useAuthStore();
   const { onMissionCreated, onMissionUpdated, onMissionDeleted } = useMissionStore();
-  const { onTodoCreated, onTodoUpdated, onTodoDeleted } = useTodoStore();
+  const { onTodoCreated, onTodoUpdated, onTodoDeleted, onStepProgress } = useTodoStore();
   const { onNewEvent } = useTimelineStore();
 
   const handleMissionMessage = useCallback((message: IMessage) => {
@@ -49,6 +49,16 @@ export function useWebSocket(workspaceId: string | null) {
     }
   }, [onTodoCreated, onTodoUpdated, onTodoDeleted]);
 
+  const handleStepProgressMessage = useCallback((message: IMessage) => {
+    const data = JSON.parse(message.body);
+    // Handle both direct format and event wrapper format
+    if (data.eventType === 'STEP_PROGRESS' && data.payload) {
+      onStepProgress(data.payload as StepProgressUpdate);
+    } else if (data.todoId && data.stepType) {
+      onStepProgress(data as StepProgressUpdate);
+    }
+  }, [onStepProgress]);
+
   const handleTimelineMessage = useCallback((message: IMessage) => {
     const event = JSON.parse(message.body) as TimelineEvent;
     onNewEvent(event);
@@ -76,6 +86,8 @@ export function useWebSocket(workspaceId: string | null) {
       client.subscribe(`/topic/workspace/${workspaceId}/missions`, handleMissionMessage);
       client.subscribe(`/topic/workspace/${workspaceId}/todos`, handleTodoMessage);
       client.subscribe(`/topic/workspace/${workspaceId}/timeline`, handleTimelineMessage);
+      // Subscribe to mission topics for step progress (broad subscription)
+      client.subscribe(`/topic/missions/*`, handleStepProgressMessage);
     };
 
     client.onStompError = () => {
@@ -92,7 +104,7 @@ export function useWebSocket(workspaceId: string | null) {
       client.deactivate();
       clientRef.current = null;
     };
-  }, [isAuthenticated, workspaceId, handleMissionMessage, handleTodoMessage, handleTimelineMessage]);
+  }, [isAuthenticated, workspaceId, handleMissionMessage, handleTodoMessage, handleTimelineMessage, handleStepProgressMessage]);
 
   return clientRef.current;
 }

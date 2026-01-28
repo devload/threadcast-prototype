@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { Todo, TodoStatus, StepType, StepStatus, Priority, Complexity } from '../types';
+import type { Todo, TodoStatus, StepType, StepStatus, Priority, Complexity, StepProgressUpdate } from '../types';
 import { todoService, type CreateTodoRequest, type UpdateTodoRequest } from '../services';
 import { DEMO_MODE } from '../services/api';
 
@@ -102,6 +102,7 @@ interface TodoState {
   onTodoCreated: (todo: Todo) => void;
   onTodoUpdated: (todo: Todo) => void;
   onTodoDeleted: (id: string) => void;
+  onStepProgress: (progress: StepProgressUpdate) => void;
 }
 
 export const useTodoStore = create<TodoState>((set, get) => ({
@@ -258,6 +259,65 @@ export const useTodoStore = create<TodoState>((set, get) => ({
     set((state) => ({
       todos: state.todos.filter((t) => t.id !== id),
       selectedTodo: state.selectedTodo?.id === id ? null : state.selectedTodo,
+    }));
+  },
+
+  // Handle real-time step progress updates
+  onStepProgress: (progress) => {
+    set((state) => ({
+      todos: state.todos.map((todo) => {
+        if (todo.id !== progress.todoId) return todo;
+
+        // Update the specific step
+        const updatedSteps = todo.steps.map((step) => {
+          if (step.stepType !== progress.stepType) return step;
+          return {
+            ...step,
+            id: progress.stepId,
+            status: progress.status,
+            progress: progress.progress,
+            message: progress.message,
+            notes: progress.output || step.notes,
+            startedAt: progress.startedAt || step.startedAt,
+            completedAt: progress.completedAt || step.completedAt,
+          };
+        });
+
+        // Update todo status based on step progress
+        let newStatus = todo.status;
+        if (progress.status === 'IN_PROGRESS' && (todo.status === 'PENDING' || todo.status === 'BACKLOG')) {
+          newStatus = 'THREADING';
+        } else if (progress.completedSteps === progress.totalSteps) {
+          newStatus = 'WOVEN';
+        } else if (progress.status === 'FAILED') {
+          newStatus = 'TANGLED';
+        }
+
+        return {
+          ...todo,
+          status: newStatus,
+          steps: updatedSteps,
+        };
+      }),
+      // Also update selectedTodo if it matches
+      selectedTodo: state.selectedTodo?.id === progress.todoId
+        ? {
+            ...state.selectedTodo,
+            steps: state.selectedTodo.steps.map((step) => {
+              if (step.stepType !== progress.stepType) return step;
+              return {
+                ...step,
+                id: progress.stepId,
+                status: progress.status,
+                progress: progress.progress,
+                message: progress.message,
+                notes: progress.output || step.notes,
+                startedAt: progress.startedAt || step.startedAt,
+                completedAt: progress.completedAt || step.completedAt,
+              };
+            }),
+          }
+        : state.selectedTodo,
     }));
   },
 }));
