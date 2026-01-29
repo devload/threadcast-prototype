@@ -8,6 +8,7 @@ import io.threadcast.domain.enums.EventType;
 import io.threadcast.dto.response.TimelineEventResponse;
 import io.threadcast.repository.TimelineEventRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -20,6 +21,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class TimelineService {
@@ -216,5 +218,55 @@ public class TimelineService {
         );
         timelineEventRepository.save(event);
         webSocketService.notifyTimelineEvent(todo.getMission().getWorkspace().getId(), event);
+    }
+
+    /**
+     * Record AI activity/work summary from Claude's response.
+     * Called when SwiftCast sends usage_logged webhook with response summary.
+     *
+     * @param todo The todo being worked on
+     * @param summary Claude's response summary (first ~200 chars of response)
+     * @param model The model used (e.g., claude-opus-4-5)
+     * @param inputTokens Number of input tokens
+     * @param outputTokens Number of output tokens
+     */
+    @Transactional
+    public void recordAIActivity(Todo todo, String summary, String model, long inputTokens, long outputTokens) {
+        Map<String, Object> metadata = new HashMap<>();
+        metadata.put("model", model);
+        metadata.put("inputTokens", inputTokens);
+        metadata.put("outputTokens", outputTokens);
+
+        // Create a clean title from summary (first 80 chars, no newlines)
+        String title = summary;
+        if (title != null && !title.isEmpty()) {
+            title = title.replace("\n", " ").replace("\r", "");
+            if (title.length() > 80) {
+                title = title.substring(0, 77) + "...";
+            }
+        } else {
+            title = "AI processing...";
+        }
+
+        log.info("Recording AI activity: todoId={}, missionId={}, workspaceId={}",
+            todo.getId(), todo.getMission().getId(), todo.getMission().getWorkspace().getId());
+
+        TimelineEvent event = TimelineEvent.create(
+                todo.getMission().getWorkspace(),
+                todo.getMission(),
+                todo,
+                EventType.AI_ACTIVITY,
+                ActorType.AI,
+                title,
+                metadata
+        );
+        TimelineEvent saved = timelineEventRepository.save(event);
+        log.info("AI activity saved: eventId={}, todoId={}", saved.getId(),
+            saved.getTodo() != null ? saved.getTodo().getId() : "null");
+
+        webSocketService.notifyTimelineEvent(todo.getMission().getWorkspace().getId(), event);
+
+        // Also notify todo-specific channel
+        webSocketService.notifyTodoTimelineEvent(todo.getId(), event);
     }
 }

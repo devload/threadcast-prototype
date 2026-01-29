@@ -2,6 +2,7 @@ package io.threadcast.repository;
 
 import io.threadcast.domain.Todo;
 import io.threadcast.domain.enums.TodoStatus;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -68,4 +69,44 @@ public interface TodoRepository extends JpaRepository<Todo, UUID> {
            "LEFT JOIN FETCH t.steps " +
            "WHERE t.id = :id")
     Optional<Todo> findByIdWithMissionAndWorkspace(@Param("id") UUID id);
+
+    /**
+     * Search todos by title or description within a workspace.
+     * Uses FETCH JOIN to avoid N+1 queries when accessing mission.
+     */
+    @Query("SELECT t FROM Todo t " +
+           "JOIN FETCH t.mission m " +
+           "JOIN m.workspace w " +
+           "WHERE w.id = :workspaceId " +
+           "AND (LOWER(t.title) LIKE LOWER(CONCAT('%', :query, '%')) " +
+           "OR LOWER(t.description) LIKE LOWER(CONCAT('%', :query, '%')))")
+    List<Todo> searchByWorkspaceIdAndQuery(
+            @Param("workspaceId") UUID workspaceId,
+            @Param("query") String query,
+            Pageable pageable);
+
+    /**
+     * Search todos with status filter.
+     * Uses FETCH JOIN to avoid N+1 queries when accessing mission.
+     */
+    @Query("SELECT t FROM Todo t " +
+           "JOIN FETCH t.mission m " +
+           "JOIN m.workspace w " +
+           "WHERE w.id = :workspaceId " +
+           "AND t.status = :status " +
+           "AND (LOWER(t.title) LIKE LOWER(CONCAT('%', :query, '%')) " +
+           "OR LOWER(t.description) LIKE LOWER(CONCAT('%', :query, '%')))")
+    List<Todo> searchByWorkspaceIdAndQueryAndStatus(
+            @Param("workspaceId") UUID workspaceId,
+            @Param("query") String query,
+            @Param("status") TodoStatus status,
+            Pageable pageable);
+
+    /**
+     * Count search results.
+     */
+    @Query("SELECT COUNT(t) FROM Todo t JOIN t.mission m WHERE m.workspace.id = :workspaceId " +
+           "AND (LOWER(t.title) LIKE LOWER(CONCAT('%', :query, '%')) " +
+           "OR LOWER(t.description) LIKE LOWER(CONCAT('%', :query, '%')))")
+    long countSearchResults(@Param("workspaceId") UUID workspaceId, @Param("query") String query);
 }

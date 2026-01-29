@@ -1,12 +1,15 @@
 package io.threadcast.controller;
 
+import io.threadcast.domain.Todo;
 import io.threadcast.domain.enums.StepStatus;
 import io.threadcast.domain.enums.StepType;
 import io.threadcast.dto.request.SessionMappingRequest;
 import io.threadcast.dto.request.StepUpdateWebhookRequest;
 import io.threadcast.dto.request.SwiftcastWebhookRequest;
 import io.threadcast.dto.response.StepProgressResponse;
+import io.threadcast.repository.TodoRepository;
 import io.threadcast.service.StepProgressService;
+import io.threadcast.service.TimelineService;
 import io.threadcast.service.terminal.TodoTerminalService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -30,6 +33,8 @@ public class WebhookController {
 
     private final TodoTerminalService terminalService;
     private final StepProgressService stepProgressService;
+    private final TimelineService timelineService;
+    private final TodoRepository todoRepository;
     private final SimpMessagingTemplate messagingTemplate;
 
     /**
@@ -151,13 +156,28 @@ public class WebhookController {
     }
 
     private void handleUsageLogged(SwiftcastWebhookRequest request) {
-        if (request.getTodoId() == null) {
-            log.debug("Usage logged without todoId, skipping");
+        String todoId = request.getTodoId();
+
+        // todoId가 없으면 sessionId로 매핑 조회
+        if (todoId == null && request.getSessionId() != null) {
+            var mapping = terminalService.getMappingBySwiftcastSessionId(request.getSessionId());
+            if (mapping.isPresent()) {
+                todoId = mapping.get().getTodo().getId().toString();
+                log.info("Resolved todoId from sessionId: {} -> {}",
+                    request.getSessionId().substring(0, Math.min(12, request.getSessionId().length())) + "...",
+                    todoId);
+            }
+        }
+
+        if (todoId == null) {
+            log.debug("Usage logged without todoId and no mapping found, skipping");
             return;
         }
 
+        final String resolvedTodoId = todoId;
+
         // trace_id 매핑에 추가
-        terminalService.addTraceId(request.getTodoId(), request.getSessionId());
+        terminalService.addTraceId(resolvedTodoId, request.getSessionId());
 
         // 사용량 정보 추출
         var data = request.getData();
@@ -166,13 +186,32 @@ public class WebhookController {
         long outputTokens = data.has("output_tokens") ? data.get("output_tokens").asLong() : 0;
 
         // 토큰 사용량 추가
-        terminalService.addTokenUsage(request.getTodoId(), inputTokens, outputTokens);
+        terminalService.addTokenUsage(resolvedTodoId, inputTokens, outputTokens);
 
         // WebSocket으로 프론트엔드에 알림
-        notifyUsageUpdate(request.getTodoId(), model, inputTokens, outputTokens);
+        notifyUsageUpdate(resolvedTodoId, model, inputTokens, outputTokens);
+
+        // response_summary가 있으면 AI 활동 타임라인에 기록
+        String responseSummary = data.has("response_summary") ? data.get("response_summary").asText() : null;
+        log.info("Checking response_summary: {}", responseSummary != null ? "present" : "null");
+        if (responseSummary != null && !responseSummary.isEmpty()) {
+            try {
+                UUID todoUuid = UUID.fromString(resolvedTodoId);
+                var todoOpt = todoRepository.findByIdWithMissionAndWorkspace(todoUuid);
+                log.info("Todo lookup result: {}", todoOpt.isPresent() ? "found" : "not found");
+                todoOpt.ifPresent(todo -> {
+                    timelineService.recordAIActivity(todo, responseSummary, model, inputTokens, outputTokens);
+                    log.info("AI activity recorded: todoId={}, summary={}",
+                        resolvedTodoId,
+                        responseSummary.length() > 50 ? responseSummary.substring(0, 50) + "..." : responseSummary);
+                });
+            } catch (Exception e) {
+                log.warn("Failed to record AI activity: {}", e.getMessage(), e);
+            }
+        }
 
         log.info("Usage recorded: todoId={}, model={}, in={}, out={}",
-            request.getTodoId(), model, inputTokens, outputTokens);
+            resolvedTodoId, model, inputTokens, outputTokens);
     }
 
     private void handleAIQuestion(SwiftcastWebhookRequest request) {
