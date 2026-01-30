@@ -142,7 +142,7 @@ public class TodoTerminalService {
                 // Wait for Claude Code to initialize
                 return CompletableFuture.runAsync(() -> {
                     try {
-                        Thread.sleep(3000); // Wait 3 seconds for Claude to start
+                        Thread.sleep(5000); // Wait 5 seconds for Claude to fully start
                     } catch (InterruptedException e) {
                         Thread.currentThread().interrupt();
                     }
@@ -163,7 +163,7 @@ public class TodoTerminalService {
                 // Wait for session registration to complete
                 return CompletableFuture.runAsync(() -> {
                     try {
-                        Thread.sleep(1000); // Wait 1 second for task to complete
+                        Thread.sleep(3000); // Wait 3 seconds for register_session to complete
                     } catch (InterruptedException e) {
                         Thread.currentThread().interrupt();
                     }
