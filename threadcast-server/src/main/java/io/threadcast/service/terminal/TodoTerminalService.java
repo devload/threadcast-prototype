@@ -149,6 +149,21 @@ public class TodoTerminalService {
                 });
             })
             .thenCompose(v -> {
+                // Clear session to force new session_id generation
+                log.info("Sending /clear to start fresh session");
+                return sessionCast.sendKeys(sessionName, "/clear", true);
+            })
+            .thenCompose(v -> {
+                // Wait for clear to complete and new session to start
+                return CompletableFuture.runAsync(() -> {
+                    try {
+                        Thread.sleep(3000); // Wait 3 seconds for new session
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                    }
+                });
+            })
+            .thenCompose(v -> {
                 // Send Custom Task to register session ID mapping
                 // This allows SwiftCast to send us the Claude session ID
                 // Using ">>swiftcast" prefix to trigger SwiftCast custom task
