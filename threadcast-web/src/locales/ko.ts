@@ -6,6 +6,7 @@ export const ko = {
     close: '닫기',
     loading: '로딩 중...',
     back: '뒤로',
+    goBack: '돌아가기',
     new: '새로 만들기',
     edit: '수정',
     delete: '삭제',
@@ -13,6 +14,16 @@ export const ko = {
     search: '검색...',
     noResults: '결과가 없습니다',
     pressEscToClose: 'ESC를 눌러 닫기',
+    searchPlaceholder: 'Mission, Todo, 프로젝트 검색...',
+    recentSearches: '최근 검색',
+    clearSearchHistory: '검색 기록 삭제',
+    noSearchResults: '검색 결과가 없습니다',
+    tryDifferentKeywords: '다른 키워드를 사용해 보세요',
+    startTypingToSearch: '검색어를 입력하세요',
+    searchAcross: 'Mission, Todo, 프로젝트, 코멘트에서 검색',
+    navigateWithArrows: '방향키로 이동',
+    enterToSelect: 'Enter로 선택',
+    toggleSearch: '검색창 열기/닫기',
     loadMore: '더 보기',
     total: '전체',
     filter: '필터',
@@ -20,6 +31,8 @@ export const ko = {
     refresh: '새로고침',
     add: '추가',
     viewAll: '전체 보기',
+    selectAll: '전체 선택',
+    deselectAll: '전체 해제',
   },
 
   // Workspace
@@ -169,6 +182,8 @@ export const ko = {
     addWorkspace: '새 Workspace 추가',
     addWorkspaceDesc: '새로운 프로젝트 그룹을 시작하세요',
     recentActivity: '최근 활동',
+    noRecentActivity: '아직 활동이 없습니다',
+    noRecentActivityHint: 'Mission을 생성하면 여기에 활동이 표시됩니다',
   },
 
   // Project dashboard
@@ -198,6 +213,18 @@ export const ko = {
     progress: 'Progress',
     noTodos: '아직 Todo가 없습니다',
     noMissions: '연결된 Mission이 없습니다',
+    noWorktrees: '활성 Worktree가 없습니다',
+    noActivity: '최근 활동이 없습니다',
+    notFound: '프로젝트를 찾을 수 없습니다',
+    activityTrend: '일별 활동 추이',
+    todoStatusDistribution: 'Todo 상태 분포',
+  },
+
+  // Auth
+  auth: {
+    logout: '로그아웃',
+    logoutConfirm: '정말 로그아웃 하시겠습니까?',
+    loggingOut: '로그아웃 중...',
   },
 
   // Settings
@@ -239,6 +266,38 @@ export const ko = {
     skipped: 'Skipped',
     inProgress: 'In Progress',
     completed: 'Completed',
+  },
+
+  // AI Analysis
+  aiAnalysis: {
+    title: 'AI Todo 분석',
+    generateTodos: '🤖 AI로 Todo 생성',
+    analyzing: 'AI가 Mission을 분석 중...',
+    suggested: 'AI가 {{count}}개의 Todo를 제안합니다',
+    confidence: '신뢰도',
+    analysisTime: '분석 시간',
+    needsConfirmation: '확인 필요',
+    uncertainItems: '{{count}}개 항목 확인 필요',
+    uncertainNote: '⚠️ 표시된 항목은 AI 질문으로 연결됩니다',
+    selectedCount: '{{count}}개 선택됨',
+    totalTime: '예상 총 시간',
+    createTodos: 'Todo {{count}}개 생성',
+    todosCreated: 'Todo 생성 완료',
+    todosCreatedDesc: '{{count}}개의 Todo가 생성되었습니다',
+  },
+
+  // Graph view
+  graph: {
+    listView: '목록',
+    graphView: '그래프',
+    legend: '범례',
+    blocked: '블로킹됨',
+    readyToStart: '시작 가능',
+    dependencies: '의존성',
+    noTodos: '표시할 Todo가 없습니다',
+    confirmRemoveDependency: '이 의존성을 제거할까요?',
+    dragToConnect: '드래그하여 연결',
+    clickToRemove: '클릭하여 제거',
   },
 };
 

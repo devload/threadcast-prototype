@@ -8,6 +8,7 @@ export const en: TranslationKeys = {
     close: 'Close',
     loading: 'Loading...',
     back: 'Back',
+    goBack: 'Go Back',
     new: 'New',
     edit: 'Edit',
     delete: 'Delete',
@@ -15,6 +16,16 @@ export const en: TranslationKeys = {
     search: 'Search...',
     noResults: 'No results',
     pressEscToClose: 'Press ESC to close',
+    searchPlaceholder: 'Search missions, todos, projects...',
+    recentSearches: 'Recent Searches',
+    clearSearchHistory: 'Clear',
+    noSearchResults: 'No results found',
+    tryDifferentKeywords: 'Try different keywords or filters',
+    startTypingToSearch: 'Start typing to search',
+    searchAcross: 'Search across missions, todos, projects, and comments',
+    navigateWithArrows: 'to navigate',
+    enterToSelect: 'to select',
+    toggleSearch: 'K to toggle',
     loadMore: 'Load More',
     total: 'Total',
     filter: 'Filter',
@@ -22,6 +33,8 @@ export const en: TranslationKeys = {
     refresh: 'Refresh',
     add: 'Add',
     viewAll: 'View All',
+    selectAll: 'Select All',
+    deselectAll: 'Deselect All',
   },
 
   // Workspace
@@ -171,6 +184,8 @@ export const en: TranslationKeys = {
     addWorkspace: 'Add New Workspace',
     addWorkspaceDesc: 'Start a new project group',
     recentActivity: 'Recent Activity',
+    noRecentActivity: 'No activity yet',
+    noRecentActivityHint: 'Activity will appear here when you create missions',
   },
 
   // Project dashboard
@@ -200,6 +215,18 @@ export const en: TranslationKeys = {
     progress: 'Progress',
     noTodos: 'No todos yet',
     noMissions: 'No linked missions',
+    noWorktrees: 'No active worktrees',
+    noActivity: 'No recent activity',
+    notFound: 'Project not found',
+    activityTrend: 'Daily Activity Trend',
+    todoStatusDistribution: 'Todo Status Distribution',
+  },
+
+  // Auth
+  auth: {
+    logout: 'Logout',
+    logoutConfirm: 'Are you sure you want to logout?',
+    loggingOut: 'Logging out...',
   },
 
   // Settings
@@ -241,5 +268,37 @@ export const en: TranslationKeys = {
     skipped: 'Skipped',
     inProgress: 'In Progress',
     completed: 'Completed',
+  },
+
+  // AI Analysis
+  aiAnalysis: {
+    title: 'AI Todo Analysis',
+    generateTodos: '🤖 Generate Todos with AI',
+    analyzing: 'AI is analyzing the Mission...',
+    suggested: 'AI suggests {{count}} Todos',
+    confidence: 'Confidence',
+    analysisTime: 'Analysis time',
+    needsConfirmation: 'Needs confirmation',
+    uncertainItems: '{{count}} items need confirmation',
+    uncertainNote: '⚠️ Marked items will be linked to AI questions',
+    selectedCount: '{{count}} selected',
+    totalTime: 'Est. total time',
+    createTodos: 'Create {{count}} Todos',
+    todosCreated: 'Todos Created',
+    todosCreatedDesc: '{{count}} todos have been created',
+  },
+
+  // Graph view
+  graph: {
+    listView: 'List',
+    graphView: 'Graph',
+    legend: 'Legend',
+    blocked: 'Blocked',
+    readyToStart: 'Ready',
+    dependencies: 'deps',
+    noTodos: 'No todos to display',
+    confirmRemoveDependency: 'Remove this dependency?',
+    dragToConnect: 'Drag to connect',
+    clickToRemove: 'Click edge to remove',
   },
 };
