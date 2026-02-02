@@ -1,5 +1,5 @@
 import { api } from './api';
-import type { Todo, TodoStatus, Priority, Complexity, StepType, StepStatus, PageResponse } from '../types';
+import type { Todo, TodoStatus, Priority, Complexity, StepType, StepStatus } from '../types';
 
 export interface CreateTodoRequest {
   missionId: string;
@@ -51,4 +51,24 @@ export const todoService = {
 
   reorder: (missionId: string, todoIds: string[]) =>
     api.post<void>(`/todos/reorder`, { missionId, todoIds }),
+
+  // Dependency management
+  updateDependencies: (id: string, dependencies: string[]) =>
+    api.patch<Todo>(`/todos/${id}/dependencies`, { dependencies }),
+
+  getReady: (missionId: string) =>
+    api.get<Todo[]>(`/todos/ready`, { missionId }),
+
+  getDependents: (id: string) =>
+    api.get<Todo[]>(`/todos/${id}/dependents`),
+
+  // Terminal session management
+  startTerminal: (id: string, launchClaude: boolean = true) =>
+    api.post<string>(`/todos/${id}/terminal/start?launchClaude=${launchClaude}`, null),
+
+  stopTerminal: (id: string) =>
+    api.delete<void>(`/todos/${id}/terminal/stop`),
+
+  sendKeys: (id: string, keys: string, enter: boolean = true) =>
+    api.post<void>(`/todos/${id}/terminal/sendkeys`, { keys, enter }),
 };

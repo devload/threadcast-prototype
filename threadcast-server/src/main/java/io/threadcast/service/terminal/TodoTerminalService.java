@@ -285,6 +285,7 @@ public class TodoTerminalService {
     /**
      * Start a terminal session for a Todo (with default settings).
      */
+    @Transactional(readOnly = true)
     public CompletableFuture<String> startSession(String todoId) {
         // Get Todo to find workspace/project path
         String workDir;

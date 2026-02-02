@@ -32,6 +32,8 @@ const demoTodos: Todo[] = [
     orderIndex: 0,
     steps: createSteps('todo-1', 6),
     dependencies: [],
+    isBlocked: false,
+    isReadyToStart: false,
     createdAt: new Date(Date.now() - 86400000).toISOString(),
     completedAt: new Date().toISOString(),
   },
@@ -46,7 +48,9 @@ const demoTodos: Todo[] = [
     estimatedTime: 90,
     orderIndex: 1,
     steps: createSteps('todo-2', 3, 3),
-    dependencies: ['todo-1'],
+    dependencies: [{ id: 'todo-1', title: 'JWT 토큰 발급 구현', status: 'WOVEN' as TodoStatus }],
+    isBlocked: false,
+    isReadyToStart: false,
     createdAt: new Date(Date.now() - 43200000).toISOString(),
     startedAt: new Date(Date.now() - 7200000).toISOString(),
   },
@@ -61,7 +65,9 @@ const demoTodos: Todo[] = [
     estimatedTime: 60,
     orderIndex: 2,
     steps: createSteps('todo-3', 0),
-    dependencies: ['todo-2'],
+    dependencies: [{ id: 'todo-2', title: 'API 엔드포인트 구현', status: 'THREADING' as TodoStatus }],
+    isBlocked: true,
+    isReadyToStart: false,
     createdAt: new Date(Date.now() - 21600000).toISOString(),
   },
   {
@@ -76,9 +82,26 @@ const demoTodos: Todo[] = [
     orderIndex: 3,
     steps: createSteps('todo-4', 1, 1),
     dependencies: [],
+    isBlocked: false,
+    isReadyToStart: true,
     createdAt: new Date(Date.now() - 10800000).toISOString(),
   },
 ];
+
+interface DependencyChangedPayload {
+  todoId: string;
+  missionId: string;
+  dependencyIds: string[];
+  isBlocked: boolean;
+  isReadyToStart: boolean;
+}
+
+interface TodoReadyPayload {
+  todoId: string;
+  missionId: string;
+  title: string;
+  status: TodoStatus;
+}
 
 interface TodoState {
   todos: Todo[];
@@ -93,6 +116,7 @@ interface TodoState {
   updateTodo: (id: string, data: UpdateTodoRequest) => Promise<void>;
   updateTodoStatus: (id: string, status: TodoStatus) => Promise<void>;
   updateStepStatus: (todoId: string, stepType: StepType, status: StepStatus, notes?: string) => Promise<void>;
+  updateDependencies: (id: string, dependencies: string[]) => Promise<void>;
   deleteTodo: (id: string) => Promise<void>;
   selectTodo: (todo: Todo | null) => void;
   clearTodos: () => void;
@@ -103,6 +127,8 @@ interface TodoState {
   onTodoUpdated: (todo: Todo) => void;
   onTodoDeleted: (id: string) => void;
   onStepProgress: (progress: StepProgressUpdate) => void;
+  onTodoReadyToStart: (payload: TodoReadyPayload) => void;
+  onDependenciesChanged: (payload: DependencyChangedPayload) => void;
 }
 
 export const useTodoStore = create<TodoState>((set, get) => ({
@@ -121,7 +147,15 @@ export const useTodoStore = create<TodoState>((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       const todos = await todoService.getByMission(missionId);
-      set({ todos, isLoading: false });
+      const currentSelectedId = get().selectedTodo?.id;
+      const updatedSelectedTodo = currentSelectedId
+        ? todos.find(t => t.id === currentSelectedId) || null
+        : null;
+      set({
+        todos,
+        selectedTodo: updatedSelectedTodo ?? get().selectedTodo,
+        isLoading: false
+      });
     } catch {
       const filteredDemos = demoTodos.filter(t => t.missionId === missionId);
       set({ todos: filteredDemos.length > 0 ? filteredDemos : demoTodos, isLoading: false });
@@ -187,6 +221,17 @@ export const useTodoStore = create<TodoState>((set, get) => ({
 
     try {
       await todoService.updateStatus(id, status);
+
+      // If status is THREADING, also start the terminal session with Claude
+      if (status === 'THREADING') {
+        try {
+          await todoService.startTerminal(id, true);
+          console.log(`Terminal session started for todo: ${id}`);
+        } catch (terminalError) {
+          console.warn('Failed to start terminal session:', terminalError);
+          // Don't fail the status update if terminal fails
+        }
+      }
     } catch {
       // Demo mode: keep the optimistic update (no rollback)
       // The UI already reflects the change
@@ -229,6 +274,21 @@ export const useTodoStore = create<TodoState>((set, get) => ({
       set({ todos: previousTodos });
       set({
         error: error instanceof Error ? error.message : 'Failed to delete todo',
+      });
+      throw error;
+    }
+  },
+
+  updateDependencies: async (id, dependencies) => {
+    try {
+      const updated = await todoService.updateDependencies(id, dependencies);
+      set((state) => ({
+        todos: state.todos.map((t) => (t.id === id ? updated : t)),
+        selectedTodo: state.selectedTodo?.id === id ? updated : state.selectedTodo,
+      }));
+    } catch (error) {
+      set({
+        error: error instanceof Error ? error.message : 'Failed to update dependencies',
       });
       throw error;
     }
@@ -316,6 +376,44 @@ export const useTodoStore = create<TodoState>((set, get) => ({
                 completedAt: progress.completedAt || step.completedAt,
               };
             }),
+          }
+        : state.selectedTodo,
+    }));
+  },
+
+  // Handle todo ready to start notification
+  onTodoReadyToStart: (payload) => {
+    set((state) => ({
+      todos: state.todos.map((todo) => {
+        if (todo.id !== payload.todoId) return todo;
+        return {
+          ...todo,
+          status: payload.status,
+          isReadyToStart: true,
+          isBlocked: false,
+        };
+      }),
+    }));
+  },
+
+  // Handle dependencies changed notification
+  onDependenciesChanged: (payload) => {
+    set((state) => ({
+      todos: state.todos.map((todo) => {
+        if (todo.id !== payload.todoId) return todo;
+        return {
+          ...todo,
+          isBlocked: payload.isBlocked,
+          isReadyToStart: payload.isReadyToStart,
+          // Note: We don't update dependencies here as they need TodoDependency objects
+          // The full data will be fetched on next reload
+        };
+      }),
+      selectedTodo: state.selectedTodo?.id === payload.todoId
+        ? {
+            ...state.selectedTodo,
+            isBlocked: payload.isBlocked,
+            isReadyToStart: payload.isReadyToStart,
           }
         : state.selectedTodo,
     }));

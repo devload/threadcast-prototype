@@ -27,7 +27,6 @@ import java.util.UUID;
  */
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class StepProgressService {
 
     private final TodoRepository todoRepository;
@@ -36,6 +35,24 @@ public class StepProgressService {
     private final WebSocketService webSocketService;
     private final TimelineService timelineService;
     private final io.threadcast.service.terminal.TodoTerminalService terminalService;
+    private final TodoOrchestrationService orchestrationService;
+
+    public StepProgressService(
+            TodoRepository todoRepository,
+            TodoStepRepository todoStepRepository,
+            TerminalSessionMappingRepository mappingRepository,
+            WebSocketService webSocketService,
+            TimelineService timelineService,
+            io.threadcast.service.terminal.TodoTerminalService terminalService,
+            @org.springframework.context.annotation.Lazy TodoOrchestrationService orchestrationService) {
+        this.todoRepository = todoRepository;
+        this.todoStepRepository = todoStepRepository;
+        this.mappingRepository = mappingRepository;
+        this.webSocketService = webSocketService;
+        this.timelineService = timelineService;
+        this.terminalService = terminalService;
+        this.orchestrationService = orchestrationService;
+    }
 
     /**
      * Process a step update from AI worker webhook.
@@ -173,6 +190,8 @@ public class StepProgressService {
                 todo.complete();
                 todoRepository.save(todo);
                 log.info("Todo completed automatically: {}", todo.getId());
+                // Trigger orchestration for dependent todos
+                orchestrationService.onTodoCompleted(todo);
             }
         }
 
@@ -393,6 +412,9 @@ public class StepProgressService {
         webSocketService.notifyTodoUpdated(todo.getMission().getId(), todo);
 
         log.info("PM: Todo completed: todoId={}, status={}", todoId, todo.getStatus());
+
+        // Trigger orchestration for dependent todos
+        orchestrationService.onTodoCompleted(todo);
     }
 
     /**
