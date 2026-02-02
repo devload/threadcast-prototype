@@ -4,6 +4,7 @@ import io.threadcast.domain.Todo;
 import io.threadcast.domain.enums.TodoStatus;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -109,4 +110,45 @@ public interface TodoRepository extends JpaRepository<Todo, UUID> {
            "AND (LOWER(t.title) LIKE LOWER(CONCAT('%', :query, '%')) " +
            "OR LOWER(t.description) LIKE LOWER(CONCAT('%', :query, '%')))")
     long countSearchResults(@Param("workspaceId") UUID workspaceId, @Param("query") String query);
+
+    /**
+     * Find all todos that depend on a given todo.
+     * These are the "dependents" - todos that cannot start until this todo is complete.
+     */
+    @Query("SELECT DISTINCT t FROM Todo t " +
+           "LEFT JOIN FETCH t.steps " +
+           "LEFT JOIN FETCH t.dependencies " +
+           "WHERE :todo MEMBER OF t.dependencies")
+    List<Todo> findDependents(@Param("todo") Todo todo);
+
+    /**
+     * Find all todos in a mission that are ready to start.
+     * A todo is ready if it's PENDING and all its dependencies are WOVEN.
+     */
+    @Query("SELECT DISTINCT t FROM Todo t " +
+           "LEFT JOIN FETCH t.steps " +
+           "LEFT JOIN FETCH t.dependencies " +
+           "WHERE t.mission.id = :missionId " +
+           "AND t.status = 'PENDING' " +
+           "AND NOT EXISTS (SELECT d FROM t.dependencies d WHERE d.status <> 'WOVEN')")
+    List<Todo> findReadyToStart(@Param("missionId") UUID missionId);
+
+    /**
+     * Find todo by ID with all dependencies loaded for cycle detection.
+     */
+    @Query("SELECT t FROM Todo t " +
+           "LEFT JOIN FETCH t.dependencies d " +
+           "LEFT JOIN FETCH d.dependencies " +
+           "WHERE t.id = :id")
+    Optional<Todo> findByIdWithDependencyGraph(@Param("id") UUID id);
+
+    /**
+     * Atomically start a todo if it's currently PENDING.
+     * This prevents race conditions where multiple threads try to start the same todo.
+     * Returns 1 if the update was successful (todo was PENDING), 0 otherwise.
+     */
+    @Modifying
+    @Query("UPDATE Todo t SET t.status = 'THREADING', t.startedAt = CURRENT_TIMESTAMP " +
+           "WHERE t.id = :id AND t.status = 'PENDING'")
+    int atomicStartTodo(@Param("id") UUID id);
 }
