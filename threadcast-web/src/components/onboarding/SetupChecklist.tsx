@@ -532,12 +532,12 @@ function SwiftCastGuideModal({ onClose, onComplete }: { onClose: () => void; onC
                     <div>
                       <p className="text-sm text-slate-700 dark:text-slate-300">SwiftCast 다운로드</p>
                       <a
-                        href="https://github.com/anthropics/swiftcast/releases/latest"
+                        href="https://github.com/devload/swiftcast/releases"
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-sm text-indigo-600 dark:text-indigo-400 hover:underline"
+                        className="inline-flex items-center gap-1 mt-1 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm rounded-lg transition-colors"
                       >
-                        → GitHub Releases에서 다운로드
+                        GitHub Releases에서 다운로드 →
                       </a>
                     </div>
                   </div>
