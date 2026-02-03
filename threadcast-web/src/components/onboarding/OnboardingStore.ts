@@ -8,6 +8,7 @@ export interface OnboardingState {
 
   // Setup checklist
   setupSteps: {
+    swiftcastInstalled: boolean;
     mcpConnected: boolean;
     workspaceCreated: boolean;
     firstMissionCreated: boolean;
@@ -55,6 +56,7 @@ export interface OnboardingState {
 }
 
 const initialSetupSteps = {
+  swiftcastInstalled: false,
   mcpConnected: false,
   workspaceCreated: false,
   firstMissionCreated: false,
