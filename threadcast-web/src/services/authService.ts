@@ -40,7 +40,10 @@ async function generateCodeChallenge(verifier: string): Promise<string> {
 }
 
 // SessionCast OAuth Configuration
-const SESSIONCAST_AUTH_URL = 'https://auth.sessioncast.io';
+const isLocalDev = import.meta.env.DEV || window.location.hostname === 'localhost';
+const SESSIONCAST_AUTH_URL = isLocalDev
+  ? 'http://localhost:22081'
+  : 'https://auth.sessioncast.io';
 const SESSIONCAST_CLIENT_ID = 'threadcast';
 
 export const authService = {

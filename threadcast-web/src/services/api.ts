@@ -66,11 +66,21 @@ class ApiService {
       (response) => response,
       async (error: AxiosError<{ error?: { message?: string } }>) => {
         const originalRequest = error.config;
+        const status = error.response?.status;
 
         // Skip token refresh for auth endpoints
         const isAuthEndpoint = originalRequest?.url?.includes('/auth/');
 
-        if (error.response?.status === 401 && !isAuthEndpoint) {
+        // Check if user has any auth token
+        const hasToken = !!localStorage.getItem('accessToken');
+
+        // If no token at all, redirect to login (for any protected endpoint error)
+        if (!hasToken && !isAuthEndpoint) {
+          this.handleAuthFailure();
+          return Promise.reject(new Error('로그인이 필요합니다.'));
+        }
+
+        if (status === 401 && !isAuthEndpoint) {
           // Try to refresh token for non-auth endpoints
           const refreshToken = localStorage.getItem('refreshToken');
           if (refreshToken) {
@@ -87,12 +97,23 @@ class ApiService {
                 return this.client.request(originalRequest);
               }
             } catch {
-              // Refresh failed, logout
-              localStorage.removeItem('accessToken');
-              localStorage.removeItem('refreshToken');
-              window.location.href = '/login';
+              // Refresh failed, logout and redirect
+              this.handleAuthFailure();
+              return Promise.reject(new Error('세션이 만료되었습니다. 다시 로그인해주세요.'));
             }
+          } else {
+            // No refresh token, redirect to login
+            this.handleAuthFailure();
+            return Promise.reject(new Error('세션이 만료되었습니다. 다시 로그인해주세요.'));
           }
+        }
+
+        // Handle 404 - resource not found (possibly due to server restart)
+        if (status === 404) {
+          console.warn('Resource not found:', originalRequest?.url);
+          // Clear any cached IDs that might be stale
+          const friendlyError = new Error('요청한 데이터를 찾을 수 없습니다. 페이지를 새로고침해주세요.');
+          return Promise.reject(friendlyError);
         }
 
         // Create a new error with user-friendly message
@@ -101,6 +122,16 @@ class ApiService {
         return Promise.reject(friendlyError);
       }
     );
+  }
+
+  private handleAuthFailure() {
+    localStorage.removeItem('accessToken');
+    localStorage.removeItem('refreshToken');
+    // Clear persisted auth state
+    localStorage.removeItem('auth-storage');
+    // Clear workspace selection to prevent data leakage
+    localStorage.removeItem('ui-storage');
+    window.location.href = '/login';
   }
 
   async get<T>(url: string, params?: Record<string, unknown>): Promise<T> {
