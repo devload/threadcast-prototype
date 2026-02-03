@@ -93,8 +93,8 @@ export function LoginPage() {
         useUIStore.getState().setCurrentWorkspaceId(workspaces[0].id);
       }
 
-      // Navigate to home
-      navigate('/', { replace: true });
+      // Navigate to workspaces
+      navigate('/workspaces', { replace: true });
     } catch (err) {
       console.error('OAuth callback failed:', err);
       setLocalError(err instanceof Error ? err.message : '로그인에 실패했습니다.');

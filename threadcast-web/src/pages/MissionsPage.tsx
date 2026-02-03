@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import { Settings, Home, Sparkles, PenLine, ChevronRight, Clock, Zap } from 'lucide-react';
 import { useMissionStore, useUIStore, useToast, useAuthStore, useAIQuestionStore, useTodoStore } from '../stores';
 import { useOnboardingStore } from '../components/onboarding';
@@ -23,7 +23,18 @@ type CreateMode = 'manual' | 'ai';
 export function MissionsPage() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { currentWorkspaceId } = useUIStore();
+  const { workspaceId: urlWorkspaceId } = useParams<{ workspaceId: string }>();
+  const { currentWorkspaceId, setCurrentWorkspaceId } = useUIStore();
+
+  // Use URL workspaceId or fallback to store
+  const workspaceId = urlWorkspaceId || currentWorkspaceId;
+
+  // Sync URL workspaceId to store
+  useEffect(() => {
+    if (urlWorkspaceId && urlWorkspaceId !== currentWorkspaceId) {
+      setCurrentWorkspaceId(urlWorkspaceId);
+    }
+  }, [urlWorkspaceId, currentWorkspaceId, setCurrentWorkspaceId]);
   const { user } = useAuthStore();
   const { missions, isLoading, fetchMissions, createMission, updateMissionStatus } = useMissionStore();
   const { todos, fetchTodos } = useTodoStore();
@@ -60,11 +71,11 @@ export function MissionsPage() {
   const activeView = getActiveView();
 
   useEffect(() => {
-    if (currentWorkspaceId) {
-      fetchMissions(currentWorkspaceId);
-      fetchQuestions(currentWorkspaceId);
+    if (workspaceId) {
+      fetchMissions(workspaceId);
+      fetchQuestions(workspaceId);
     }
-  }, [currentWorkspaceId, fetchMissions, fetchQuestions]);
+  }, [workspaceId, fetchMissions, fetchQuestions]);
 
   // Register tour context when tour is active
   useEffect(() => {
@@ -94,12 +105,13 @@ export function MissionsPage() {
   }, [selectedMission?.id, fetchTodos]);
 
   const handleViewChange = (view: string) => {
+    if (!workspaceId) return;
     switch (view) {
       case 'missions':
-        navigate('/missions');
+        navigate(`/workspaces/${workspaceId}/missions`);
         break;
       case 'timeline':
-        navigate('/timeline');
+        navigate(`/workspaces/${workspaceId}/timeline`);
         break;
     }
   };
@@ -130,7 +142,7 @@ export function MissionsPage() {
 
   // Create mission (manual or from AI-generated)
   const handleCreateMission = async () => {
-    if (!currentWorkspaceId) return;
+    if (!workspaceId) return;
 
     // Determine mission data based on mode
     const missionData = createMode === 'ai' && generatedMission
@@ -150,7 +162,7 @@ export function MissionsPage() {
     setIsCreating(true);
     try {
       const created = await createMission({
-        workspaceId: currentWorkspaceId,
+        workspaceId,
         ...missionData,
       });
 
@@ -233,9 +245,9 @@ export function MissionsPage() {
   };
 
   const handleTodoClick = (todoId: string) => {
-    if (selectedMission) {
+    if (selectedMission && workspaceId) {
       setSelectedMission(null);
-      navigate(`/missions/${selectedMission.id}/todos?highlight=${todoId}`);
+      navigate(`/workspaces/${workspaceId}/missions/${selectedMission.id}/todos?highlight=${todoId}`);
     }
   };
 
@@ -266,7 +278,7 @@ export function MissionsPage() {
       <div className="h-14 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 flex items-center px-6 justify-between flex-shrink-0">
         <div className="flex items-center gap-4">
           <button
-            onClick={() => navigate('/')}
+            onClick={() => navigate('/workspaces')}
             className="flex items-center gap-2 text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
             title="Home"
           >

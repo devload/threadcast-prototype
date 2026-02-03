@@ -1,8 +1,15 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { LogOut, ChevronDown, HelpCircle } from 'lucide-react';
 import { useWorkspaceStore } from '../stores/workspaceStore';
+import { useAuthStore } from '../stores/authStore';
 import { useTranslation } from '../hooks/useTranslation';
 import { Workspace } from '../types';
+import { Logo } from '../components/common/Logo';
+import { WelcomeModal, SetupChecklist, EmptyStateGuide, useOnboardingStore } from '../components/onboarding';
+import { Modal } from '../components/feedback/Modal';
+import { Input, TextArea } from '../components/form/Input';
+import { Button } from '../components/common/Button';
 
 interface GlobalStats {
   totalWorkspaces: number;
@@ -23,7 +30,18 @@ interface WorkspaceWithQuestions extends Workspace {
 export const HomePage = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { workspaces, fetchWorkspaces, setCurrentWorkspace, isLoading } = useWorkspaceStore();
+  const { workspaces, fetchWorkspaces, setCurrentWorkspace, createWorkspace, isLoading } = useWorkspaceStore();
+  const { isAuthenticated, isLoading: authLoading, fetchUser, user, logout } = useAuthStore();
+  const { startTour, completeSetupStep, resetOnboarding, setHasSeenWelcome, isTourActive, setTourContext } = useOnboardingStore();
+  const [showUserMenu, setShowUserMenu] = useState(false);
+  const [showHelpMenu, setShowHelpMenu] = useState(false);
+
+  // Workspace 생성 모달
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [newWorkspace, setNewWorkspace] = useState({ name: '', description: '', path: '' });
+  const [isCreating, setIsCreating] = useState(false);
+  const helpMenuRef = useRef<HTMLDivElement>(null);
+  const userMenuRef = useRef<HTMLDivElement>(null);
   const [globalStats, setGlobalStats] = useState<GlobalStats>({
     totalWorkspaces: 0,
     totalMissions: 0,
@@ -34,12 +52,41 @@ export const HomePage = () => {
     pendingQuestions: 0,
   });
 
+  // Check auth on mount
   useEffect(() => {
-    fetchWorkspaces();
-  }, [fetchWorkspaces]);
+    fetchUser();
+  }, [fetchUser]);
+
+  // Close menus on outside click
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
+        setShowUserMenu(false);
+      }
+      if (helpMenuRef.current && !helpMenuRef.current.contains(e.target as Node)) {
+        setShowHelpMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Redirect to login if not authenticated
+  useEffect(() => {
+    if (!authLoading && !isAuthenticated) {
+      navigate('/login');
+    }
+  }, [authLoading, isAuthenticated, navigate]);
+
+  // Fetch workspaces only when authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchWorkspaces();
+    }
+  }, [isAuthenticated, fetchWorkspaces]);
 
   useEffect(() => {
-    if (workspaces.length > 0) {
+    if (workspaces && workspaces.length > 0) {
       const stats = workspaces.reduce(
         (acc, ws) => ({
           totalWorkspaces: acc.totalWorkspaces + 1,
@@ -50,7 +97,7 @@ export const HomePage = () => {
           aiActions: acc.aiActions,
           pendingQuestions: acc.pendingQuestions,
         }),
-        { totalWorkspaces: 0, totalMissions: 0, activeMissions: 0, totalTodos: 0, threadingTodos: 0, aiActions: 324, pendingQuestions: 5 }
+        { totalWorkspaces: 0, totalMissions: 0, activeMissions: 0, totalTodos: 0, threadingTodos: 0, aiActions: 0, pendingQuestions: 0 }
       );
       setGlobalStats(stats);
     }
@@ -58,12 +105,12 @@ export const HomePage = () => {
 
   const handleWorkspaceClick = (workspace: Workspace) => {
     setCurrentWorkspace(workspace);
-    navigate('/dashboard');
+    navigate(`/workspaces/${workspace.id}`);
   };
 
-  const workspacesWithExtras: WorkspaceWithQuestions[] = workspaces.map((ws, index) => ({
+  const workspacesWithExtras: WorkspaceWithQuestions[] = (workspaces || []).map((ws) => ({
     ...ws,
-    pendingQuestionCount: index === 0 ? 3 : index === 1 ? 2 : 0,
+    pendingQuestionCount: ws.stats?.pendingQuestionCount || 0,
     threadingCount: ws.stats?.activeTodoCount || 0,
     progress: ws.stats?.missionCount
       ? Math.round(((ws.stats?.completedMissionCount || 0) / ws.stats.missionCount) * 100)
@@ -73,17 +120,100 @@ export const HomePage = () => {
   const workspacesWithQuestions = workspacesWithExtras.filter(ws => (ws.pendingQuestionCount || 0) > 0);
   const totalPendingQuestions = workspacesWithQuestions.reduce((sum, ws) => sum + (ws.pendingQuestionCount || 0), 0);
 
+  // Mark workspace created when workspaces exist
+  useEffect(() => {
+    if (workspaces && workspaces.length > 0) {
+      completeSetupStep('workspaceCreated');
+    }
+  }, [workspaces, completeSetupStep]);
+
+  // Register tour context
+  useEffect(() => {
+    if (isTourActive) {
+      setTourContext({
+        openCreateWorkspaceModal: () => setShowCreateModal(true),
+        closeCreateWorkspaceModal: () => setShowCreateModal(false),
+      });
+    }
+  }, [isTourActive, setTourContext]);
+
+  // Onboarding handlers
+  const handleCreateWorkspace = () => {
+    setShowCreateModal(true);
+  };
+
+  const handleSubmitWorkspace = async () => {
+    if (!newWorkspace.name.trim()) return;
+
+    setIsCreating(true);
+    try {
+      const created = await createWorkspace(
+        newWorkspace.name,
+        newWorkspace.description || '',
+        newWorkspace.path || '~/projects/' + newWorkspace.name.toLowerCase().replace(/\s+/g, '-')
+      );
+      if (created) {
+        completeSetupStep('workspaceCreated');
+        setShowCreateModal(false);
+        setNewWorkspace({ name: '', description: '', path: '' });
+        await fetchWorkspaces();
+      }
+    } catch (error) {
+      console.error('Failed to create workspace:', error);
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
+  const handleStartTour = () => {
+    startTour();
+    // Navigate to workspace dashboard for tour if there's a workspace
+    if (workspaces && workspaces.length > 0) {
+      setCurrentWorkspace(workspaces[0]);
+      navigate(`/workspaces/${workspaces[0].id}`);
+    }
+  };
+
+  const handleCreateDemo = async () => {
+    // Create a demo workspace with sample data
+    try {
+      const demoWorkspace = await createWorkspace(
+        'Demo Workspace',
+        'AI 작업 관리의 모든 기능을 체험해보세요',
+        '~/demo-project'
+      );
+      if (demoWorkspace) {
+        completeSetupStep('workspaceCreated');
+        setCurrentWorkspace(demoWorkspace);
+        navigate(`/workspaces/${demoWorkspace.id}`);
+      }
+    } catch (error) {
+      console.error('Failed to create demo workspace:', error);
+    }
+  };
+
+  // Show loading or redirect to login
+  if (authLoading || !isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="animate-spin w-8 h-8 border-2 border-indigo-600 border-t-transparent rounded-full" />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Welcome Modal for first-time users */}
+      <WelcomeModal
+        onCreateWorkspace={handleCreateWorkspace}
+        onStartTour={handleStartTour}
+        onCreateDemo={handleCreateDemo}
+      />
+
       {/* Header */}
       <header className="bg-white border-b border-gray-200 px-8 py-4 sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-lg flex items-center justify-center text-xl">
-              <span role="img" aria-label="thread">🧵</span>
-            </div>
-            <span className="text-xl font-bold text-indigo-600">ThreadCast</span>
-          </div>
+        <div className="flex items-center justify-between">
+          <Logo size="sm" />
           <div className="flex items-center gap-3">
             <button className="px-4 py-2 rounded-lg text-sm font-medium text-gray-500 hover:bg-gray-100 transition-colors flex items-center gap-2">
               <span role="img" aria-label="analytics">📊</span> Analytics
@@ -91,30 +221,131 @@ export const HomePage = () => {
             <button className="px-4 py-2 rounded-lg text-sm font-medium text-gray-500 hover:bg-gray-100 transition-colors flex items-center gap-2">
               <span role="img" aria-label="settings">⚙️</span> Settings
             </button>
-            <button className="px-5 py-2.5 rounded-lg text-sm font-medium bg-indigo-600 text-white hover:bg-purple-600 transition-colors flex items-center gap-2">
+            <button
+              data-tour="new-workspace-btn"
+              onClick={handleCreateWorkspace}
+              className="px-5 py-2.5 rounded-lg text-sm font-medium bg-indigo-600 text-white hover:bg-purple-600 transition-colors flex items-center gap-2"
+            >
               + New Workspace
             </button>
-            <div className="w-9 h-9 bg-gradient-to-br from-pink-500 to-purple-500 rounded-full flex items-center justify-center text-white font-semibold text-sm cursor-pointer">
-              DL
+
+            {/* Help Menu */}
+            <div className="relative" ref={helpMenuRef}>
+              <button
+                onClick={() => setShowHelpMenu(!showHelpMenu)}
+                className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 transition-colors"
+                title="도움말"
+              >
+                <HelpCircle size={20} />
+              </button>
+
+              {showHelpMenu && (
+                <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-lg border border-gray-200 py-2 z-50">
+                  <div className="px-4 py-2 border-b border-gray-100">
+                    <p className="text-sm font-medium text-gray-900">도움말</p>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setShowHelpMenu(false);
+                      handleStartTour();
+                    }}
+                    className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                  >
+                    <span>🎯</span> UI 투어 다시 보기
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowHelpMenu(false);
+                      setHasSeenWelcome(false);
+                    }}
+                    className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                  >
+                    <span>👋</span> 환영 화면 다시 보기
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowHelpMenu(false);
+                      resetOnboarding();
+                      window.location.reload();
+                    }}
+                    className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                  >
+                    <span>🔄</span> 전체 가이드 초기화
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* User Menu */}
+            <div className="relative" ref={userMenuRef}>
+              <button
+                onClick={() => setShowUserMenu(!showUserMenu)}
+                className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors"
+              >
+                <div className="w-8 h-8 bg-gradient-to-br from-pink-500 to-purple-500 rounded-full flex items-center justify-center text-white font-semibold text-xs">
+                  {user?.name?.charAt(0).toUpperCase() || 'U'}
+                </div>
+                <span className="text-sm font-medium text-gray-700 hidden sm:block">
+                  {user?.name || 'User'}
+                </span>
+                <ChevronDown size={16} className="text-gray-400" />
+              </button>
+
+              {showUserMenu && (
+                <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-lg border border-gray-200 py-2 z-50">
+                  <div className="px-4 py-3 border-b border-gray-100">
+                    <p className="text-sm font-medium text-gray-900">{user?.name}</p>
+                    <p className="text-xs text-gray-500">{user?.email}</p>
+                  </div>
+                  <button
+                    onClick={async () => {
+                      await logout();
+                      navigate('/login');
+                    }}
+                    className="w-full flex items-center gap-3 px-4 py-3 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                  >
+                    <LogOut size={18} />
+                    로그아웃
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>
       </header>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-8 py-8">
+      <main className="px-8 py-8">
         {/* Welcome Section */}
         <div className="mb-8">
           <h1 className="text-2xl font-bold text-gray-900 mb-2">
-            {t('home.welcome', { name: 'devload' })} <span role="img" aria-label="wave">👋</span>
+            {t('home.welcome', { name: user?.name || 'User' })} <span role="img" aria-label="wave">👋</span>
           </h1>
           <p className="text-gray-500">
             You have {globalStats.totalWorkspaces} workspaces with {globalStats.activeMissions} active missions
           </p>
         </div>
 
+        {/* Setup Checklist for new users */}
+        <div className="mb-8">
+          <SetupChecklist
+            onStartTour={handleStartTour}
+            onOpenSettings={() => navigate('/settings')}
+          />
+        </div>
+
         {/* Global Stats */}
-        <div className="grid grid-cols-5 gap-4 mb-8">
+        <div className="grid grid-cols-5 gap-4 mb-8" data-tour="global-stats">
+          {!workspaces || workspaces.length === 0 ? (
+            <>
+              <StatCard icon="🏠" iconBg="bg-indigo-100" value={0} label={t('home.totalWorkspaces')} />
+              <StatCard icon="🎯" iconBg="bg-amber-100" value={0} label={t('home.totalMissions')} />
+              <StatCard icon="📋" iconBg="bg-green-100" value={0} label={t('home.totalTodos')} />
+              <StatCard icon="🤖" iconBg="bg-purple-100" value={0} label={t('home.aiActions')} />
+              <StatCard icon="🤔" iconBg="bg-pink-100" value={0} label={t('home.pendingQuestions')} />
+            </>
+          ) : (
+            <>
           <StatCard
             icon="🏠"
             iconBg="bg-indigo-100"
@@ -149,6 +380,8 @@ export const HomePage = () => {
             subValue="Needs your input"
             highlight
           />
+            </>
+          )}
         </div>
 
         {/* AI Alert Banner */}
@@ -191,26 +424,38 @@ export const HomePage = () => {
           </span>
         </div>
 
-        <div className="grid grid-cols-3 gap-5 mb-10">
-          {workspacesWithExtras.map(workspace => (
-            <WorkspaceCard
-              key={workspace.id}
-              workspace={workspace}
-              onClick={() => handleWorkspaceClick(workspace)}
-            />
-          ))}
-
-          {/* Add New Workspace Card */}
-          <div
-            className="border-2 border-dashed border-gray-300 rounded-2xl p-6 min-h-[280px] flex flex-col items-center justify-center text-gray-400 cursor-pointer hover:border-indigo-500 hover:text-indigo-500 hover:bg-indigo-50/50 transition-all"
-            onClick={() => {/* TODO: Open create workspace modal */}}
-          >
-            <div className="w-16 h-16 border-2 border-dashed border-current rounded-2xl flex items-center justify-center text-3xl mb-3">
-              +
+        <div className="grid grid-cols-3 gap-5 mb-10" data-tour="workspace-list">
+          {workspacesWithExtras.length === 0 ? (
+            <div className="col-span-3">
+              <EmptyStateGuide
+                type="workspace"
+                onAction={handleCreateWorkspace}
+                onSecondaryAction={handleCreateDemo}
+              />
             </div>
-            <div className="text-base font-medium">{t('home.addWorkspace')}</div>
-            <div className="text-sm mt-1">{t('home.addWorkspaceDesc')}</div>
-          </div>
+          ) : (
+            <>
+              {workspacesWithExtras.map(workspace => (
+                <WorkspaceCard
+                  key={workspace.id}
+                  workspace={workspace}
+                  onClick={() => handleWorkspaceClick(workspace)}
+                />
+              ))}
+
+              {/* Add New Workspace Card */}
+              <div
+                className="border-2 border-dashed border-gray-300 rounded-2xl p-6 min-h-[280px] flex flex-col items-center justify-center text-gray-400 cursor-pointer hover:border-indigo-500 hover:text-indigo-500 hover:bg-indigo-50/50 transition-all"
+                onClick={handleCreateWorkspace}
+              >
+                <div className="w-16 h-16 border-2 border-dashed border-current rounded-2xl flex items-center justify-center text-3xl mb-3">
+                  +
+                </div>
+                <div className="text-base font-medium">{t('home.addWorkspace')}</div>
+                <div className="text-sm mt-1">{t('home.addWorkspaceDesc')}</div>
+              </div>
+            </>
+          )}
         </div>
 
         {/* Recent Activity Section */}
@@ -223,36 +468,10 @@ export const HomePage = () => {
               View All →
             </span>
           </div>
-          <div className="px-6 py-4">
-            <ActivityItem
-              icon="🤖"
-              iconType="ai"
-              text={<><strong>AI</strong>가 TODO-42-3의 Implementation 단계를 진행 중입니다</>}
-              workspace="whatap-server"
-              time="5분 전"
-            />
-            <ActivityItem
-              icon="✓"
-              iconType="woven"
-              text={<><strong>MISSION-55</strong>의 TODO-55-2가 완료되었습니다</>}
-              workspace="threadcast"
-              time="30분 전"
-            />
-            <ActivityItem
-              icon="👤"
-              iconType="user"
-              text={<><strong>devload</strong>님이 새 Mission을 생성했습니다: "대시보드 UI 개선"</>}
-              workspace="threadcast"
-              time="1시간 전"
-            />
-            <ActivityItem
-              icon="🤖"
-              iconType="ai"
-              text={<><strong>AI</strong>가 코드 리뷰를 완료하고 커밋을 생성했습니다</>}
-              workspace="whatap-server"
-              time="2시간 전"
-              isLast
-            />
+          <div className="px-6 py-8 text-center text-gray-500">
+            <div className="text-4xl mb-3">📭</div>
+            <p className="text-sm">{t('home.noRecentActivity') || '아직 활동이 없습니다'}</p>
+            <p className="text-xs text-gray-400 mt-1">Mission을 생성하면 여기에 활동이 표시됩니다</p>
           </div>
         </div>
       </main>
@@ -264,6 +483,49 @@ export const HomePage = () => {
           </div>
         </div>
       )}
+
+      {/* Create Workspace Modal */}
+      <Modal
+        isOpen={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        title="새 Workspace 만들기"
+        data-tour="create-workspace-modal"
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setShowCreateModal(false)}>
+              취소
+            </Button>
+            <Button onClick={handleSubmitWorkspace} isLoading={isCreating} disabled={!newWorkspace.name.trim()}>
+              생성하기
+            </Button>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          <Input
+            label="Workspace 이름"
+            value={newWorkspace.name}
+            onChange={(e) => setNewWorkspace({ ...newWorkspace, name: e.target.value })}
+            placeholder="예: My Project"
+            fullWidth
+            data-tour="workspace-name-input"
+          />
+          <TextArea
+            label="설명 (선택)"
+            value={newWorkspace.description}
+            onChange={(e) => setNewWorkspace({ ...newWorkspace, description: e.target.value })}
+            placeholder="프로젝트에 대한 간단한 설명"
+            fullWidth
+          />
+          <Input
+            label="프로젝트 경로"
+            value={newWorkspace.path}
+            onChange={(e) => setNewWorkspace({ ...newWorkspace, path: e.target.value })}
+            placeholder="~/projects/my-project"
+            fullWidth
+          />
+        </div>
+      </Modal>
     </div>
   );
 };
@@ -312,7 +574,7 @@ const WorkspaceCard = ({
 
   const getWorkspaceIcon = (name: string) => {
     if (name.includes('server') || name.includes('whatap')) return '☕';
-    if (name.includes('thread')) return '🧵';
+    if (name.includes('thread')) return '🎯';
     if (name.includes('mobile')) return '📱';
     return '📁';
   };
@@ -381,44 +643,6 @@ const WorkspaceCard = ({
           <span className="text-xs font-semibold text-amber-600">{workspace.threadingCount} todos</span>
         </div>
       )}
-    </div>
-  );
-};
-
-const ActivityItem = ({
-  icon,
-  iconType,
-  text,
-  workspace,
-  time,
-  isLast,
-}: {
-  icon: string;
-  iconType: 'ai' | 'woven' | 'user' | 'system';
-  text: React.ReactNode;
-  workspace: string;
-  time: string;
-  isLast?: boolean;
-}) => {
-  const iconBgClass = {
-    ai: 'bg-gradient-to-br from-indigo-500 to-purple-500 text-white',
-    woven: 'bg-green-500 text-white',
-    user: 'bg-pink-500 text-white',
-    system: 'bg-gray-100 text-gray-600',
-  }[iconType];
-
-  return (
-    <div className={`flex gap-4 py-3.5 ${isLast ? '' : 'border-b border-gray-100'}`}>
-      <div className={`w-10 h-10 rounded-full flex items-center justify-center text-lg flex-shrink-0 ${iconBgClass}`}>
-        {icon}
-      </div>
-      <div className="flex-1">
-        <div className="text-sm text-gray-900 mb-1">{text}</div>
-        <div className="flex items-center gap-3 text-xs text-gray-400">
-          <span className="px-2 py-0.5 bg-gray-100 rounded font-medium">{workspace}</span>
-          <span>{time}</span>
-        </div>
-      </div>
     </div>
   );
 };

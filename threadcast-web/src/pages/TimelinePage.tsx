@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import { Settings } from 'lucide-react';
 import { useTimelineStore, useUIStore, useAuthStore } from '../stores';
 import { Spinner } from '../components/common/Loading';
@@ -124,7 +124,18 @@ type FilterType = 'all' | 'missions' | 'todos' | 'ai' | 'system';
 export function TimelinePage() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { currentWorkspaceId } = useUIStore();
+  const { workspaceId: urlWorkspaceId } = useParams<{ workspaceId: string }>();
+  const { currentWorkspaceId, setCurrentWorkspaceId } = useUIStore();
+
+  // Use URL workspaceId or fallback to store
+  const workspaceId = urlWorkspaceId || currentWorkspaceId;
+
+  // Sync URL workspaceId to store
+  useEffect(() => {
+    if (urlWorkspaceId && urlWorkspaceId !== currentWorkspaceId) {
+      setCurrentWorkspaceId(urlWorkspaceId);
+    }
+  }, [urlWorkspaceId, currentWorkspaceId, setCurrentWorkspaceId]);
   const { user, logout } = useAuthStore();
   const { events, isLoading, hasMore, fetchEvents, fetchMore } = useTimelineStore();
   const { t, language } = useTranslation();
@@ -145,25 +156,26 @@ export function TimelinePage() {
   const activeView = getActiveView();
 
   useEffect(() => {
-    if (currentWorkspaceId) {
-      fetchEvents({ workspaceId: currentWorkspaceId, size: 50 });
+    if (workspaceId) {
+      fetchEvents({ workspaceId, size: 50 });
     }
-  }, [currentWorkspaceId, fetchEvents]);
+  }, [workspaceId, fetchEvents]);
 
   const handleViewChange = (view: string) => {
+    if (!workspaceId) return;
     switch (view) {
       case 'missions':
-        navigate('/missions');
+        navigate(`/workspaces/${workspaceId}/missions`);
         break;
       case 'timeline':
-        navigate('/timeline');
+        navigate(`/workspaces/${workspaceId}/timeline`);
         break;
     }
   };
 
   const handleLoadMore = () => {
-    if (currentWorkspaceId && hasMore && !isLoading) {
-      fetchMore({ workspaceId: currentWorkspaceId, size: 20 });
+    if (workspaceId && hasMore && !isLoading) {
+      fetchMore({ workspaceId, size: 20 });
     }
   };
 

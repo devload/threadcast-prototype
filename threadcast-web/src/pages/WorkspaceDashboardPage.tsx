@@ -1,14 +1,29 @@
 import { useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
+import { Home, Settings, RefreshCw } from 'lucide-react';
 import { useWorkspaceStore } from '../stores/workspaceStore';
 import { useMissionStore } from '../stores/missionStore';
+import { useUIStore } from '../stores/uiStore';
 import { useTranslation } from '../hooks/useTranslation';
+import { Button } from '../components/common/Button';
 
 export const WorkspaceDashboardPage = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const { workspaceId: urlWorkspaceId } = useParams<{ workspaceId: string }>();
   const { currentWorkspace, fetchWorkspaceDashboard, isLoading } = useWorkspaceStore();
   const { fetchMissions } = useMissionStore();
+  const { currentWorkspaceId, setCurrentWorkspaceId } = useUIStore();
+
+  // Use URL workspaceId or fallback to store
+  const workspaceId = urlWorkspaceId || currentWorkspaceId;
+
+  // Sync URL workspaceId to store
+  useEffect(() => {
+    if (urlWorkspaceId && urlWorkspaceId !== currentWorkspaceId) {
+      setCurrentWorkspaceId(urlWorkspaceId);
+    }
+  }, [urlWorkspaceId, currentWorkspaceId, setCurrentWorkspaceId]);
 
   useEffect(() => {
     if (currentWorkspace?.id) {
@@ -56,54 +71,94 @@ export const WorkspaceDashboardPage = () => {
   };
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
-      {/* Header */}
-      <div className="mb-8">
-        <div className="flex items-center gap-3 mb-2">
-          <div className="w-12 h-12 bg-indigo-100 rounded-xl flex items-center justify-center">
-            <span className="text-2xl">🧵</span>
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">{currentWorkspace.name}</h1>
-            <p className="text-sm text-gray-500 font-mono">{currentWorkspace.path}</p>
+    <div className="h-full flex flex-col overflow-hidden">
+      {/* Top Bar - consistent with MissionsPage */}
+      <div className="h-14 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 flex items-center px-6 justify-between flex-shrink-0">
+        <div className="flex items-center gap-4">
+          <button
+            onClick={() => navigate('/workspaces')}
+            className="flex items-center gap-2 text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
+            title="Switch Workspace"
+          >
+            <Home size={20} />
+          </button>
+          <div className="h-6 w-px bg-slate-200 dark:bg-slate-600" />
+          <h1 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+            {currentWorkspace.name}
+          </h1>
+          <div className="view-switcher">
+            <button
+              className="view-btn active"
+              onClick={() => workspaceId && navigate(`/workspaces/${workspaceId}`)}
+            >
+              🏠 Dashboard
+            </button>
+            <button
+              className="view-btn"
+              onClick={() => workspaceId && navigate(`/workspaces/${workspaceId}/missions`)}
+            >
+              🎯 {t('nav.missions')}
+            </button>
+            <button
+              className="view-btn"
+              onClick={() => workspaceId && navigate(`/workspaces/${workspaceId}/timeline`)}
+            >
+              📊 {t('nav.timeline')}
+            </button>
           </div>
         </div>
-        {currentWorkspace.description && (
-          <p className="text-gray-600 mt-2">{currentWorkspace.description}</p>
-        )}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => currentWorkspace?.id && fetchWorkspaceDashboard(currentWorkspace.id)}
+            className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
+            title="Refresh"
+          >
+            <RefreshCw size={20} className={`text-slate-500 dark:text-slate-400 ${isLoading ? 'animate-spin' : ''}`} />
+          </button>
+          <button
+            className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
+            title={t('settings.title')}
+          >
+            <Settings size={20} className="text-slate-500 dark:text-slate-400" />
+          </button>
+          <Button size="sm" onClick={() => workspaceId && navigate(`/workspaces/${workspaceId}/missions`)} data-tour="dashboard-new-mission">
+            + {t('workspace.newMission')}
+          </Button>
+        </div>
       </div>
 
+      {/* Main Content - scrollable */}
+      <div className="flex-1 overflow-auto p-6">
+
       {/* Stats Cards */}
-      {stats && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-          <StatCard
-            icon="📁"
-            label={t('workspace.projects')}
-            value={stats.projectCount}
-            subValue={null}
-          />
-          <StatCard
-            icon="🎯"
-            label={t('workspace.missions')}
-            value={stats.missionCount}
-            subValue={`${stats.activeMissionCount} ${t('workspace.active')}`}
-            highlight={stats.activeMissionCount > 0}
-          />
-          <StatCard
-            icon="✅"
-            label={t('workspace.completed')}
-            value={stats.completedMissionCount}
-            subValue={null}
-          />
-          <StatCard
-            icon="📋"
-            label={t('workspace.todos')}
-            value={stats.totalTodoCount}
-            subValue={`${stats.activeTodoCount} ${t('workspace.inProgress')}`}
-            highlight={stats.activeTodoCount > 0}
-          />
-        </div>
-      )}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8" data-tour="dashboard-stats">
+        <StatCard
+          icon="📁"
+          label={t('workspace.projects')}
+          value={stats?.projectCount ?? 0}
+          subValue={null}
+        />
+        <StatCard
+          icon="🎯"
+          label={t('workspace.missions')}
+          value={stats?.missionCount ?? 0}
+          subValue={`${stats?.activeMissionCount ?? 0} ${t('workspace.active')}`}
+          highlight={(stats?.activeMissionCount ?? 0) > 0}
+        />
+        <StatCard
+          icon="✅"
+          label={t('workspace.completed')}
+          value={stats?.completedMissionCount ?? 0}
+          subValue={null}
+        />
+        <StatCard
+          icon="📋"
+          label={t('workspace.todos')}
+          value={stats?.totalTodoCount ?? 0}
+          subValue={`${stats?.activeTodoCount ?? 0} ${t('workspace.inProgress')}`}
+          highlight={(stats?.activeTodoCount ?? 0) > 0}
+        />
+      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Projects Section */}
@@ -164,14 +219,14 @@ export const WorkspaceDashboardPage = () => {
         </div>
 
         {/* Recent Missions Section */}
-        <div className="lg:col-span-2">
+        <div className="lg:col-span-2" data-tour="recent-missions">
           <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
             <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
               <h2 className="font-semibold text-gray-900 flex items-center gap-2">
                 <span>🎯</span> {t('workspace.recentMissions')}
               </h2>
               <button
-                onClick={() => navigate('/missions')}
+                onClick={() => workspaceId && navigate(`/workspaces/${workspaceId}/missions`)}
                 className="text-indigo-600 hover:text-indigo-700 text-sm font-medium"
               >
                 {t('common.viewAll')} →
@@ -183,7 +238,7 @@ export const WorkspaceDashboardPage = () => {
                   <div className="text-4xl mb-2">🎯</div>
                   <p className="text-gray-500 text-sm">{t('workspace.noMissions')}</p>
                   <button
-                    onClick={() => navigate('/missions')}
+                    onClick={() => workspaceId && navigate(`/workspaces/${workspaceId}/missions`)}
                     className="mt-3 text-indigo-600 text-sm font-medium hover:underline"
                   >
                     {t('workspace.createFirstMission')}
@@ -194,7 +249,7 @@ export const WorkspaceDashboardPage = () => {
                   <div
                     key={mission.id}
                     className={`p-4 hover:bg-gray-50 cursor-pointer transition-colors border-l-4 ${getStatusBgColor(mission.status)}`}
-                    onClick={() => navigate(`/missions?selected=${mission.id}`)}
+                    onClick={() => workspaceId && navigate(`/workspaces/${workspaceId}/missions?selected=${mission.id}`)}
                   >
                     <div className="flex items-start justify-between">
                       <div className="flex-1 min-w-0">
@@ -234,7 +289,7 @@ export const WorkspaceDashboardPage = () => {
           {/* Quick Actions */}
           <div className="mt-6 grid grid-cols-2 gap-4">
             <button
-              onClick={() => navigate('/missions')}
+              onClick={() => workspaceId && navigate(`/workspaces/${workspaceId}/missions`)}
               className="p-4 bg-white rounded-xl border border-gray-200 hover:border-indigo-300 hover:shadow-sm transition-all text-left group"
             >
               <div className="flex items-center gap-3">
@@ -248,7 +303,7 @@ export const WorkspaceDashboardPage = () => {
               </div>
             </button>
             <button
-              onClick={() => navigate('/timeline')}
+              onClick={() => workspaceId && navigate(`/workspaces/${workspaceId}/timeline`)}
               className="p-4 bg-white rounded-xl border border-gray-200 hover:border-indigo-300 hover:shadow-sm transition-all text-left group"
             >
               <div className="flex items-center gap-3">
@@ -263,6 +318,7 @@ export const WorkspaceDashboardPage = () => {
             </button>
           </div>
         </div>
+      </div>
       </div>
 
       {isLoading && (

@@ -68,13 +68,13 @@ export function InteractiveTour() {
   const handleRestartTour = () => {
     setShowResumeDialog(false);
     setTourStepIndex(0);
-    navigate('/');
+    navigate('/workspaces');
   };
 
   const handleCancelTour = () => {
     setShowResumeDialog(false);
     endTour();
-    navigate('/');
+    navigate('/workspaces');
   };
 
   // Helper: 요소가 나타날 때까지 대기
@@ -159,7 +159,7 @@ export function InteractiveTour() {
       setCurrentWorkspace(workspace);
       setCurrentWorkspaceId(workspace.id);
       setCreatedWorkspaceId(workspace.id);
-      navigate('/missions');
+      navigate(`/workspaces/${workspace.id}/missions`);
       await new Promise(resolve => setTimeout(resolve, 500));
     }
   }, [workspaces, fetchWorkspaces, setCurrentWorkspace, setCurrentWorkspaceId, navigate]);
@@ -281,7 +281,7 @@ export function InteractiveTour() {
       ),
       placement: 'center',
       disableBeacon: true,
-      route: '/',
+      route: '/workspaces',
     },
 
     // === 2. Workspace 개념 설명 ===
@@ -313,7 +313,7 @@ export function InteractiveTour() {
         </div>
       ),
       placement: 'center',
-      route: '/',
+      route: '/workspaces',
     },
 
     // === 3. New Workspace 버튼 클릭 유도 ===
@@ -337,7 +337,7 @@ export function InteractiveTour() {
         </div>
       ),
       placement: 'bottom',
-      route: '/',
+      route: '/workspaces',
       afterAction: openWorkspaceModal,
     },
 
@@ -361,7 +361,7 @@ export function InteractiveTour() {
         </div>
       ),
       placement: 'right',
-      route: '/',
+      route: '/workspaces',
       afterAction: async () => {
         await createTourWorkspace();
       },
@@ -388,7 +388,7 @@ export function InteractiveTour() {
         </div>
       ),
       placement: 'center',
-      route: '/',
+      route: '/workspaces',
       afterAction: selectWorkspaceAndNavigate,
     },
 
@@ -934,12 +934,37 @@ export function InteractiveTour() {
       return;
     }
 
-    const targetRoute = currentStep.route || '/';
+    const targetRoute = currentStep.route || '/workspaces';
+
+    // Check if we're on the correct route (handle dynamic workspace routes)
+    const isOnCorrectRoute = () => {
+      // For /workspaces route, exact match
+      if (targetRoute === '/workspaces') {
+        return location.pathname === '/workspaces' || location.pathname === '/';
+      }
+      // For /missions route, check if pathname includes /missions
+      if (targetRoute === '/missions') {
+        return location.pathname.includes('/missions');
+      }
+      // For /timeline route, check if pathname includes /timeline
+      if (targetRoute === '/timeline') {
+        return location.pathname.includes('/timeline');
+      }
+      // Default: exact match
+      return location.pathname === targetRoute;
+    };
 
     // Navigate if on wrong route
-    if (location.pathname !== targetRoute) {
+    if (!isOnCorrectRoute()) {
       setIsReady(false);
-      navigate(targetRoute);
+      // For workspace-scoped routes, navigate to the correct workspace path
+      if (targetRoute === '/missions' && currentWorkspaceId) {
+        navigate(`/workspaces/${currentWorkspaceId}/missions`);
+      } else if (targetRoute === '/timeline' && currentWorkspaceId) {
+        navigate(`/workspaces/${currentWorkspaceId}/timeline`);
+      } else {
+        navigate(targetRoute === '/' ? '/workspaces' : targetRoute);
+      }
       return;
     }
 

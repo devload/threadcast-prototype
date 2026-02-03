@@ -20,8 +20,18 @@ type StatusFilterType = 'all' | TodoStatus;
 export function TodosPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { missionId } = useParams<{ missionId: string }>();
-  const { currentWorkspaceId } = useUIStore();
+  const { workspaceId: urlWorkspaceId, missionId } = useParams<{ workspaceId: string; missionId: string }>();
+  const { currentWorkspaceId, setCurrentWorkspaceId } = useUIStore();
+
+  // Use URL workspaceId or fallback to store
+  const workspaceId = urlWorkspaceId || currentWorkspaceId;
+
+  // Sync URL workspaceId to store
+  useEffect(() => {
+    if (urlWorkspaceId && urlWorkspaceId !== currentWorkspaceId) {
+      setCurrentWorkspaceId(urlWorkspaceId);
+    }
+  }, [urlWorkspaceId, currentWorkspaceId, setCurrentWorkspaceId]);
   const { user, logout } = useAuthStore();
   const { missions, selectedMission, fetchMissions, fetchMission } = useMissionStore();
   const { todos, selectedTodo, isLoading, fetchTodos, createTodo, updateTodoStatus, selectTodo } = useTodoStore();
@@ -81,7 +91,7 @@ export function TodosPage() {
       fetchMission(missionId).catch((error) => {
         console.warn('Failed to fetch mission:', error.message);
         toast.error('Mission을 찾을 수 없습니다. 목록으로 이동합니다.');
-        navigate('/missions');
+        navigate(workspaceId ? `/workspaces/${workspaceId}/missions` : '/workspaces');
       });
       fetchTodos(missionId).catch((error) => {
         console.warn('Failed to fetch todos:', error.message);
@@ -260,7 +270,7 @@ export function TodosPage() {
         <div className="h-14 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 flex items-center px-6 justify-between flex-shrink-0">
           <div className="flex items-center gap-4">
             <button
-              onClick={() => navigate('/missions')}
+              onClick={() => navigate(workspaceId ? `/workspaces/${workspaceId}/missions` : '/workspaces')}
               className="flex items-center gap-2 text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
             >
               <ArrowLeft size={20} />
