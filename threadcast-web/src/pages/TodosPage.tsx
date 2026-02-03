@@ -1,17 +1,19 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Settings } from 'lucide-react';
 import { useTodoStore, useMissionStore, useUIStore, useAuthStore, useToast, useAIQuestionStore } from '../stores';
+import { Logo } from '../components/common/Logo';
 import { AIQuestionPanel } from '../components/ai/AIQuestionPanel';
 import { TodoBoard } from '../components/todo/TodoBoard';
-import { Modal, Drawer } from '../components/feedback/Modal';
+import { TodoDetailDrawer } from '../components/todo/TodoDetailDrawer';
+import { Modal } from '../components/feedback/Modal';
 import { Input, TextArea } from '../components/form/Input';
 import { Select } from '../components/form/Select';
 import { Button } from '../components/common/Button';
-import { TodoSteps } from '../components/todo/TodoSteps';
 import { SettingsModal } from '../components/settings/SettingsModal';
+import { SidebarFooter } from '../components/layout/SidebarFooter';
 import { useTranslation } from '../hooks/useTranslation';
-import type { Todo, TodoStatus, Priority, Complexity, StepType, StepStatus } from '../types';
+import type { Todo, TodoStatus, Priority, Complexity } from '../types';
 
 type StatusFilterType = 'all' | TodoStatus;
 
@@ -20,12 +22,17 @@ export function TodosPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { missionId } = useParams<{ missionId: string }>();
   const { currentWorkspaceId } = useUIStore();
-  const { user } = useAuthStore();
+  const { user, logout } = useAuthStore();
   const { missions, selectedMission, fetchMissions, fetchMission } = useMissionStore();
-  const { todos, selectedTodo, isLoading, fetchTodos, createTodo, updateTodoStatus, updateStepStatus, selectTodo } = useTodoStore();
+  const { todos, selectedTodo, isLoading, fetchTodos, createTodo, updateTodoStatus, selectTodo } = useTodoStore();
   const { questions, openPanelForTodo } = useAIQuestionStore();
   const toast = useToast();
   const { t } = useTranslation();
+
+  const handleLogout = useCallback(async () => {
+    await logout();
+    navigate('/login');
+  }, [logout, navigate]);
 
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -71,10 +78,17 @@ export function TodosPage() {
 
   useEffect(() => {
     if (missionId) {
-      fetchMission(missionId);
-      fetchTodos(missionId);
+      fetchMission(missionId).catch((error) => {
+        console.warn('Failed to fetch mission:', error.message);
+        toast.error('Mission을 찾을 수 없습니다. 목록으로 이동합니다.');
+        navigate('/missions');
+      });
+      fetchTodos(missionId).catch((error) => {
+        console.warn('Failed to fetch todos:', error.message);
+      });
     }
-  }, [missionId, fetchMission, fetchTodos]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [missionId]);
 
   const currentMission = missions.find(m => m.id === missionId) || selectedMission;
 
@@ -138,26 +152,14 @@ export function TodosPage() {
     selectTodo(todo);
   };
 
-  const handleStepStatusChange = async (stepType: StepType, status: StepStatus) => {
-    if (!selectedTodo) return;
-
-    try {
-      await updateStepStatus(selectedTodo.id, stepType, status);
-      toast.success(t('toast.stepUpdated'), `${stepType} → ${status.toLowerCase()}`);
-    } catch {
-      toast.error(t('toast.failed'), t('toast.stepUpdateFailed'));
-    }
-  };
-
   return (
     <div className="h-full flex overflow-hidden">
       {/* Sidebar - Todo Filters */}
       <aside className="w-[260px] bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 flex flex-col overflow-y-auto flex-shrink-0">
         {/* Header */}
         <div className="p-4 border-b border-slate-200 dark:border-slate-700">
-          <div className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400 font-semibold text-lg mb-3">
-            <span className="text-xl">🧵</span>
-            <span>ThreadCast</span>
+          <div className="mb-3">
+            <Logo size="sm" />
           </div>
           <div className="px-3 py-2 bg-slate-100 dark:bg-slate-700 rounded-md text-sm dark:text-slate-200">
             {user?.name ? t('nav.myWorkspace', { name: user.name }) : t('nav.myWorkspaceDefault')}
@@ -244,6 +246,12 @@ export function TodosPage() {
             </div>
           </div>
         </div>
+
+        {/* Help & User Footer */}
+        <SidebarFooter
+          user={user ? { name: user.name, email: user.email } : undefined}
+          onLogout={handleLogout}
+        />
       </aside>
 
       {/* Main Content */}
@@ -369,50 +377,12 @@ export function TodosPage() {
       </Modal>
 
       {/* Todo Detail Drawer */}
-      <Drawer
+      <TodoDetailDrawer
         isOpen={!!selectedTodo}
         onClose={() => selectTodo(null)}
-        title={selectedTodo?.title || t('nav.todos')}
-        size="lg"
-      >
-        {selectedTodo && (
-          <div className="space-y-6">
-            <div>
-              <h3 className="text-sm font-medium text-slate-500 mb-1">{t('mission.description')}</h3>
-              <p className="text-slate-700">
-                {selectedTodo.description || t('todo.noDescription')}
-              </p>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <h3 className="text-sm font-medium text-slate-500 mb-1">{t('mission.priority')}</h3>
-                <p className="text-slate-700">{selectedTodo.priority}</p>
-              </div>
-              <div>
-                <h3 className="text-sm font-medium text-slate-500 mb-1">{t('todo.complexity')}</h3>
-                <p className="text-slate-700">{selectedTodo.complexity}</p>
-              </div>
-            </div>
-
-            <div>
-              <h3 className="text-sm font-medium text-slate-500 mb-3">{t('todo.progressSteps')}</h3>
-              {selectedTodo.steps && selectedTodo.steps.length > 0 ? (
-                <TodoSteps
-                  steps={selectedTodo.steps}
-                  onStepClick={(step) => {
-                    const nextStatus = step.status === 'PENDING' ? 'IN_PROGRESS' :
-                                      step.status === 'IN_PROGRESS' ? 'COMPLETED' : 'PENDING';
-                    handleStepStatusChange(step.stepType, nextStatus as StepStatus);
-                  }}
-                />
-              ) : (
-                <p className="text-sm text-slate-400">{t('todo.noSteps')}</p>
-              )}
-            </div>
-          </div>
-        )}
-      </Drawer>
+        todo={selectedTodo}
+        onRefresh={() => missionId && fetchTodos(missionId)}
+      />
 
       {/* AI Question Panel */}
       <AIQuestionPanel />

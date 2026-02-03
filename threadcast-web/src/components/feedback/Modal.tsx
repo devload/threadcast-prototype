@@ -14,6 +14,7 @@ interface ModalProps {
   closeOnOverlayClick?: boolean;
   closeOnEscape?: boolean;
   footer?: ReactNode;
+  'data-tour'?: string;
 }
 
 export function Modal({
@@ -27,6 +28,7 @@ export function Modal({
   closeOnOverlayClick = true,
   closeOnEscape = true,
   footer,
+  'data-tour': dataTour,
 }: ModalProps) {
   // Handle escape key
   useEffect(() => {
@@ -78,6 +80,7 @@ export function Modal({
         )}
         role="dialog"
         aria-modal="true"
+        data-tour={dataTour}
       >
         {/* Header */}
         {(title || showCloseButton) && (
@@ -184,6 +187,7 @@ interface DrawerProps {
   children: ReactNode;
   position?: 'left' | 'right';
   size?: 'sm' | 'md' | 'lg';
+  'data-tour'?: string;
 }
 
 export function Drawer({
@@ -193,6 +197,7 @@ export function Drawer({
   children,
   position = 'right',
   size = 'md',
+  'data-tour': dataTour,
 }: DrawerProps) {
   // Track if drawer should be rendered (for exit animation)
   const [shouldRender, setShouldRender] = useState(isOpen);
@@ -259,6 +264,7 @@ export function Drawer({
             ? 'translate-x-full'
             : '-translate-x-full'
         )}
+        data-tour={dataTour}
       >
         {/* Header */}
         <div className="flex items-center justify-between h-14 px-4 border-b border-slate-200 dark:border-slate-700">

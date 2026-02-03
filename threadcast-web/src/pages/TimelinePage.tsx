@@ -1,10 +1,12 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Settings } from 'lucide-react';
 import { useTimelineStore, useUIStore, useAuthStore } from '../stores';
 import { Spinner } from '../components/common/Loading';
 import { SettingsModal } from '../components/settings/SettingsModal';
 import { useTranslation } from '../hooks/useTranslation';
+import { Logo } from '../components/common/Logo';
+import { SidebarFooter } from '../components/layout/SidebarFooter';
 import type { TimelineEvent, ActorType, EventType } from '../types';
 
 // Group events by date
@@ -123,11 +125,16 @@ export function TimelinePage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { currentWorkspaceId } = useUIStore();
-  const { user } = useAuthStore();
+  const { user, logout } = useAuthStore();
   const { events, isLoading, hasMore, fetchEvents, fetchMore } = useTimelineStore();
   const { t, language } = useTranslation();
   const [activeFilter, setActiveFilter] = useState<FilterType>('all');
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+
+  const handleLogout = useCallback(async () => {
+    await logout();
+    navigate('/login');
+  }, [logout, navigate]);
 
   // Determine active view
   const getActiveView = () => {
@@ -195,7 +202,7 @@ export function TimelinePage() {
 
   const filters: { id: FilterType; label: string; icon: string }[] = [
     { id: 'all', label: t('timeline.allActivity'), icon: '📊' },
-    { id: 'missions', label: t('timeline.missions'), icon: '🧵' },
+    { id: 'missions', label: t('timeline.missions'), icon: '🎯' },
     { id: 'todos', label: t('timeline.todos'), icon: '📋' },
     { id: 'ai', label: t('timeline.aiActivity'), icon: '🤖' },
     { id: 'system', label: t('timeline.systemEvents'), icon: '⚙️' },
@@ -207,9 +214,8 @@ export function TimelinePage() {
       <aside className="w-[260px] bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 flex flex-col overflow-y-auto flex-shrink-0">
         {/* Header */}
         <div className="p-4 border-b border-slate-200 dark:border-slate-700">
-          <div className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400 font-semibold text-lg mb-3">
-            <span className="text-xl">🧵</span>
-            <span>ThreadCast</span>
+          <div className="mb-3">
+            <Logo size="sm" />
           </div>
           <div className="px-3 py-2 bg-slate-100 dark:bg-slate-700 rounded-md text-sm dark:text-slate-200">
             {user?.name ? t('nav.myWorkspace', { name: user.name }) : t('nav.myWorkspaceDefault')}
@@ -270,6 +276,12 @@ export function TimelinePage() {
             </div>
           </div>
         </div>
+
+        {/* Help & User Footer */}
+        <SidebarFooter
+          user={user ? { name: user.name, email: user.email } : undefined}
+          onLogout={handleLogout}
+        />
       </aside>
 
       {/* Main Content */}
@@ -283,7 +295,7 @@ export function TimelinePage() {
                 className={`view-btn ${activeView === 'missions' ? 'active' : ''}`}
                 onClick={() => handleViewChange('missions')}
               >
-                🧵 {t('nav.missions')}
+                🎯 {t('nav.missions')}
               </button>
               <button
                 className={`view-btn ${activeView === 'timeline' ? 'active' : ''}`}
@@ -311,7 +323,7 @@ export function TimelinePage() {
         </div>
 
         {/* Timeline Content */}
-        <div className="flex-1 overflow-y-auto p-6">
+        <div className="flex-1 overflow-y-auto p-6" data-tour="timeline-list">
           {isLoading && events.length === 0 ? (
             <div className="flex items-center justify-center h-64">
               <Spinner size="lg" />
