@@ -141,6 +141,18 @@ server:
 jwt:
   secret: ${JWT_SECRET}
 
+# Production OAuth - SessionCast
+sessioncast:
+  oauth:
+    auth-url: https://auth.sessioncast.io
+    client-id: threadcast
+    redirect-uri: https://threadcast.io/auth/callback
+
+# Disable Hub auto-start in production (no tmux)
+threadcast:
+  hub:
+    auto-start: false
+
 logging:
   level:
     io.threadcast: INFO
