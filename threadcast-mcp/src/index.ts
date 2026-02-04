@@ -3057,16 +3057,19 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         const todoId = args?.todoId as string;
         const workerInfo = args?.workerInfo as Record<string, unknown> | undefined;
 
-        // 1. Load effective meta (full context)
+        // 1. Load effective meta (full context including answered questions)
         const effectiveMeta = await client.getTodoEffectiveMeta(todoId);
 
-        // 2. Update todo status to THREADING
+        // 2. Extract answered questions for easy access
+        const answeredQuestions = (effectiveMeta as Record<string, unknown>)?.answeredQuestions || [];
+
+        // 3. Update todo status to THREADING
         await client.updateTodoStatus(todoId, "THREADING");
 
-        // 3. Set first step to IN_PROGRESS
+        // 4. Set first step to IN_PROGRESS
         await client.updateStepStatus(todoId, "ANALYSIS", "IN_PROGRESS");
 
-        // 4. Record worker start in meta
+        // 5. Record worker start in meta
         const workerMeta: Record<string, unknown> = {
           worker: {
             startedAt: new Date().toISOString(),
@@ -3083,6 +3086,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           status: "THREADING",
           currentStep: "ANALYSIS",
           context: effectiveMeta,
+          // Highlighted for easy access - user decisions from AI questions
+          userDecisions: answeredQuestions,
         };
         break;
       }
