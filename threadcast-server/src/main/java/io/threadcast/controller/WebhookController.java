@@ -242,12 +242,9 @@ public class WebhookController {
     /**
      * Handle step_update event from SwiftCast webhook.
      *
-     * NOTE: SwiftCast's step_update is based on tool usage (Read → ANALYSIS, Edit → IMPLEMENTATION),
-     * NOT on actual step progression. This causes incorrect step status when Claude uses tools
-     * that don't match the current PM-assigned step.
-     *
-     * Current approach: Log only, don't process. PM controls step progression via session_complete.
-     * Future: SwiftCast should only report the PM-assigned step, not infer from tool usage.
+     * Records AI activity (tool usage) to timeline for real-time progress tracking.
+     * NOTE: This does NOT control step progression - PM manages that via session_complete.
+     * Step type here reflects Claude's current tool usage, not the PM-assigned step.
      */
     private void handleStepUpdateFromSwiftcast(SwiftcastWebhookRequest request) {
         if (request.getTodoId() == null) {
@@ -260,12 +257,24 @@ public class WebhookController {
         String status = data.has("status") ? data.get("status").asText() : "unknown";
         String message = data.has("message") ? data.get("message").asText() : "";
 
-        // Log for debugging but don't process - PM manages step progression via session_complete
-        log.debug("SwiftCast step_update (ignored for now): todoId={}, step={}, status={}, message={}",
+        log.debug("SwiftCast step_update: todoId={}, step={}, status={}, message={}",
             request.getTodoId(), stepType, status, message);
 
-        // TODO: In the future, SwiftCast should send step_update only for PM-assigned steps
-        // For now, only session_complete triggers PM step progression
+        // Record to timeline for real-time progress visibility
+        try {
+            UUID todoUuid = UUID.fromString(request.getTodoId());
+            log.debug("Looking up todo: {}", todoUuid);
+            var todoOpt = todoRepository.findByIdWithMissionAndWorkspace(todoUuid);
+            if (todoOpt.isPresent()) {
+                log.info("Recording step progress to timeline: todoId={}, step={}, message={}",
+                    request.getTodoId(), stepType, message);
+                timelineService.recordStepProgress(todoOpt.get(), stepType, status, message);
+            } else {
+                log.warn("Todo not found for step progress: {}", request.getTodoId());
+            }
+        } catch (Exception e) {
+            log.error("Failed to record step progress to timeline: {}", e.getMessage(), e);
+        }
     }
 
     /**

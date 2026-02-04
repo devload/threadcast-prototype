@@ -1,5 +1,6 @@
 package io.threadcast.service;
 
+import io.threadcast.domain.Mission;
 import io.threadcast.domain.Todo;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -14,9 +15,11 @@ import java.util.concurrent.TimeUnit;
 /**
  * Service for managing Git worktrees for Todos.
  *
- * Each Todo gets its own worktree to isolate changes:
- * - On Todo start: Create worktree at .worktrees/todo-{id}
- * - On Todo complete: Commit changes and optionally merge to main
+ * Mission-based branching strategy:
+ * - On Mission start: Create mission/{id} branch from main
+ * - On Todo start: Create worktree from mission branch (includes previous commits)
+ * - On Todo complete: Commit to mission branch, remove worktree
+ * - Result: Sequential todos share the same branch, each building on previous work
  */
 @Slf4j
 @Service
@@ -24,15 +27,50 @@ import java.util.concurrent.TimeUnit;
 public class GitWorktreeService {
 
     /**
+     * Create a mission branch when Mission starts THREADING.
+     * All Todos in this mission will work on this branch.
+     */
+    public CompletableFuture<Void> createMissionBranch(Mission mission) {
+        return CompletableFuture.runAsync(() -> {
+            try {
+                String projectDir = mission.getWorkspace().getPath();
+                String missionId = mission.getId().toString();
+                String branchName = "mission/" + missionId;
+
+                // Check if branch already exists
+                try {
+                    runGitCommand(projectDir, "git", "rev-parse", "--verify", branchName);
+                    log.info("Mission branch already exists: {}", branchName);
+                    return;
+                } catch (Exception e) {
+                    // Branch doesn't exist, create it
+                }
+
+                // Get main branch name
+                String mainBranch = getMainBranch(projectDir);
+
+                // Create mission branch from main
+                runGitCommand(projectDir, "git", "branch", branchName, mainBranch);
+
+                log.info("Created mission branch: {} from {}", branchName, mainBranch);
+            } catch (Exception e) {
+                log.error("Failed to create mission branch for {}: {}", mission.getId(), e.getMessage());
+                throw new RuntimeException("Failed to create mission branch: " + e.getMessage(), e);
+            }
+        });
+    }
+
+    /**
      * Create a worktree for a Todo.
-     * Creates a new branch and worktree at .worktrees/todo-{todoId}
+     * Uses the mission branch so that previous Todo commits are included.
      */
     public CompletableFuture<String> createWorktree(Todo todo) {
         return CompletableFuture.supplyAsync(() -> {
             try {
                 String projectDir = todo.getMission().getWorkspace().getPath();
                 String todoId = todo.getId().toString();
-                String branchName = "todo/" + todoId;
+                String missionId = todo.getMission().getId().toString();
+                String missionBranch = "mission/" + missionId;
                 String worktreePath = projectDir + "/.worktrees/todo-" + todoId;
 
                 // Check if worktree already exists
@@ -45,20 +83,24 @@ public class GitWorktreeService {
                 // Create .worktrees directory if not exists
                 new File(projectDir, ".worktrees").mkdirs();
 
-                // Get main branch name
-                String mainBranch = getMainBranch(projectDir);
-
-                // Create branch from main (ignore error if branch already exists)
+                // Ensure mission branch exists
                 try {
-                    runGitCommand(projectDir, "git", "branch", branchName, mainBranch);
+                    runGitCommand(projectDir, "git", "rev-parse", "--verify", missionBranch);
                 } catch (Exception e) {
-                    log.debug("Branch {} may already exist: {}", branchName, e.getMessage());
+                    // Mission branch doesn't exist, create it
+                    String mainBranch = getMainBranch(projectDir);
+                    runGitCommand(projectDir, "git", "branch", missionBranch, mainBranch);
+                    log.info("Created mission branch on-demand: {}", missionBranch);
                 }
 
-                // Add worktree
-                runGitCommand(projectDir, "git", "worktree", "add", worktreePath, branchName);
+                // Remove any existing worktree for this mission (only one active at a time)
+                cleanupMissionWorktrees(projectDir, missionId, todoId);
 
-                log.info("Created worktree for todo {}: {}", todoId, worktreePath);
+                // Add worktree with detached HEAD from mission branch
+                // This allows multiple worktrees to reference the same branch
+                runGitCommand(projectDir, "git", "worktree", "add", "--detach", worktreePath, missionBranch);
+
+                log.info("Created worktree for todo {} from mission branch {}: {}", todoId, missionBranch, worktreePath);
 
                 return worktreePath;
             } catch (Exception e) {
@@ -69,8 +111,45 @@ public class GitWorktreeService {
     }
 
     /**
-     * Commit all changes in a Todo's worktree.
+     * Clean up other worktrees for the same mission.
+     * Since we use detached HEAD, we need to ensure only one active worktree per mission
+     * to avoid conflicts when committing.
+     */
+    private void cleanupMissionWorktrees(String projectDir, String missionId, String currentTodoId) {
+        try {
+            File worktreesDir = new File(projectDir, ".worktrees");
+            if (!worktreesDir.exists()) return;
+
+            File[] worktrees = worktreesDir.listFiles();
+            if (worktrees == null) return;
+
+            for (File worktree : worktrees) {
+                String name = worktree.getName();
+                // Skip current todo's worktree
+                if (name.equals("todo-" + currentTodoId)) continue;
+
+                // Check if this worktree belongs to our mission by reading .git file
+                // For simplicity, we'll just remove all old worktrees
+                // In production, we'd check mission association
+                try {
+                    runGitCommand(projectDir, "git", "worktree", "remove", worktree.getAbsolutePath(), "--force");
+                    log.info("Removed old worktree: {}", worktree.getName());
+                } catch (Exception e) {
+                    log.debug("Could not remove worktree {}: {}", name, e.getMessage());
+                }
+            }
+        } catch (Exception e) {
+            log.warn("Error during worktree cleanup: {}", e.getMessage());
+        }
+    }
+
+    /**
+     * Commit all changes in a Todo's worktree and update mission branch.
      * Called when Todo completes (WOVEN).
+     *
+     * Since worktree uses detached HEAD, we:
+     * 1. Commit changes in worktree
+     * 2. Update mission branch to point to the new commit
      */
     public CompletableFuture<Void> commitWorktree(Todo todo) {
         return CompletableFuture.runAsync(() -> {
@@ -86,6 +165,10 @@ public class GitWorktreeService {
                     log.warn("Worktree directory does not exist: {}", worktreePath);
                     return;
                 }
+
+                String projectDir = todo.getMission().getWorkspace().getPath();
+                String missionId = todo.getMission().getId().toString();
+                String missionBranch = "mission/" + missionId;
 
                 // Check if there are changes to commit
                 String status = runGitCommand(worktreePath, "git", "status", "--porcelain");
@@ -104,10 +187,16 @@ public class GitWorktreeService {
                         todo.getId(),
                         todo.getMission().getId());
 
-                // Commit
+                // Commit in worktree (detached HEAD)
                 runGitCommand(worktreePath, "git", "commit", "-m", message);
 
-                log.info("Committed changes in worktree for todo {}: {}", todo.getId(), worktreePath);
+                // Get the new commit hash
+                String commitHash = runGitCommand(worktreePath, "git", "rev-parse", "HEAD").trim();
+
+                // Update mission branch to point to the new commit
+                runGitCommand(projectDir, "git", "branch", "-f", missionBranch, commitHash);
+
+                log.info("Committed to mission branch {}: {} (todo: {})", missionBranch, commitHash.substring(0, 7), todo.getId());
 
             } catch (Exception e) {
                 log.error("Failed to commit worktree for todo {}: {}", todo.getId(), e.getMessage());

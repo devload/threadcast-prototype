@@ -113,9 +113,9 @@ export const useMissionStore = create<MissionState>((set, get) => ({
     try {
       const mission = await missionService.getById(id);
       set({ selectedMission: mission, isLoading: false });
-    } catch {
-      const demoMission = demoMissions.find(m => m.id === id);
-      set({ selectedMission: demoMission || null, isLoading: false });
+    } catch (error) {
+      set({ selectedMission: null, isLoading: false, error: 'Mission not found' });
+      throw error; // Re-throw so caller can handle (e.g., redirect)
     }
   },
 

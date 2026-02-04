@@ -221,6 +221,66 @@ public class TimelineService {
     }
 
     /**
+     * Record step progress from SwiftCast tool usage events.
+     * Shows real-time AI activity in timeline (e.g., "Reading files", "Writing code").
+     *
+     * @param todo The todo being worked on
+     * @param stepType The inferred step type (ANALYSIS, IMPLEMENTATION, etc.)
+     * @param status IN_PROGRESS or COMPLETED
+     * @param message Description of what Claude is doing
+     */
+    @Transactional
+    public void recordStepProgress(Todo todo, String stepType, String status, String message) {
+        log.info("recordStepProgress called: todoId={}, stepType={}, status={}, message={}",
+            todo.getId(), stepType, status, message);
+
+        // Skip COMPLETED events to reduce noise - only show active work
+        if ("COMPLETED".equals(status)) {
+            log.debug("Skipping COMPLETED status event");
+            return;
+        }
+
+        Map<String, Object> metadata = new HashMap<>();
+        metadata.put("stepType", stepType);
+        metadata.put("status", status);
+
+        // Create title from message, e.g., "Using Read" -> "📖 Reading files"
+        String title = formatStepMessage(stepType, message);
+
+        TimelineEvent event = TimelineEvent.create(
+                todo.getMission().getWorkspace(),
+                todo.getMission(),
+                todo,
+                EventType.AI_ACTIVITY,
+                ActorType.AI,
+                title,
+                metadata
+        );
+        timelineEventRepository.save(event);
+        webSocketService.notifyTimelineEvent(todo.getMission().getWorkspace().getId(), event);
+        webSocketService.notifyTodoTimelineEvent(todo.getId(), event);
+    }
+
+    private String formatStepMessage(String stepType, String message) {
+        // Map tool usage to user-friendly descriptions
+        if (message.contains("Read")) {
+            return "📖 파일 읽는 중...";
+        } else if (message.contains("Write") || message.contains("Edit")) {
+            return "✏️ 코드 작성 중...";
+        } else if (message.contains("Bash")) {
+            return "⚡ 명령어 실행 중...";
+        } else if (message.contains("Glob") || message.contains("Grep")) {
+            return "🔍 파일 검색 중...";
+        } else if (message.contains("analysis")) {
+            return "🔬 분석 중...";
+        } else if (message.contains("implementation")) {
+            return "🛠️ 구현 중...";
+        } else {
+            return "🤖 " + (message.isEmpty() ? stepType + " 진행 중..." : message);
+        }
+    }
+
+    /**
      * Record AI activity/work summary from Claude's response.
      * Called when SwiftCast sends usage_logged webhook with response summary.
      *

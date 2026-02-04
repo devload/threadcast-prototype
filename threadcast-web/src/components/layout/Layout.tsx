@@ -27,7 +27,6 @@ interface LayoutProps {
     successRate: number;
     remainingTime?: string;
   };
-  onCreateMission?: () => void;
 }
 
 export function Layout({
@@ -45,7 +44,6 @@ export function Layout({
   onAddClick,
   headerActions,
   stats = { total: 0, active: 0, successRate: 0, remainingTime: '~0h' },
-  onCreateMission,
 }: LayoutProps) {
   // Determine active nav from currentPath
   const getActiveNav = (): 'all' | 'active' | 'completed' | 'archived' => {
@@ -70,7 +68,6 @@ export function Layout({
         activeNav={activeNav}
         onNavChange={handleNavChange}
         stats={stats}
-        onCreateMission={onCreateMission}
       />
 
       {/* Main content */}

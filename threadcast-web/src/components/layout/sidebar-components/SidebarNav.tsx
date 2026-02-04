@@ -6,6 +6,7 @@ export interface NavItem {
   label: string;
   icon: ReactNode;
   badge?: number;
+  dataTour?: string;
 }
 
 interface SidebarNavProps {
@@ -35,6 +36,7 @@ export function SidebarNav({
                 : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900'
             )}
             aria-current={isActive ? 'page' : undefined}
+            data-tour={item.dataTour}
           >
             <span className="flex-shrink-0">{item.icon}</span>
             <span className="flex-1 text-left">{item.label}</span>

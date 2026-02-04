@@ -8,6 +8,9 @@ import {
   AlertCircle,
   Plus,
   Archive,
+  Bot,
+  Unlock,
+  GitBranch,
 } from 'lucide-react';
 import type { TimelineEvent, EventType } from '../../types';
 
@@ -32,6 +35,9 @@ const eventConfig: Record<
   AI_QUESTION: { icon: HelpCircle, color: 'text-purple-600', bgColor: 'bg-purple-100', label: 'AI Question' },
   AI_ANSWER: { icon: MessageSquare, color: 'text-purple-600', bgColor: 'bg-purple-100', label: 'AI Response' },
   COMMENT_ADDED: { icon: MessageSquare, color: 'text-blue-600', bgColor: 'bg-blue-100', label: 'Comment Added' },
+  AI_ACTIVITY: { icon: Bot, color: 'text-cyan-600', bgColor: 'bg-cyan-100', label: 'AI Working' },
+  TODO_READY_TO_START: { icon: Unlock, color: 'text-green-600', bgColor: 'bg-green-100', label: 'Todo Ready' },
+  TODO_DEPENDENCIES_CHANGED: { icon: GitBranch, color: 'text-indigo-600', bgColor: 'bg-indigo-100', label: 'Dependencies Changed' },
 };
 
 export function TimelineItem({ event, isLast = false }: TimelineItemProps) {

@@ -161,17 +161,20 @@ export const EmptyWorkspace: Story = {
 };
 
 /**
- * 커스텀 생성 버튼 라벨입니다.
+ * 사용자 프로필이 있는 경우입니다.
  */
-export const CustomCreateButton: Story = {
+export const WithUserProfile: Story = {
   args: {
     activeNav: 'all',
-    createButtonLabel: 'New Project',
     stats: {
       total: 5,
       active: 2,
       successRate: 60,
       remainingTime: '~8h',
+    },
+    user: {
+      name: 'John Doe',
+      email: 'john@example.com',
     },
   },
 };
@@ -209,7 +212,6 @@ export const Interactive: Story = {
           successRate: 65,
           remainingTime: '~24h',
         }}
-        onCreateMission={() => alert('Creating new mission!')}
       />
     );
   },
@@ -240,7 +242,6 @@ export const InAppContext: Story = {
             successRate: 65,
             remainingTime: '~24h',
           }}
-          onCreateMission={() => alert('Creating new mission!')}
         />
         <main className="flex-1 bg-slate-50 p-6">
           <h1 className="text-2xl font-bold text-slate-900">{navLabels[activeNav]}</h1>

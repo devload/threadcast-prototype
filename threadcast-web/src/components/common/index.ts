@@ -1,5 +1,6 @@
 export { StatusBadge, PriorityBadge } from './Badge';
 export { Button } from './Button';
+export { Logo } from './Logo';
 export { ProgressBar, StepProgress } from './ProgressBar';
 export { Card, CardHeader, CardContent, CardFooter } from './Card';
 export { Tooltip, InfoTooltip } from './Tooltip';

@@ -102,6 +102,9 @@ const statusColors: Record<EventType, string> = {
   AI_QUESTION: 'bg-purple-500',
   AI_ANSWER: 'bg-purple-500',
   COMMENT_ADDED: 'bg-blue-500',
+  AI_ACTIVITY: 'bg-cyan-500',
+  TODO_READY_TO_START: 'bg-green-400',
+  TODO_DEPENDENCIES_CHANGED: 'bg-indigo-400',
 };
 
 export function TimelineCompact({ events, maxItems = 5 }: TimelineCompactProps) {

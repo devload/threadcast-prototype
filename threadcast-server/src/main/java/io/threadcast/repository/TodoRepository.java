@@ -62,12 +62,14 @@ public interface TodoRepository extends JpaRepository<Todo, UUID> {
     long countByProjectId(UUID projectId);
 
     /**
-     * Find todo by ID with mission and workspace (for weaving operations).
+     * Find todo by ID with mission, workspace, steps, and dependencies.
+     * Use this for any operation that returns TodoResponse to avoid lazy loading issues.
      */
-    @Query("SELECT t FROM Todo t " +
+    @Query("SELECT DISTINCT t FROM Todo t " +
            "LEFT JOIN FETCH t.mission m " +
            "LEFT JOIN FETCH m.workspace " +
            "LEFT JOIN FETCH t.steps " +
+           "LEFT JOIN FETCH t.dependencies " +
            "WHERE t.id = :id")
     Optional<Todo> findByIdWithMissionAndWorkspace(@Param("id") UUID id);
 

@@ -3,3 +3,5 @@ export { TodoSteps } from './TodoSteps';
 export { TodoColumn } from './TodoColumn';
 export { TodoBoard } from './TodoBoard';
 export { TodoDetailDrawer } from './TodoDetailDrawer';
+export { TodoGraph } from './TodoGraph';
+export { TodoGraphNode } from './TodoGraphNode';

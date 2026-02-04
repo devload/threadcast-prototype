@@ -9,12 +9,904 @@ import {
   ReadResourceRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 import axios, { AxiosInstance } from "axios";
+import * as fs from "fs";
+import * as path from "path";
+import { execSync } from "child_process";
+
+// ============================================================================
+// Project Scanner - Analyzes project structure and extracts metadata
+// ============================================================================
+
+interface ProjectMeta {
+  project: {
+    name: string;
+    type: "single" | "monorepo";
+    modules?: string[];
+    description?: string;
+    version?: string;
+  };
+  stack: {
+    languages: string[];
+    frameworks: string[];
+    buildTools: string[];
+    packageManagers: string[];
+  };
+  git?: {
+    remote?: string;
+    branch?: string;
+    mainBranch?: string;
+    lastCommit?: {
+      hash: string;
+      message: string;
+      author: string;
+      date: string;
+    };
+  };
+  structure: {
+    rootFiles: string[];
+    directories: string[];
+    entryPoints?: Record<string, string>;
+  };
+  dependencies?: {
+    production: string[];
+    development: string[];
+  };
+  scripts?: Record<string, string>;
+  scannedAt: string;
+}
+
+class ProjectScanner {
+  private projectPath: string;
+
+  constructor(projectPath: string) {
+    this.projectPath = projectPath;
+  }
+
+  async scan(): Promise<ProjectMeta> {
+    const meta: ProjectMeta = {
+      project: {
+        name: path.basename(this.projectPath),
+        type: "single",
+      },
+      stack: {
+        languages: [],
+        frameworks: [],
+        buildTools: [],
+        packageManagers: [],
+      },
+      structure: {
+        rootFiles: [],
+        directories: [],
+      },
+      scannedAt: new Date().toISOString(),
+    };
+
+    // Scan root directory
+    this.scanRootDirectory(meta);
+
+    // Detect project type and modules
+    this.detectProjectType(meta);
+
+    // Scan package files
+    await this.scanPackageJson(meta);
+    await this.scanGradle(meta);
+    await this.scanPom(meta);
+
+    // Scan Git info
+    this.scanGitInfo(meta);
+
+    // Detect frameworks
+    this.detectFrameworks(meta);
+
+    // Detect structure
+    this.detectStructure(meta);
+
+    return meta;
+  }
+
+  private scanRootDirectory(meta: ProjectMeta): void {
+    try {
+      const entries = fs.readdirSync(this.projectPath, { withFileTypes: true });
+
+      for (const entry of entries) {
+        if (entry.name.startsWith(".") && entry.name !== ".gitignore") continue;
+
+        if (entry.isDirectory()) {
+          meta.structure.directories.push(entry.name);
+        } else if (entry.isFile()) {
+          meta.structure.rootFiles.push(entry.name);
+        }
+      }
+    } catch (e) {
+      console.error("Failed to scan root directory:", e);
+    }
+  }
+
+  private detectProjectType(meta: ProjectMeta): void {
+    const dirs = meta.structure.directories;
+    const potentialModules: string[] = [];
+
+    // Check for monorepo patterns
+    for (const dir of dirs) {
+      const dirPath = path.join(this.projectPath, dir);
+
+      // Check if directory has its own package.json or build file
+      if (
+        fs.existsSync(path.join(dirPath, "package.json")) ||
+        fs.existsSync(path.join(dirPath, "build.gradle")) ||
+        fs.existsSync(path.join(dirPath, "pom.xml"))
+      ) {
+        potentialModules.push(dir);
+      }
+    }
+
+    // Check for common monorepo structures
+    if (
+      potentialModules.length > 1 ||
+      dirs.includes("packages") ||
+      dirs.includes("apps") ||
+      fs.existsSync(path.join(this.projectPath, "lerna.json")) ||
+      fs.existsSync(path.join(this.projectPath, "pnpm-workspace.yaml"))
+    ) {
+      meta.project.type = "monorepo";
+      meta.project.modules = potentialModules;
+    }
+  }
+
+  private async scanPackageJson(meta: ProjectMeta): Promise<void> {
+    const pkgPath = path.join(this.projectPath, "package.json");
+
+    if (!fs.existsSync(pkgPath)) return;
+
+    try {
+      const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf-8"));
+
+      meta.project.name = pkg.name || meta.project.name;
+      meta.project.description = pkg.description;
+      meta.project.version = pkg.version;
+
+      if (!meta.stack.languages.includes("typescript") &&
+          !meta.stack.languages.includes("javascript")) {
+        if (pkg.devDependencies?.typescript || fs.existsSync(path.join(this.projectPath, "tsconfig.json"))) {
+          meta.stack.languages.push("typescript");
+        } else {
+          meta.stack.languages.push("javascript");
+        }
+      }
+
+      meta.stack.packageManagers.push("npm");
+
+      // Check for pnpm or yarn
+      if (fs.existsSync(path.join(this.projectPath, "pnpm-lock.yaml"))) {
+        meta.stack.packageManagers = ["pnpm"];
+      } else if (fs.existsSync(path.join(this.projectPath, "yarn.lock"))) {
+        meta.stack.packageManagers = ["yarn"];
+      }
+
+      // Extract dependencies
+      const prodDeps = Object.keys(pkg.dependencies || {});
+      const devDeps = Object.keys(pkg.devDependencies || {});
+
+      meta.dependencies = {
+        production: prodDeps.slice(0, 20), // Limit to top 20
+        development: devDeps.slice(0, 20),
+      };
+
+      // Extract scripts
+      if (pkg.scripts) {
+        meta.scripts = pkg.scripts;
+      }
+
+      // Detect build tools
+      if (devDeps.includes("vite") || prodDeps.includes("vite")) {
+        meta.stack.buildTools.push("vite");
+      }
+      if (devDeps.includes("webpack") || prodDeps.includes("webpack")) {
+        meta.stack.buildTools.push("webpack");
+      }
+      if (devDeps.includes("esbuild") || prodDeps.includes("esbuild")) {
+        meta.stack.buildTools.push("esbuild");
+      }
+      if (devDeps.includes("rollup") || prodDeps.includes("rollup")) {
+        meta.stack.buildTools.push("rollup");
+      }
+
+    } catch (e) {
+      console.error("Failed to parse package.json:", e);
+    }
+  }
+
+  private async scanGradle(meta: ProjectMeta): Promise<void> {
+    const gradlePath = path.join(this.projectPath, "build.gradle");
+    const gradleKtsPath = path.join(this.projectPath, "build.gradle.kts");
+    const settingsPath = path.join(this.projectPath, "settings.gradle");
+
+    if (!fs.existsSync(gradlePath) && !fs.existsSync(gradleKtsPath)) return;
+
+    if (!meta.stack.languages.includes("java") && !meta.stack.languages.includes("kotlin")) {
+      if (fs.existsSync(gradleKtsPath)) {
+        meta.stack.languages.push("kotlin");
+      }
+      meta.stack.languages.push("java");
+    }
+
+    meta.stack.buildTools.push("gradle");
+
+    try {
+      const buildFile = fs.existsSync(gradleKtsPath)
+        ? fs.readFileSync(gradleKtsPath, "utf-8")
+        : fs.readFileSync(gradlePath, "utf-8");
+
+      // Detect Spring Boot
+      if (buildFile.includes("org.springframework.boot") || buildFile.includes("spring-boot")) {
+        meta.stack.frameworks.push("spring-boot");
+      }
+
+      // Get project name from settings.gradle
+      if (fs.existsSync(settingsPath)) {
+        const settings = fs.readFileSync(settingsPath, "utf-8");
+        const nameMatch = settings.match(/rootProject\.name\s*=\s*['"]([^'"]+)['"]/);
+        if (nameMatch) {
+          meta.project.name = nameMatch[1];
+        }
+
+        // Get subprojects
+        const includeMatches = settings.matchAll(/include\s*\(?['"]([^'"]+)['"]\)?/g);
+        const subprojects: string[] = [];
+        for (const match of includeMatches) {
+          subprojects.push(match[1].replace(":", ""));
+        }
+        if (subprojects.length > 0) {
+          meta.project.type = "monorepo";
+          meta.project.modules = [...(meta.project.modules || []), ...subprojects];
+        }
+      }
+    } catch (e) {
+      console.error("Failed to parse Gradle files:", e);
+    }
+  }
+
+  private async scanPom(meta: ProjectMeta): Promise<void> {
+    const pomPath = path.join(this.projectPath, "pom.xml");
+
+    if (!fs.existsSync(pomPath)) return;
+
+    if (!meta.stack.languages.includes("java")) {
+      meta.stack.languages.push("java");
+    }
+    meta.stack.buildTools.push("maven");
+
+    try {
+      const pom = fs.readFileSync(pomPath, "utf-8");
+
+      // Extract artifact ID
+      const artifactMatch = pom.match(/<artifactId>([^<]+)<\/artifactId>/);
+      if (artifactMatch) {
+        meta.project.name = artifactMatch[1];
+      }
+
+      // Detect Spring Boot
+      if (pom.includes("spring-boot")) {
+        meta.stack.frameworks.push("spring-boot");
+      }
+    } catch (e) {
+      console.error("Failed to parse pom.xml:", e);
+    }
+  }
+
+  private scanGitInfo(meta: ProjectMeta): void {
+    const gitDir = path.join(this.projectPath, ".git");
+    if (!fs.existsSync(gitDir)) return;
+
+    try {
+      meta.git = {};
+
+      // Get current branch
+      try {
+        meta.git.branch = execSync("git rev-parse --abbrev-ref HEAD", {
+          cwd: this.projectPath,
+          encoding: "utf-8",
+        }).trim();
+      } catch (e) {
+        // Ignore
+      }
+
+      // Get remote URL
+      try {
+        const remoteUrl = execSync("git remote get-url origin", {
+          cwd: this.projectPath,
+          encoding: "utf-8",
+        }).trim();
+        // Clean up SSH URL to readable format
+        meta.git.remote = remoteUrl
+          .replace(/^git@github\.com:/, "github.com/")
+          .replace(/\.git$/, "");
+      } catch (e) {
+        // Ignore
+      }
+
+      // Detect main branch
+      try {
+        const branches = execSync("git branch -r", {
+          cwd: this.projectPath,
+          encoding: "utf-8",
+        });
+        if (branches.includes("origin/main")) {
+          meta.git.mainBranch = "main";
+        } else if (branches.includes("origin/master")) {
+          meta.git.mainBranch = "master";
+        }
+      } catch (e) {
+        // Ignore
+      }
+
+      // Get last commit
+      try {
+        const logOutput = execSync(
+          'git log -1 --format="%H|%s|%an|%aI"',
+          { cwd: this.projectPath, encoding: "utf-8" }
+        ).trim();
+        const [hash, message, author, date] = logOutput.split("|");
+        meta.git.lastCommit = {
+          hash: hash.substring(0, 8),
+          message,
+          author,
+          date,
+        };
+      } catch (e) {
+        // Ignore
+      }
+    } catch (e) {
+      console.error("Failed to scan Git info:", e);
+    }
+  }
+
+  private detectFrameworks(meta: ProjectMeta): void {
+    const deps = [
+      ...(meta.dependencies?.production || []),
+      ...(meta.dependencies?.development || []),
+    ];
+
+    // React
+    if (deps.includes("react") || deps.includes("react-dom")) {
+      meta.stack.frameworks.push("react");
+    }
+
+    // Vue
+    if (deps.includes("vue")) {
+      meta.stack.frameworks.push("vue");
+    }
+
+    // Next.js
+    if (deps.includes("next")) {
+      meta.stack.frameworks.push("next.js");
+    }
+
+    // Express
+    if (deps.includes("express")) {
+      meta.stack.frameworks.push("express");
+    }
+
+    // NestJS
+    if (deps.includes("@nestjs/core")) {
+      meta.stack.frameworks.push("nestjs");
+    }
+
+    // Tailwind
+    if (deps.includes("tailwindcss")) {
+      meta.stack.frameworks.push("tailwindcss");
+    }
+
+    // Remove duplicates
+    meta.stack.frameworks = [...new Set(meta.stack.frameworks)];
+  }
+
+  private detectStructure(meta: ProjectMeta): void {
+    const entryPoints: Record<string, string> = {};
+
+    // Detect common entry points
+    const checkPaths: [string, string][] = [
+      ["src/index.ts", "frontend-entry"],
+      ["src/index.tsx", "frontend-entry"],
+      ["src/main.ts", "frontend-entry"],
+      ["src/main.tsx", "frontend-entry"],
+      ["src/App.tsx", "react-app"],
+      ["src/App.vue", "vue-app"],
+      ["src/main/java", "java-source"],
+      ["src/main/kotlin", "kotlin-source"],
+      ["src/main/resources/application.yml", "spring-config"],
+      ["src/main/resources/application.properties", "spring-config"],
+    ];
+
+    for (const [checkPath, label] of checkPaths) {
+      if (fs.existsSync(path.join(this.projectPath, checkPath))) {
+        entryPoints[label] = checkPath;
+      }
+    }
+
+    // Detect API controllers for Spring
+    const controllersPath = path.join(this.projectPath, "src/main/java");
+    if (fs.existsSync(controllersPath)) {
+      try {
+        const findControllers = (dir: string): string[] => {
+          const results: string[] = [];
+          const entries = fs.readdirSync(dir, { withFileTypes: true });
+
+          for (const entry of entries) {
+            const fullPath = path.join(dir, entry.name);
+            if (entry.isDirectory()) {
+              if (entry.name === "controller" || entry.name === "controllers") {
+                results.push(fullPath.replace(this.projectPath + "/", ""));
+              } else {
+                results.push(...findControllers(fullPath));
+              }
+            }
+          }
+          return results;
+        };
+
+        const controllerDirs = findControllers(controllersPath);
+        if (controllerDirs.length > 0) {
+          entryPoints["api-controllers"] = controllerDirs[0];
+        }
+      } catch (e) {
+        // Ignore
+      }
+    }
+
+    if (Object.keys(entryPoints).length > 0) {
+      meta.structure.entryPoints = entryPoints;
+    }
+  }
+}
+
+// ============================================================================
+// Context Analyzer - Analyzes Mission/Todo descriptions and finds related files
+// ============================================================================
+
+interface AnalysisResult {
+  keywords: string[];
+  relatedModules: string[];
+  relatedFiles: string[];
+  suggestedScope: "frontend" | "backend" | "fullstack" | "infra" | "docs" | "unknown";
+  suggestedApproach?: string;
+  techStackMatch: string[];
+  complexity: "low" | "medium" | "high";
+  analyzedAt: string;
+}
+
+interface KeywordPattern {
+  keywords: string[];
+  scope: "frontend" | "backend" | "fullstack" | "infra" | "docs";
+  filePatterns: string[];
+  directories: string[];
+}
+
+const KEYWORD_PATTERNS: KeywordPattern[] = [
+  // Frontend
+  {
+    keywords: ["ui", "화면", "버튼", "컴포넌트", "component", "페이지", "page", "레이아웃", "layout", "스타일", "css", "tailwind", "디자인"],
+    scope: "frontend",
+    filePatterns: ["*.tsx", "*.jsx", "*.vue", "*.css", "*.scss"],
+    directories: ["components", "pages", "views", "layouts", "styles"],
+  },
+  {
+    keywords: ["react", "리액트", "훅", "hook", "상태", "state", "zustand", "redux", "context"],
+    scope: "frontend",
+    filePatterns: ["*.tsx", "*.jsx", "use*.ts"],
+    directories: ["hooks", "stores", "contexts", "components"],
+  },
+  // Backend
+  {
+    keywords: ["api", "엔드포인트", "endpoint", "rest", "controller", "컨트롤러", "서버", "server"],
+    scope: "backend",
+    filePatterns: ["*Controller.java", "*Controller.kt", "*.controller.ts"],
+    directories: ["controller", "controllers", "api", "routes"],
+  },
+  {
+    keywords: ["데이터베이스", "database", "db", "쿼리", "query", "repository", "레포지토리", "엔티티", "entity", "jpa"],
+    scope: "backend",
+    filePatterns: ["*Repository.java", "*Entity.java", "*.entity.ts", "*.repository.ts"],
+    directories: ["repository", "repositories", "domain", "entities", "models"],
+  },
+  {
+    keywords: ["서비스", "service", "비즈니스", "business", "로직", "logic"],
+    scope: "backend",
+    filePatterns: ["*Service.java", "*Service.kt", "*.service.ts"],
+    directories: ["service", "services"],
+  },
+  {
+    keywords: ["인증", "auth", "로그인", "login", "jwt", "토큰", "token", "oauth", "보안", "security"],
+    scope: "backend",
+    filePatterns: ["*Auth*.java", "*Security*.java", "auth*.ts"],
+    directories: ["auth", "security", "authentication"],
+  },
+  {
+    keywords: ["websocket", "웹소켓", "실시간", "realtime", "socket", "stomp"],
+    scope: "backend",
+    filePatterns: ["*WebSocket*.java", "*Socket*.ts", "*Stomp*.java"],
+    directories: ["websocket", "socket", "realtime"],
+  },
+  // Fullstack
+  {
+    keywords: ["전체", "통합", "풀스택", "fullstack", "end-to-end", "e2e"],
+    scope: "fullstack",
+    filePatterns: ["*"],
+    directories: [],
+  },
+  // Infra
+  {
+    keywords: ["배포", "deploy", "docker", "kubernetes", "k8s", "ci", "cd", "pipeline", "aws", "인프라", "infra"],
+    scope: "infra",
+    filePatterns: ["Dockerfile", "docker-compose*.yml", "*.yaml", "*.sh"],
+    directories: ["deploy", "infra", "docker", ".github"],
+  },
+  // Docs
+  {
+    keywords: ["문서", "doc", "readme", "가이드", "guide", "api문서", "swagger"],
+    scope: "docs",
+    filePatterns: ["*.md", "*.mdx", "openapi.yaml"],
+    directories: ["docs", "documentation"],
+  },
+];
+
+class ContextAnalyzer {
+  private projectPath: string;
+  private projectMeta: ProjectMeta | null;
+
+  constructor(projectPath: string, projectMeta?: ProjectMeta) {
+    this.projectPath = projectPath;
+    this.projectMeta = projectMeta || null;
+  }
+
+  async analyzeDescription(
+    description: string,
+    title?: string
+  ): Promise<AnalysisResult> {
+    const text = `${title || ""} ${description}`.toLowerCase();
+
+    // 1. Extract keywords
+    const keywords = this.extractKeywords(text);
+
+    // 2. Determine scope
+    const scopeMatch = this.determineScope(text, keywords);
+
+    // 3. Find related modules (from project meta)
+    const relatedModules = this.findRelatedModules(keywords, scopeMatch.scope);
+
+    // 4. Find related files
+    const relatedFiles = await this.findRelatedFiles(keywords, scopeMatch);
+
+    // 5. Match tech stack
+    const techStackMatch = this.matchTechStack(keywords);
+
+    // 6. Estimate complexity
+    const complexity = this.estimateComplexity(text, relatedFiles.length);
+
+    // 7. Generate suggested approach
+    const suggestedApproach = this.generateApproach(scopeMatch.scope, keywords, relatedModules);
+
+    return {
+      keywords,
+      relatedModules,
+      relatedFiles: relatedFiles.slice(0, 15), // Limit to 15 files
+      suggestedScope: scopeMatch.scope,
+      suggestedApproach,
+      techStackMatch,
+      complexity,
+      analyzedAt: new Date().toISOString(),
+    };
+  }
+
+  private extractKeywords(text: string): string[] {
+    const keywords: string[] = [];
+    const allKeywords = KEYWORD_PATTERNS.flatMap((p) => p.keywords);
+
+    for (const keyword of allKeywords) {
+      if (text.includes(keyword.toLowerCase())) {
+        keywords.push(keyword);
+      }
+    }
+
+    // Extract potential class/component names (PascalCase or camelCase)
+    const nameMatches = text.match(/[A-Z][a-zA-Z]+|[a-z]+[A-Z][a-zA-Z]*/g) || [];
+    for (const name of nameMatches) {
+      if (name.length > 3 && !keywords.includes(name.toLowerCase())) {
+        keywords.push(name);
+      }
+    }
+
+    return [...new Set(keywords)];
+  }
+
+  private determineScope(
+    text: string,
+    keywords: string[]
+  ): { scope: AnalysisResult["suggestedScope"]; patterns: KeywordPattern[] } {
+    const scopeScores: Record<string, number> = {
+      frontend: 0,
+      backend: 0,
+      fullstack: 0,
+      infra: 0,
+      docs: 0,
+    };
+
+    const matchedPatterns: KeywordPattern[] = [];
+
+    for (const pattern of KEYWORD_PATTERNS) {
+      let matchCount = 0;
+      for (const keyword of pattern.keywords) {
+        if (text.includes(keyword.toLowerCase())) {
+          matchCount++;
+        }
+      }
+      if (matchCount > 0) {
+        scopeScores[pattern.scope] += matchCount;
+        matchedPatterns.push(pattern);
+      }
+    }
+
+    // Find highest scoring scope
+    let maxScope: AnalysisResult["suggestedScope"] = "unknown";
+    let maxScore = 0;
+
+    for (const [scope, score] of Object.entries(scopeScores)) {
+      if (score > maxScore) {
+        maxScore = score;
+        maxScope = scope as AnalysisResult["suggestedScope"];
+      }
+    }
+
+    // If both frontend and backend have significant scores, it's fullstack
+    if (scopeScores.frontend >= 2 && scopeScores.backend >= 2) {
+      maxScope = "fullstack";
+    }
+
+    return { scope: maxScope, patterns: matchedPatterns };
+  }
+
+  private findRelatedModules(keywords: string[], scope: string): string[] {
+    if (!this.projectMeta?.project.modules) return [];
+
+    const modules: string[] = [];
+
+    for (const module of this.projectMeta.project.modules) {
+      const moduleLower = module.toLowerCase();
+
+      // Check if module name matches scope
+      if (scope === "frontend" && (moduleLower.includes("web") || moduleLower.includes("client") || moduleLower.includes("ui"))) {
+        modules.push(module);
+      } else if (scope === "backend" && (moduleLower.includes("server") || moduleLower.includes("api") || moduleLower.includes("service"))) {
+        modules.push(module);
+      } else if (scope === "infra" && (moduleLower.includes("deploy") || moduleLower.includes("infra"))) {
+        modules.push(module);
+      }
+
+      // Check if module name matches any keyword
+      for (const keyword of keywords) {
+        if (moduleLower.includes(keyword.toLowerCase())) {
+          if (!modules.includes(module)) {
+            modules.push(module);
+          }
+        }
+      }
+    }
+
+    return modules;
+  }
+
+  private async findRelatedFiles(
+    keywords: string[],
+    scopeMatch: { scope: string; patterns: KeywordPattern[] }
+  ): Promise<string[]> {
+    const files: string[] = [];
+
+    try {
+      // Get directories to search
+      const searchDirs: string[] = [];
+      for (const pattern of scopeMatch.patterns) {
+        searchDirs.push(...pattern.directories);
+      }
+
+      // If we have related modules, search within them
+      const modules = this.projectMeta?.project.modules || [];
+      const baseDirs = modules.length > 0 ? modules : ["."];
+
+      for (const baseDir of baseDirs) {
+        const basePath = path.join(this.projectPath, baseDir);
+        if (!fs.existsSync(basePath)) continue;
+
+        // Search for files matching patterns
+        for (const pattern of scopeMatch.patterns) {
+          for (const dir of pattern.directories) {
+            const searchPath = path.join(basePath, "src", dir);
+            if (fs.existsSync(searchPath)) {
+              const found = this.searchDirectory(searchPath, pattern.filePatterns, keywords);
+              files.push(...found.map((f) => f.replace(this.projectPath + "/", "")));
+            }
+
+            // Also check without src
+            const altSearchPath = path.join(basePath, dir);
+            if (fs.existsSync(altSearchPath) && altSearchPath !== searchPath) {
+              const found = this.searchDirectory(altSearchPath, pattern.filePatterns, keywords);
+              files.push(...found.map((f) => f.replace(this.projectPath + "/", "")));
+            }
+          }
+        }
+
+        // Search for files containing keywords
+        for (const keyword of keywords) {
+          if (keyword.length < 4) continue; // Skip short keywords
+
+          try {
+            // Use grep to find files containing the keyword
+            const grepResult = execSync(
+              `grep -rl --include="*.java" --include="*.ts" --include="*.tsx" --include="*.kt" "${keyword}" "${basePath}" 2>/dev/null | head -10`,
+              { encoding: "utf-8", timeout: 5000 }
+            );
+            const grepFiles = grepResult.trim().split("\n").filter(Boolean);
+            files.push(...grepFiles.map((f) => f.replace(this.projectPath + "/", "")));
+          } catch {
+            // Grep failed or timed out, ignore
+          }
+        }
+      }
+    } catch (e) {
+      console.error("Error finding related files:", e);
+    }
+
+    // Remove duplicates and limit
+    return [...new Set(files)].slice(0, 20);
+  }
+
+  private searchDirectory(dir: string, patterns: string[], keywords: string[]): string[] {
+    const results: string[] = [];
+
+    try {
+      const entries = fs.readdirSync(dir, { withFileTypes: true });
+
+      for (const entry of entries) {
+        const fullPath = path.join(dir, entry.name);
+
+        if (entry.isDirectory()) {
+          // Recurse into subdirectories (limit depth)
+          if (!entry.name.startsWith(".") && !entry.name.includes("node_modules")) {
+            results.push(...this.searchDirectory(fullPath, patterns, keywords));
+          }
+        } else if (entry.isFile()) {
+          // Check if file matches patterns
+          for (const pattern of patterns) {
+            if (this.matchPattern(entry.name, pattern)) {
+              results.push(fullPath);
+              break;
+            }
+          }
+
+          // Check if filename contains keyword
+          for (const keyword of keywords) {
+            if (entry.name.toLowerCase().includes(keyword.toLowerCase())) {
+              if (!results.includes(fullPath)) {
+                results.push(fullPath);
+              }
+              break;
+            }
+          }
+        }
+      }
+    } catch {
+      // Ignore errors
+    }
+
+    return results;
+  }
+
+  private matchPattern(filename: string, pattern: string): boolean {
+    if (pattern === "*") return true;
+    if (pattern.startsWith("*") && pattern.endsWith("*")) {
+      return filename.includes(pattern.slice(1, -1));
+    }
+    if (pattern.startsWith("*")) {
+      return filename.endsWith(pattern.slice(1));
+    }
+    if (pattern.endsWith("*")) {
+      return filename.startsWith(pattern.slice(0, -1));
+    }
+    return filename === pattern;
+  }
+
+  private matchTechStack(keywords: string[]): string[] {
+    if (!this.projectMeta?.stack) return [];
+
+    const matches: string[] = [];
+
+    // Match languages
+    for (const lang of this.projectMeta.stack.languages || []) {
+      if (keywords.some((k) => k.toLowerCase().includes(lang.toLowerCase()))) {
+        matches.push(lang);
+      }
+    }
+
+    // Match frameworks
+    for (const fw of this.projectMeta.stack.frameworks || []) {
+      if (keywords.some((k) => k.toLowerCase().includes(fw.toLowerCase().replace("-", "")))) {
+        matches.push(fw);
+      }
+    }
+
+    // Add frameworks based on scope
+    const scopeMatch = this.determineScope(keywords.join(" "), keywords);
+    if (scopeMatch.scope === "frontend" && this.projectMeta.stack.frameworks?.includes("react")) {
+      if (!matches.includes("react")) matches.push("react");
+    }
+    if (scopeMatch.scope === "backend" && this.projectMeta.stack.frameworks?.includes("spring-boot")) {
+      if (!matches.includes("spring-boot")) matches.push("spring-boot");
+    }
+
+    return matches;
+  }
+
+  private estimateComplexity(text: string, fileCount: number): "low" | "medium" | "high" {
+    // High complexity indicators
+    const highIndicators = ["리팩토링", "refactor", "마이그레이션", "migration", "아키텍처", "architecture", "전체", "시스템"];
+    const mediumIndicators = ["구현", "implement", "추가", "add", "개선", "improve", "수정", "fix"];
+
+    for (const indicator of highIndicators) {
+      if (text.includes(indicator)) return "high";
+    }
+
+    if (fileCount > 10) return "high";
+    if (fileCount > 5) return "medium";
+
+    for (const indicator of mediumIndicators) {
+      if (text.includes(indicator)) return "medium";
+    }
+
+    return "low";
+  }
+
+  private generateApproach(scope: string, keywords: string[], modules: string[]): string {
+    const parts: string[] = [];
+
+    if (modules.length > 0) {
+      parts.push(`${modules.join(", ")} 모듈에서 작업`);
+    }
+
+    switch (scope) {
+      case "frontend":
+        parts.push("React 컴포넌트 및 상태 관리 수정");
+        break;
+      case "backend":
+        parts.push("Spring Boot 서비스/컨트롤러 수정");
+        break;
+      case "fullstack":
+        parts.push("프론트엔드와 백엔드 동시 수정 필요");
+        break;
+      case "infra":
+        parts.push("배포 설정 및 인프라 구성 변경");
+        break;
+      case "docs":
+        parts.push("문서 작성 및 업데이트");
+        break;
+    }
+
+    if (keywords.includes("websocket") || keywords.includes("실시간")) {
+      parts.push("WebSocket 연동 확인 필요");
+    }
+
+    if (keywords.includes("auth") || keywords.includes("인증")) {
+      parts.push("인증/보안 관련 테스트 필수");
+    }
+
+    return parts.join(". ");
+  }
+}
 
 // ThreadCast API Configuration
 const API_BASE_URL = process.env.THREADCAST_API_URL || "http://localhost:21000/api";
 const DEFAULT_WORKSPACE_ID = process.env.THREADCAST_WORKSPACE_ID || "default";
 const AUTH_EMAIL = process.env.THREADCAST_EMAIL || "test@threadcast.io";
 const AUTH_PASSWORD = process.env.THREADCAST_PASSWORD || "test1234";
+const AUTH_TOKEN = process.env.THREADCAST_TOKEN || ""; // Direct token for OAuth users
 
 // API Client
 class ThreadCastClient {
@@ -47,6 +939,13 @@ class ThreadCastClient {
   }
 
   async autoLogin(): Promise<boolean> {
+    // If direct token is provided (for OAuth users), use it
+    if (AUTH_TOKEN) {
+      this.setToken(AUTH_TOKEN);
+      console.error("ThreadCast: Using direct token authentication");
+      return true;
+    }
+
     try {
       // Try login first
       await this.login(AUTH_EMAIL, AUTH_PASSWORD);
@@ -232,6 +1131,47 @@ class ThreadCastClient {
 
   async stopWorker(todoId: string) {
     const res = await this.client.post(`/hub/todos/${todoId}/stop-worker`);
+    return res.data.data;
+  }
+
+  // Meta API
+  async getTodoMeta(todoId: string) {
+    const res = await this.client.get(`/todos/${todoId}/meta`);
+    return res.data.data;
+  }
+
+  async getTodoEffectiveMeta(todoId: string) {
+    const res = await this.client.get(`/todos/${todoId}/effective-meta`);
+    return res.data.data;
+  }
+
+  async updateTodoMeta(todoId: string, meta: Record<string, unknown>, merge: boolean = true) {
+    const res = await this.client.patch(`/todos/${todoId}/meta`, { meta, merge });
+    return res.data.data;
+  }
+
+  async getMissionMeta(missionId: string) {
+    const res = await this.client.get(`/missions/${missionId}/meta`);
+    return res.data.data;
+  }
+
+  async getMissionEffectiveMeta(missionId: string) {
+    const res = await this.client.get(`/missions/${missionId}/effective-meta`);
+    return res.data.data;
+  }
+
+  async updateMissionMeta(missionId: string, meta: Record<string, unknown>, merge: boolean = true) {
+    const res = await this.client.patch(`/missions/${missionId}/meta`, { meta, merge });
+    return res.data.data;
+  }
+
+  async getWorkspaceMeta(workspaceId: string) {
+    const res = await this.client.get(`/workspaces/${workspaceId}/meta`);
+    return res.data.data;
+  }
+
+  async updateWorkspaceMeta(workspaceId: string, meta: Record<string, unknown>, merge: boolean = true) {
+    const res = await this.client.patch(`/workspaces/${workspaceId}/meta`, { meta, merge });
     return res.data.data;
   }
 
@@ -1078,6 +2018,527 @@ const tools = [
       required: ["prompt"],
     },
   },
+  // Meta Management
+  {
+    name: "threadcast_get_todo_meta",
+    description: "Get a todo's own meta (not inherited). Returns the meta object directly attached to this todo.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        todoId: { type: "string", description: "Todo ID" },
+      },
+      required: ["todoId"],
+    },
+  },
+  {
+    name: "threadcast_get_todo_effective_meta",
+    description:
+      "Get a todo's effective meta (merged from Workspace → Mission → Todo). " +
+      "This is the fully resolved meta with inheritance applied. " +
+      "Use this to get the complete context for AI workers.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        todoId: { type: "string", description: "Todo ID" },
+      },
+      required: ["todoId"],
+    },
+  },
+  {
+    name: "threadcast_update_todo_meta",
+    description:
+      "Update a todo's meta. By default, new meta is deep-merged with existing meta. " +
+      "Set merge=false to replace the entire meta object. " +
+      "Use this to store AI worker context, file references, progress data, etc.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        todoId: { type: "string", description: "Todo ID" },
+        meta: {
+          type: "object",
+          description: "Meta object to set/merge. Can contain any JSON-serializable data.",
+        },
+        merge: {
+          type: "boolean",
+          description: "If true (default), deep-merge with existing meta. If false, replace entirely.",
+          default: true,
+        },
+      },
+      required: ["todoId", "meta"],
+    },
+  },
+  {
+    name: "threadcast_get_mission_meta",
+    description: "Get a mission's own meta (not inherited from workspace).",
+    inputSchema: {
+      type: "object",
+      properties: {
+        missionId: { type: "string", description: "Mission ID" },
+      },
+      required: ["missionId"],
+    },
+  },
+  {
+    name: "threadcast_get_mission_effective_meta",
+    description:
+      "Get a mission's effective meta (merged from Workspace → Mission). " +
+      "Returns the mission-level context with workspace defaults applied.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        missionId: { type: "string", description: "Mission ID" },
+      },
+      required: ["missionId"],
+    },
+  },
+  {
+    name: "threadcast_update_mission_meta",
+    description:
+      "Update a mission's meta. By default, new meta is deep-merged with existing meta. " +
+      "Mission meta is inherited by all todos in the mission.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        missionId: { type: "string", description: "Mission ID" },
+        meta: {
+          type: "object",
+          description: "Meta object to set/merge.",
+        },
+        merge: {
+          type: "boolean",
+          description: "If true (default), deep-merge with existing meta. If false, replace entirely.",
+          default: true,
+        },
+      },
+      required: ["missionId", "meta"],
+    },
+  },
+  {
+    name: "threadcast_get_workspace_meta",
+    description: "Get a workspace's meta. Workspace meta is the base layer inherited by all missions and todos.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        workspaceId: { type: "string", description: "Workspace ID (optional, uses default)" },
+      },
+    },
+  },
+  {
+    name: "threadcast_update_workspace_meta",
+    description:
+      "Update a workspace's meta. By default, new meta is deep-merged with existing meta. " +
+      "Workspace meta provides default values for all missions and todos.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        workspaceId: { type: "string", description: "Workspace ID (optional, uses default)" },
+        meta: {
+          type: "object",
+          description: "Meta object to set/merge.",
+        },
+        merge: {
+          type: "boolean",
+          description: "If true (default), deep-merge with existing meta. If false, replace entirely.",
+          default: true,
+        },
+      },
+      required: ["meta"],
+    },
+  },
+  // Project Scanning
+  {
+    name: "threadcast_scan_workspace",
+    description:
+      "Scan a workspace's project directory and automatically extract metadata. " +
+      "Detects: project type (single/monorepo), tech stack (languages, frameworks, build tools), " +
+      "Git info (branch, remote, last commit), directory structure, dependencies, and scripts. " +
+      "The scanned metadata is automatically saved to the workspace's meta.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        workspaceId: { type: "string", description: "Workspace ID to scan" },
+        path: {
+          type: "string",
+          description: "Project path to scan. If not provided, uses the workspace's configured path.",
+        },
+        merge: {
+          type: "boolean",
+          description: "If true (default), merge with existing meta. If false, replace entirely.",
+          default: true,
+        },
+      },
+      required: ["workspaceId"],
+    },
+  },
+  {
+    name: "threadcast_scan_path",
+    description:
+      "Scan a project directory without saving to any workspace. " +
+      "Returns the extracted metadata for preview or manual use. " +
+      "Useful for analyzing a project before creating a workspace.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        path: { type: "string", description: "Project path to scan" },
+      },
+      required: ["path"],
+    },
+  },
+  // AI Worker Flow
+  {
+    name: "threadcast_worker_start",
+    description:
+      "Start working on a Todo. This should be called when AI Worker begins a task. " +
+      "It loads the effective meta (full context), updates Todo status to THREADING, " +
+      "and sets the first step (ANALYSIS) to IN_PROGRESS. " +
+      "Returns the complete context needed to work on the task.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        todoId: { type: "string", description: "Todo ID to start working on" },
+        workerInfo: {
+          type: "object",
+          description: "Optional info about the worker (e.g., model, session ID)",
+          properties: {
+            model: { type: "string", description: "AI model being used" },
+            sessionId: { type: "string", description: "Session identifier" },
+          },
+        },
+      },
+      required: ["todoId"],
+    },
+  },
+  {
+    name: "threadcast_worker_step_progress",
+    description:
+      "Update progress within the current step. Use this to record incremental progress, " +
+      "files being analyzed/modified, or notes about the current step.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        todoId: { type: "string", description: "Todo ID" },
+        step: {
+          type: "string",
+          enum: ["ANALYSIS", "DESIGN", "IMPLEMENTATION", "VERIFICATION", "REVIEW", "INTEGRATION"],
+          description: "Current step type",
+        },
+        progress: {
+          type: "object",
+          description: "Progress information to record",
+          properties: {
+            status: { type: "string", description: "Brief status message" },
+            filesAnalyzed: {
+              type: "array",
+              items: { type: "string" },
+              description: "Files that have been analyzed",
+            },
+            filesModified: {
+              type: "array",
+              items: { type: "string" },
+              description: "Files that have been modified",
+            },
+            notes: { type: "string", description: "Additional notes" },
+            issues: {
+              type: "array",
+              items: { type: "string" },
+              description: "Issues or blockers encountered",
+            },
+          },
+        },
+      },
+      required: ["todoId", "step", "progress"],
+    },
+  },
+  {
+    name: "threadcast_worker_step_complete",
+    description:
+      "Mark the current step as completed and optionally move to the next step. " +
+      "Records step results in meta and updates step status.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        todoId: { type: "string", description: "Todo ID" },
+        step: {
+          type: "string",
+          enum: ["ANALYSIS", "DESIGN", "IMPLEMENTATION", "VERIFICATION", "REVIEW", "INTEGRATION"],
+          description: "Step that was completed",
+        },
+        result: {
+          type: "object",
+          description: "Results from this step",
+          properties: {
+            summary: { type: "string", description: "Brief summary of what was done" },
+            findings: {
+              type: "array",
+              items: { type: "string" },
+              description: "Key findings or decisions made",
+            },
+            filesModified: {
+              type: "array",
+              items: { type: "string" },
+              description: "Files that were modified in this step",
+            },
+            nextStepHints: { type: "string", description: "Hints for the next step" },
+          },
+        },
+        nextStep: {
+          type: "string",
+          enum: ["ANALYSIS", "DESIGN", "IMPLEMENTATION", "VERIFICATION", "REVIEW", "INTEGRATION"],
+          description: "Next step to start (optional, auto-advances if not specified)",
+        },
+        skipToComplete: {
+          type: "boolean",
+          description: "If true, skip remaining steps and complete the todo",
+        },
+      },
+      required: ["todoId", "step"],
+    },
+  },
+  {
+    name: "threadcast_worker_complete",
+    description:
+      "Mark the Todo as completed (WOVEN). Records final results and summary. " +
+      "Call this when all work on the Todo is done successfully.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        todoId: { type: "string", description: "Todo ID" },
+        result: {
+          type: "object",
+          description: "Final results of the work",
+          properties: {
+            summary: { type: "string", description: "Summary of what was accomplished" },
+            filesCreated: {
+              type: "array",
+              items: { type: "string" },
+              description: "New files that were created",
+            },
+            filesModified: {
+              type: "array",
+              items: { type: "string" },
+              description: "Existing files that were modified",
+            },
+            filesDeleted: {
+              type: "array",
+              items: { type: "string" },
+              description: "Files that were deleted",
+            },
+            testsAdded: { type: "number", description: "Number of tests added" },
+            testsPassed: { type: "boolean", description: "Whether tests passed" },
+            nextSteps: {
+              type: "array",
+              items: { type: "string" },
+              description: "Suggested follow-up tasks",
+            },
+            notes: { type: "string", description: "Additional notes or caveats" },
+          },
+        },
+      },
+      required: ["todoId"],
+    },
+  },
+  {
+    name: "threadcast_worker_fail",
+    description:
+      "Mark the Todo as failed (TANGLED). Records the failure reason and any partial progress. " +
+      "Call this when the work cannot be completed due to errors or blockers.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        todoId: { type: "string", description: "Todo ID" },
+        failure: {
+          type: "object",
+          description: "Information about the failure",
+          properties: {
+            reason: { type: "string", description: "Why the work failed" },
+            step: {
+              type: "string",
+              enum: ["ANALYSIS", "DESIGN", "IMPLEMENTATION", "VERIFICATION", "REVIEW", "INTEGRATION"],
+              description: "Step where failure occurred",
+            },
+            error: { type: "string", description: "Error message if any" },
+            partialProgress: { type: "string", description: "What was accomplished before failure" },
+            blockers: {
+              type: "array",
+              items: { type: "string" },
+              description: "Blockers that prevented completion",
+            },
+            canRetry: { type: "boolean", description: "Whether the task can be retried" },
+            retryHints: { type: "string", description: "Hints for retry if applicable" },
+          },
+          required: ["reason"],
+        },
+      },
+      required: ["todoId", "failure"],
+    },
+  },
+  // Context Analysis
+  {
+    name: "threadcast_analyze_mission_context",
+    description:
+      "Analyze a Mission's title and description to extract context metadata. " +
+      "Finds related modules, files, determines scope (frontend/backend/fullstack), " +
+      "matches tech stack, and suggests approach. " +
+      "Results are saved to the Mission's meta.analysis field.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        missionId: { type: "string", description: "Mission ID to analyze" },
+        saveToMeta: {
+          type: "boolean",
+          description: "If true (default), save analysis results to mission meta",
+          default: true,
+        },
+      },
+      required: ["missionId"],
+    },
+  },
+  {
+    name: "threadcast_analyze_todo_context",
+    description:
+      "Analyze a Todo's title and description to extract context metadata. " +
+      "Finds related files, determines scope, and suggests implementation approach. " +
+      "More granular than mission analysis - focuses on specific files to modify. " +
+      "Results are saved to the Todo's meta.analysis field.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        todoId: { type: "string", description: "Todo ID to analyze" },
+        saveToMeta: {
+          type: "boolean",
+          description: "If true (default), save analysis results to todo meta",
+          default: true,
+        },
+      },
+      required: ["todoId"],
+    },
+  },
+  {
+    name: "threadcast_analyze_text",
+    description:
+      "Analyze arbitrary text to extract context metadata without saving. " +
+      "Useful for previewing what context would be extracted before creating a Mission/Todo. " +
+      "Requires workspaceId to access project structure for file matching.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        workspaceId: { type: "string", description: "Workspace ID for project context" },
+        title: { type: "string", description: "Title text to analyze" },
+        description: { type: "string", description: "Description text to analyze" },
+      },
+      required: ["workspaceId", "description"],
+    },
+  },
+  // Knowledge Base
+  {
+    name: "threadcast_remember",
+    description:
+      "Explicitly save knowledge to the workspace's knowledge base. " +
+      "Use this when you learn something important that should persist across sessions. " +
+      "Examples: deployment procedures, credentials locations, coding conventions, architecture decisions. " +
+      "The knowledge will be available in effective-meta for all future work.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        workspaceId: { type: "string", description: "Workspace ID (optional, uses default)" },
+        topic: {
+          type: "string",
+          description: "Topic identifier (e.g., 'deployment', 'auth', 'conventions'). Use kebab-case.",
+        },
+        summary: {
+          type: "string",
+          description: "Brief summary of the knowledge (1-2 sentences)",
+        },
+        details: {
+          type: "object",
+          description: "Structured details as key-value pairs. Include actionable information.",
+          additionalProperties: true,
+        },
+        keywords: {
+          type: "array",
+          items: { type: "string" },
+          description: "Keywords for searching this knowledge later",
+        },
+        source: {
+          type: "string",
+          description: "Where this knowledge came from (e.g., 'AWS deployment task', 'user instruction')",
+        },
+      },
+      required: ["topic", "summary"],
+    },
+  },
+  {
+    name: "threadcast_learn_from_work",
+    description:
+      "Automatically extract and save knowledge from completed work. " +
+      "Analyzes the todo's meta (worker info, steps, result) and extracts reusable knowledge. " +
+      "Call this after completing important tasks that contain learnings for future reference.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        todoId: { type: "string", description: "Todo ID to learn from" },
+        additionalContext: {
+          type: "string",
+          description: "Additional context to include in the learning (optional)",
+        },
+      },
+      required: ["todoId"],
+    },
+  },
+  {
+    name: "threadcast_get_knowledge",
+    description:
+      "Get a specific knowledge entry by topic. " +
+      "Returns the full knowledge object including summary, details, and metadata.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        workspaceId: { type: "string", description: "Workspace ID (optional, uses default)" },
+        topic: { type: "string", description: "Topic identifier to retrieve" },
+      },
+      required: ["topic"],
+    },
+  },
+  {
+    name: "threadcast_list_knowledge",
+    description:
+      "List all knowledge entries in the workspace. " +
+      "Returns topic names with their summaries for quick overview.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        workspaceId: { type: "string", description: "Workspace ID (optional, uses default)" },
+      },
+    },
+  },
+  {
+    name: "threadcast_search_knowledge",
+    description:
+      "Search knowledge base by keywords. " +
+      "Returns matching knowledge entries sorted by relevance.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        workspaceId: { type: "string", description: "Workspace ID (optional, uses default)" },
+        query: { type: "string", description: "Search query (matches against keywords, topic, summary)" },
+      },
+      required: ["query"],
+    },
+  },
+  {
+    name: "threadcast_forget",
+    description:
+      "Remove a knowledge entry from the workspace. " +
+      "Use when knowledge is outdated or no longer relevant.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        workspaceId: { type: "string", description: "Workspace ID (optional, uses default)" },
+        topic: { type: "string", description: "Topic identifier to remove" },
+      },
+      required: ["topic"],
+    },
+  },
 ];
 
 // List Tools Handler
@@ -1237,6 +2698,633 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             ? `미션과 ${createResult.todos.length}개의 TODO가 생성되었습니다. ${createResult.questions.length}개의 AI 질문이 생성되어 사용자 응답을 기다리고 있습니다.`
             : `미션과 ${createResult.todos.length}개의 TODO가 생성되었습니다.`,
         };
+        break;
+      }
+
+      // Meta Management
+      case "threadcast_get_todo_meta":
+        result = await client.getTodoMeta(args?.todoId as string);
+        break;
+      case "threadcast_get_todo_effective_meta":
+        result = await client.getTodoEffectiveMeta(args?.todoId as string);
+        break;
+      case "threadcast_update_todo_meta":
+        result = await client.updateTodoMeta(
+          args?.todoId as string,
+          args?.meta as Record<string, unknown>,
+          args?.merge !== false // default to true
+        );
+        break;
+      case "threadcast_get_mission_meta":
+        result = await client.getMissionMeta(args?.missionId as string);
+        break;
+      case "threadcast_get_mission_effective_meta":
+        result = await client.getMissionEffectiveMeta(args?.missionId as string);
+        break;
+      case "threadcast_update_mission_meta":
+        result = await client.updateMissionMeta(
+          args?.missionId as string,
+          args?.meta as Record<string, unknown>,
+          args?.merge !== false // default to true
+        );
+        break;
+      case "threadcast_get_workspace_meta":
+        result = await client.getWorkspaceMeta(
+          (args?.workspaceId as string) || DEFAULT_WORKSPACE_ID
+        );
+        break;
+      case "threadcast_update_workspace_meta":
+        result = await client.updateWorkspaceMeta(
+          (args?.workspaceId as string) || DEFAULT_WORKSPACE_ID,
+          args?.meta as Record<string, unknown>,
+          args?.merge !== false // default to true
+        );
+        break;
+
+      // Project Scanning
+      case "threadcast_scan_workspace": {
+        const workspaceId = args?.workspaceId as string;
+        let scanPath = args?.path as string;
+
+        // If no path provided, get workspace path from API
+        if (!scanPath) {
+          const workspace = await client.getWorkspace(workspaceId);
+          scanPath = workspace.path;
+        }
+
+        if (!scanPath) {
+          throw new Error("No path provided and workspace has no configured path");
+        }
+
+        // Expand home directory
+        if (scanPath.startsWith("~")) {
+          scanPath = scanPath.replace("~", process.env.HOME || "");
+        }
+
+        // Scan the project
+        const scanner = new ProjectScanner(scanPath);
+        const projectMeta = await scanner.scan();
+
+        // Save to workspace meta
+        await client.updateWorkspaceMeta(
+          workspaceId,
+          projectMeta as unknown as Record<string, unknown>,
+          args?.merge !== false
+        );
+
+        result = {
+          message: `Workspace scanned successfully: ${scanPath}`,
+          meta: projectMeta,
+        };
+        break;
+      }
+
+      case "threadcast_scan_path": {
+        let scanPath = args?.path as string;
+
+        if (!scanPath) {
+          throw new Error("Path is required");
+        }
+
+        // Expand home directory
+        if (scanPath.startsWith("~")) {
+          scanPath = scanPath.replace("~", process.env.HOME || "");
+        }
+
+        // Scan the project
+        const scanner = new ProjectScanner(scanPath);
+        const projectMeta = await scanner.scan();
+
+        result = projectMeta;
+        break;
+      }
+
+      // AI Worker Flow
+      case "threadcast_worker_start": {
+        const todoId = args?.todoId as string;
+        const workerInfo = args?.workerInfo as Record<string, unknown> | undefined;
+
+        // 1. Load effective meta (full context)
+        const effectiveMeta = await client.getTodoEffectiveMeta(todoId);
+
+        // 2. Update todo status to THREADING
+        await client.updateTodoStatus(todoId, "THREADING");
+
+        // 3. Set first step to IN_PROGRESS
+        await client.updateStepStatus(todoId, "ANALYSIS", "IN_PROGRESS");
+
+        // 4. Record worker start in meta
+        const workerMeta: Record<string, unknown> = {
+          worker: {
+            startedAt: new Date().toISOString(),
+            status: "running",
+            currentStep: "ANALYSIS",
+            ...(workerInfo || {}),
+          },
+        };
+        await client.updateTodoMeta(todoId, workerMeta, true);
+
+        result = {
+          message: "Worker started successfully",
+          todoId,
+          status: "THREADING",
+          currentStep: "ANALYSIS",
+          context: effectiveMeta,
+        };
+        break;
+      }
+
+      case "threadcast_worker_step_progress": {
+        const todoId = args?.todoId as string;
+        const step = args?.step as string;
+        const progress = args?.progress as Record<string, unknown>;
+
+        // Update progress in meta
+        const progressMeta: Record<string, unknown> = {
+          worker: {
+            currentStep: step,
+            lastUpdate: new Date().toISOString(),
+          },
+          steps: {
+            [step]: {
+              progress,
+              updatedAt: new Date().toISOString(),
+            },
+          },
+        };
+        await client.updateTodoMeta(todoId, progressMeta, true);
+
+        result = {
+          message: `Progress updated for step ${step}`,
+          todoId,
+          step,
+          progress,
+        };
+        break;
+      }
+
+      case "threadcast_worker_step_complete": {
+        const todoId = args?.todoId as string;
+        const step = args?.step as string;
+        const stepResult = args?.result as Record<string, unknown> | undefined;
+        const nextStep = args?.nextStep as string | undefined;
+        const skipToComplete = args?.skipToComplete as boolean | undefined;
+
+        // 1. Mark current step as completed
+        await client.updateStepStatus(todoId, step, "COMPLETED");
+
+        // 2. Record step result in meta
+        const stepMeta: Record<string, unknown> = {
+          steps: {
+            [step]: {
+              status: "COMPLETED",
+              completedAt: new Date().toISOString(),
+              result: stepResult || {},
+            },
+          },
+        };
+
+        // 3. Determine and start next step
+        const stepOrder = ["ANALYSIS", "DESIGN", "IMPLEMENTATION", "VERIFICATION", "REVIEW", "INTEGRATION"];
+        const currentIndex = stepOrder.indexOf(step);
+        let actualNextStep: string | null = null;
+
+        if (skipToComplete) {
+          // Skip remaining steps
+          stepMeta.worker = {
+            currentStep: null,
+            status: "completing",
+          };
+        } else if (nextStep) {
+          actualNextStep = nextStep;
+        } else if (currentIndex < stepOrder.length - 1) {
+          actualNextStep = stepOrder[currentIndex + 1];
+        }
+
+        if (actualNextStep) {
+          await client.updateStepStatus(todoId, actualNextStep, "IN_PROGRESS");
+          stepMeta.worker = {
+            currentStep: actualNextStep,
+            lastUpdate: new Date().toISOString(),
+          };
+        }
+
+        await client.updateTodoMeta(todoId, stepMeta, true);
+
+        result = {
+          message: `Step ${step} completed`,
+          todoId,
+          completedStep: step,
+          nextStep: actualNextStep,
+          skipToComplete: skipToComplete || false,
+        };
+        break;
+      }
+
+      case "threadcast_worker_complete": {
+        const todoId = args?.todoId as string;
+        const finalResult = args?.result as Record<string, unknown> | undefined;
+
+        // 1. Record final result in meta
+        const completeMeta: Record<string, unknown> = {
+          worker: {
+            status: "completed",
+            completedAt: new Date().toISOString(),
+          },
+          result: {
+            ...(finalResult || {}),
+            completedAt: new Date().toISOString(),
+          },
+        };
+        await client.updateTodoMeta(todoId, completeMeta, true);
+
+        // 2. Update todo status to WOVEN
+        await client.updateTodoStatus(todoId, "WOVEN");
+
+        result = {
+          message: "Todo completed successfully",
+          todoId,
+          status: "WOVEN",
+          result: finalResult,
+        };
+        break;
+      }
+
+      case "threadcast_worker_fail": {
+        const todoId = args?.todoId as string;
+        const failure = args?.failure as Record<string, unknown>;
+
+        // 1. Record failure in meta
+        const failMeta: Record<string, unknown> = {
+          worker: {
+            status: "failed",
+            failedAt: new Date().toISOString(),
+          },
+          failure: {
+            ...failure,
+            failedAt: new Date().toISOString(),
+          },
+        };
+        await client.updateTodoMeta(todoId, failMeta, true);
+
+        // 2. Update todo status to TANGLED
+        await client.updateTodoStatus(todoId, "TANGLED");
+
+        result = {
+          message: "Todo marked as failed",
+          todoId,
+          status: "TANGLED",
+          failure,
+        };
+        break;
+      }
+
+      // Context Analysis
+      case "threadcast_analyze_mission_context": {
+        const missionId = args?.missionId as string;
+        const saveToMeta = args?.saveToMeta !== false;
+
+        // 1. Get mission details
+        const mission = await client.getMission(missionId);
+
+        // 2. Get workspace meta for project info
+        const workspaceMeta = await client.getWorkspaceMeta(mission.workspaceId);
+
+        // 3. Analyze
+        let projectPath = mission.workspacePath || workspaceMeta?.structure?.rootFiles ? "." : ".";
+        if (mission.workspacePath) {
+          projectPath = mission.workspacePath;
+          if (projectPath.startsWith("~")) {
+            projectPath = projectPath.replace("~", process.env.HOME || "");
+          }
+        }
+
+        const analyzer = new ContextAnalyzer(projectPath, workspaceMeta as ProjectMeta);
+        const analysis = await analyzer.analyzeDescription(
+          mission.description || "",
+          mission.title
+        );
+
+        // 4. Save to meta if requested
+        if (saveToMeta) {
+          await client.updateMissionMeta(missionId, { analysis }, true);
+        }
+
+        result = {
+          message: "Mission context analyzed",
+          missionId,
+          analysis,
+          savedToMeta: saveToMeta,
+        };
+        break;
+      }
+
+      case "threadcast_analyze_todo_context": {
+        const todoId = args?.todoId as string;
+        const saveToMeta = args?.saveToMeta !== false;
+
+        // 1. Get todo details with effective meta
+        const todo = await client.getTodo(todoId);
+        const effectiveMeta = await client.getTodoEffectiveMeta(todoId);
+
+        // 2. Get project path
+        let projectPath = todo.workingPath || effectiveMeta?.workingDir || ".";
+        if (projectPath.startsWith("~")) {
+          projectPath = projectPath.replace("~", process.env.HOME || "");
+        }
+
+        // 3. Analyze
+        const analyzer = new ContextAnalyzer(projectPath, effectiveMeta as ProjectMeta);
+        const analysis = await analyzer.analyzeDescription(
+          todo.description || "",
+          todo.title
+        );
+
+        // 4. Save to meta if requested
+        if (saveToMeta) {
+          await client.updateTodoMeta(todoId, { analysis }, true);
+        }
+
+        result = {
+          message: "Todo context analyzed",
+          todoId,
+          analysis,
+          savedToMeta: saveToMeta,
+        };
+        break;
+      }
+
+      case "threadcast_analyze_text": {
+        const workspaceId = args?.workspaceId as string;
+        const title = args?.title as string;
+        const description = args?.description as string;
+
+        // 1. Get workspace info
+        const workspace = await client.getWorkspace(workspaceId);
+        const workspaceMeta = await client.getWorkspaceMeta(workspaceId);
+
+        // 2. Get project path
+        let projectPath = workspace.path || ".";
+        if (projectPath.startsWith("~")) {
+          projectPath = projectPath.replace("~", process.env.HOME || "");
+        }
+
+        // 3. Analyze
+        const analyzer = new ContextAnalyzer(projectPath, workspaceMeta as ProjectMeta);
+        const analysis = await analyzer.analyzeDescription(description, title);
+
+        result = {
+          message: "Text analyzed",
+          analysis,
+        };
+        break;
+      }
+
+      // Knowledge Base
+      case "threadcast_remember": {
+        const workspaceId = (args?.workspaceId as string) || DEFAULT_WORKSPACE_ID;
+        const topic = args?.topic as string;
+        const summary = args?.summary as string;
+        const details = args?.details as Record<string, unknown> | undefined;
+        const keywords = args?.keywords as string[] | undefined;
+        const source = args?.source as string | undefined;
+
+        // Get current workspace meta
+        const currentMeta = await client.getWorkspaceMeta(workspaceId);
+        const knowledge = (currentMeta as Record<string, unknown>)?.knowledge as Record<string, unknown> || {};
+
+        // Add/update knowledge entry
+        knowledge[topic] = {
+          summary,
+          details: details || {},
+          keywords: keywords || [],
+          source: source || "manual",
+          learnedAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+
+        // Save to workspace meta
+        await client.updateWorkspaceMeta(workspaceId, { knowledge }, true);
+
+        result = {
+          message: `Knowledge saved: ${topic}`,
+          topic,
+          knowledge: knowledge[topic],
+        };
+        break;
+      }
+
+      case "threadcast_learn_from_work": {
+        const todoId = args?.todoId as string;
+        const additionalContext = args?.additionalContext as string | undefined;
+
+        // Get todo with its meta
+        const todo = await client.getTodo(todoId);
+        const todoMeta = await client.getTodoMeta(todoId);
+        const effectiveMeta = await client.getTodoEffectiveMeta(todoId);
+
+        // Extract knowledge from the work
+        const workerInfo = (todoMeta as Record<string, unknown>)?.worker as Record<string, unknown> || {};
+        const steps = (todoMeta as Record<string, unknown>)?.steps as Record<string, unknown> || {};
+        const workResult = (todoMeta as Record<string, unknown>)?.result as Record<string, unknown> || {};
+
+        // Build knowledge entry
+        const topicBase = todo.title
+          .toLowerCase()
+          .replace(/[^a-z0-9가-힣\s]/g, "")
+          .replace(/\s+/g, "-")
+          .substring(0, 30);
+        const topic = `learned-${topicBase}`;
+
+        const details: Record<string, unknown> = {};
+
+        // Extract from result
+        if (workResult.filesModified) {
+          details.filesModified = workResult.filesModified;
+        }
+        if (workResult.filesCreated) {
+          details.filesCreated = workResult.filesCreated;
+        }
+        if (workResult.nextSteps) {
+          details.suggestedNextSteps = workResult.nextSteps;
+        }
+
+        // Extract from steps
+        const stepSummaries: Record<string, string> = {};
+        for (const [stepName, stepData] of Object.entries(steps)) {
+          const stepInfo = stepData as Record<string, unknown>;
+          if (stepInfo.result) {
+            const stepResult = stepInfo.result as Record<string, unknown>;
+            if (stepResult.summary) {
+              stepSummaries[stepName] = stepResult.summary as string;
+            }
+          }
+        }
+        if (Object.keys(stepSummaries).length > 0) {
+          details.stepSummaries = stepSummaries;
+        }
+
+        // Add additional context
+        if (additionalContext) {
+          details.additionalContext = additionalContext;
+        }
+
+        // Build summary
+        const summary = workResult.summary as string ||
+          `${todo.title} 작업 완료. ${Object.keys(stepSummaries).length}개 단계 수행.`;
+
+        // Extract keywords from todo title and description
+        const keywords = [
+          ...todo.title.split(/\s+/).filter((w: string) => w.length > 2),
+          ...(todo.description?.split(/\s+/).filter((w: string) => w.length > 3) || []),
+        ].slice(0, 10);
+
+        // Get workspace ID from effective meta
+        const workspaceId = (effectiveMeta as Record<string, unknown>)?.workspaceId as string || DEFAULT_WORKSPACE_ID;
+
+        // Save knowledge
+        const currentMeta = await client.getWorkspaceMeta(workspaceId);
+        const knowledge = (currentMeta as Record<string, unknown>)?.knowledge as Record<string, unknown> || {};
+
+        knowledge[topic] = {
+          summary,
+          details,
+          keywords,
+          source: `Todo: ${todo.title} (${todoId})`,
+          missionId: todo.missionId,
+          learnedAt: new Date().toISOString(),
+        };
+
+        await client.updateWorkspaceMeta(workspaceId, { knowledge }, true);
+
+        result = {
+          message: `Knowledge extracted and saved: ${topic}`,
+          topic,
+          knowledge: knowledge[topic],
+        };
+        break;
+      }
+
+      case "threadcast_get_knowledge": {
+        const workspaceId = (args?.workspaceId as string) || DEFAULT_WORKSPACE_ID;
+        const topic = args?.topic as string;
+
+        const currentMeta = await client.getWorkspaceMeta(workspaceId);
+        const knowledge = (currentMeta as Record<string, unknown>)?.knowledge as Record<string, unknown> || {};
+
+        if (!knowledge[topic]) {
+          result = {
+            message: `Knowledge not found: ${topic}`,
+            topic,
+            found: false,
+          };
+        } else {
+          result = {
+            message: `Knowledge found: ${topic}`,
+            topic,
+            found: true,
+            knowledge: knowledge[topic],
+          };
+        }
+        break;
+      }
+
+      case "threadcast_list_knowledge": {
+        const workspaceId = (args?.workspaceId as string) || DEFAULT_WORKSPACE_ID;
+
+        const currentMeta = await client.getWorkspaceMeta(workspaceId);
+        const knowledge = (currentMeta as Record<string, unknown>)?.knowledge as Record<string, unknown> || {};
+
+        const entries = Object.entries(knowledge).map(([topic, data]) => {
+          const entry = data as Record<string, unknown>;
+          return {
+            topic,
+            summary: entry.summary,
+            keywords: entry.keywords,
+            learnedAt: entry.learnedAt,
+            source: entry.source,
+          };
+        });
+
+        result = {
+          message: `Found ${entries.length} knowledge entries`,
+          count: entries.length,
+          entries,
+        };
+        break;
+      }
+
+      case "threadcast_search_knowledge": {
+        const workspaceId = (args?.workspaceId as string) || DEFAULT_WORKSPACE_ID;
+        const query = (args?.query as string).toLowerCase();
+
+        const currentMeta = await client.getWorkspaceMeta(workspaceId);
+        const knowledge = (currentMeta as Record<string, unknown>)?.knowledge as Record<string, unknown> || {};
+
+        const matches: Array<{ topic: string; score: number; knowledge: unknown }> = [];
+
+        for (const [topic, data] of Object.entries(knowledge)) {
+          const entry = data as Record<string, unknown>;
+          let score = 0;
+
+          // Match topic
+          if (topic.toLowerCase().includes(query)) {
+            score += 10;
+          }
+
+          // Match summary
+          if ((entry.summary as string)?.toLowerCase().includes(query)) {
+            score += 5;
+          }
+
+          // Match keywords
+          const keywords = entry.keywords as string[] || [];
+          for (const kw of keywords) {
+            if (kw.toLowerCase().includes(query) || query.includes(kw.toLowerCase())) {
+              score += 3;
+            }
+          }
+
+          if (score > 0) {
+            matches.push({ topic, score, knowledge: entry });
+          }
+        }
+
+        // Sort by score
+        matches.sort((a, b) => b.score - a.score);
+
+        result = {
+          message: `Found ${matches.length} matching entries for "${query}"`,
+          query,
+          count: matches.length,
+          matches: matches.slice(0, 10), // Limit to top 10
+        };
+        break;
+      }
+
+      case "threadcast_forget": {
+        const workspaceId = (args?.workspaceId as string) || DEFAULT_WORKSPACE_ID;
+        const topic = args?.topic as string;
+
+        const currentMeta = await client.getWorkspaceMeta(workspaceId);
+        const knowledge = (currentMeta as Record<string, unknown>)?.knowledge as Record<string, unknown> || {};
+
+        if (!knowledge[topic]) {
+          result = {
+            message: `Knowledge not found: ${topic}`,
+            topic,
+            deleted: false,
+          };
+        } else {
+          delete knowledge[topic];
+          await client.updateWorkspaceMeta(workspaceId, { knowledge }, false); // Replace entirely
+
+          result = {
+            message: `Knowledge deleted: ${topic}`,
+            topic,
+            deleted: true,
+          };
+        }
         break;
       }
 

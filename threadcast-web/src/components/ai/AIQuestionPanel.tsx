@@ -17,8 +17,14 @@ export function AIQuestionPanel() {
     answerQuestion(questionId, answer);
   };
 
-  // Generate options based on question category
+  // Get options from question data or provide default options
   const getOptionsForQuestion = (question: typeof questions[0]) => {
+    // Use options from API if available
+    if (question.options && question.options.length > 0) {
+      return question.options;
+    }
+
+    // Fallback: Generate contextual options based on question text
     if (question.question.includes('라이브러리')) {
       return [
         { id: 'chartjs', label: 'Chart.js', description: '가볍고 간단한 차트에 적합' },
@@ -40,6 +46,7 @@ export function AIQuestionPanel() {
         { id: 'optional', label: '사용자 선택', description: '사용자가 추가 정보 저장 여부 선택' },
       ];
     }
+    // Default options for unknown questions
     return [
       { id: 'option1', label: '옵션 1', description: '첫 번째 선택지' },
       { id: 'option2', label: '옵션 2', description: '두 번째 선택지' },
@@ -109,7 +116,13 @@ export function AIQuestionPanel() {
                   question={question.question}
                   context={question.context}
                   todoId={question.todoId}
-                  priority={question.category === 'ARCHITECTURE' ? 'high' : 'medium'}
+                  priority={
+                    question.category === 'ARCHITECTURE' || question.category === 'SECURITY' || question.category === 'RISK'
+                      ? 'high'
+                      : question.category === 'DESIGN_DECISION' || question.category === 'TECHNICAL'
+                        ? 'medium'
+                        : 'low'
+                  }
                   options={getOptionsForQuestion(question)}
                   onAnswer={handleAnswer}
                   onSkip={() => skipQuestion(question.id)}

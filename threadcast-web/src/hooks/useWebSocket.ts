@@ -1,7 +1,7 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { Client, IMessage } from '@stomp/stompjs';
-import { useMissionStore, useTodoStore, useTimelineStore, useAuthStore } from '../stores';
-import type { Mission, Todo, TimelineEvent, StepProgressUpdate } from '../types';
+import { useMissionStore, useTodoStore, useTimelineStore, useAuthStore, useAIQuestionStore } from '../stores';
+import type { Mission, Todo, TimelineEvent, StepProgressUpdate, AIQuestion } from '../types';
 import { DEMO_MODE } from '../services/api';
 
 // WebSocket connects directly to backend (not through Vite proxy)
@@ -18,6 +18,7 @@ export function useWebSocket(workspaceId: string | null) {
   const { onMissionCreated, onMissionUpdated, onMissionDeleted } = useMissionStore();
   const { onTodoCreated, onTodoUpdated, onTodoDeleted, onStepProgress } = useTodoStore();
   const { onNewEvent } = useTimelineStore();
+  const { onQuestionCreated, onQuestionAnswered } = useAIQuestionStore();
 
   const handleMissionMessage = useCallback((message: IMessage) => {
     const data = JSON.parse(message.body) as WebSocketMessage<Mission>;
@@ -64,6 +65,20 @@ export function useWebSocket(workspaceId: string | null) {
     onNewEvent(event);
   }, [onNewEvent]);
 
+  const handleAIQuestionMessage = useCallback((message: IMessage) => {
+    const data = JSON.parse(message.body) as WebSocketMessage<AIQuestion & { missionId?: string; missionTitle?: string; todoTitle?: string }>;
+    switch (data.type) {
+      case 'CREATED':
+      case 'AI_QUESTION_CREATED':
+        onQuestionCreated(data.payload);
+        break;
+      case 'ANSWERED':
+      case 'AI_QUESTION_ANSWERED':
+        onQuestionAnswered(data.payload.id);
+        break;
+    }
+  }, [onQuestionCreated, onQuestionAnswered]);
+
   useEffect(() => {
     // Skip WebSocket in demo mode
     if (DEMO_MODE || !isAuthenticated || !workspaceId) return;
@@ -86,6 +101,8 @@ export function useWebSocket(workspaceId: string | null) {
       client.subscribe(`/topic/workspace/${workspaceId}/missions`, handleMissionMessage);
       client.subscribe(`/topic/workspace/${workspaceId}/todos`, handleTodoMessage);
       client.subscribe(`/topic/workspace/${workspaceId}/timeline`, handleTimelineMessage);
+      // Subscribe to AI questions topic
+      client.subscribe(`/topic/ai/questions/${workspaceId}`, handleAIQuestionMessage);
       // Subscribe to mission topics for step progress (broad subscription)
       client.subscribe(`/topic/missions/*`, handleStepProgressMessage);
     };
@@ -104,7 +121,7 @@ export function useWebSocket(workspaceId: string | null) {
       client.deactivate();
       clientRef.current = null;
     };
-  }, [isAuthenticated, workspaceId, handleMissionMessage, handleTodoMessage, handleTimelineMessage, handleStepProgressMessage]);
+  }, [isAuthenticated, workspaceId, handleMissionMessage, handleTodoMessage, handleTimelineMessage, handleStepProgressMessage, handleAIQuestionMessage]);
 
   return clientRef.current;
 }

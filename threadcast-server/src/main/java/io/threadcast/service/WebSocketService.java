@@ -94,6 +94,17 @@ public class WebSocketService {
         messagingTemplate.convertAndSend("/topic/timeline/" + workspaceId, event);
     }
 
+    /**
+     * Notify timeline event for a specific todo.
+     * Used for AI activity updates during weaving.
+     */
+    public void notifyTodoTimelineEvent(UUID todoId, TimelineEvent timelineEvent) {
+        Map<String, Object> event = createEvent("TIMELINE_EVENT", TimelineEventResponse.from(timelineEvent));
+        messagingTemplate.convertAndSend("/topic/todos/" + todoId + "/timeline", event);
+        // Also send to main todo topic for UI updates
+        messagingTemplate.convertAndSend("/topic/todos/" + todoId, event);
+    }
+
     public void notifyQuestionCreated(UUID workspaceId, AIQuestion question) {
         Map<String, Object> event = createEvent("AI_QUESTION_CREATED", AIQuestionResponse.from(question));
         messagingTemplate.convertAndSend("/topic/ai/questions/" + workspaceId, event);
@@ -114,6 +125,40 @@ public class WebSocketService {
         Map<String, Object> event = createEvent("STEP_PROGRESS", progress);
         messagingTemplate.convertAndSend("/topic/missions/" + missionId, event);
         messagingTemplate.convertAndSend("/topic/todos/" + progress.getTodoId(), event);
+    }
+
+    /**
+     * Notify that a todo is now ready to start (all dependencies met).
+     */
+    public void notifyTodoReadyToStart(UUID missionId, Todo todo) {
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("todoId", todo.getId());
+        payload.put("missionId", missionId);
+        payload.put("title", todo.getTitle());
+        payload.put("status", todo.getStatus());
+
+        Map<String, Object> event = createEvent("TODO_READY_TO_START", payload);
+        messagingTemplate.convertAndSend("/topic/missions/" + missionId, event);
+        log.info("Notified todo ready to start: {} ({})", todo.getTitle(), todo.getId());
+    }
+
+    /**
+     * Notify that a todo's dependencies have changed.
+     */
+    public void notifyTodoDependenciesChanged(UUID missionId, Todo todo) {
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("todoId", todo.getId());
+        payload.put("missionId", missionId);
+        payload.put("dependencyIds", todo.getDependencies().stream()
+                .map(Todo::getId)
+                .toList());
+        payload.put("isBlocked", todo.isBlocked());
+        payload.put("isReadyToStart", todo.isReadyToStart());
+
+        Map<String, Object> event = createEvent("TODO_DEPENDENCIES_CHANGED", payload);
+        messagingTemplate.convertAndSend("/topic/missions/" + missionId, event);
+        messagingTemplate.convertAndSend("/topic/todos/" + todo.getId(), event);
+        log.info("Notified todo dependencies changed: {} ({})", todo.getTitle(), todo.getId());
     }
 
     private Map<String, Object> createEvent(String eventType, Object payload) {

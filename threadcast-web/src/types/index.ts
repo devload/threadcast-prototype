@@ -9,7 +9,9 @@ export type ActorType = 'AI' | 'USER' | 'SYSTEM';
 export type EventType =
   | 'MISSION_CREATED' | 'MISSION_STARTED' | 'MISSION_COMPLETED' | 'MISSION_ARCHIVED'
   | 'TODO_CREATED' | 'TODO_STARTED' | 'TODO_COMPLETED' | 'TODO_FAILED'
-  | 'STEP_COMPLETED' | 'AI_QUESTION' | 'AI_ANSWER' | 'COMMENT_ADDED';
+  | 'STEP_COMPLETED' | 'AI_QUESTION' | 'AI_ANSWER' | 'COMMENT_ADDED'
+  | 'AI_ACTIVITY'  // AI work activity/response summary
+  | 'TODO_READY_TO_START' | 'TODO_DEPENDENCIES_CHANGED';  // Dependency orchestration events
 
 // Entities
 export interface User {
@@ -39,6 +41,7 @@ export interface WorkspaceStats {
   completedMissionCount: number;
   totalTodoCount: number;
   activeTodoCount: number;
+  pendingQuestionCount?: number;
 }
 
 export interface ProjectSummary {
@@ -74,13 +77,16 @@ export interface Project {
 export interface Mission {
   id: string;
   workspaceId: string;
+  workspacePath?: string;
   title: string;
   description?: string;
   status: MissionStatus;
   priority: Priority;
   progress: number;
+  estimatedTime?: number;
   todoStats: TodoStats;
   tags?: string[];
+  autoStartEnabled?: boolean;  // Auto-start next todo when one completes
   createdAt: string;
   startedAt?: string;
   completedAt?: string;
@@ -111,11 +117,20 @@ export interface Todo {
   actualTime?: number;
   orderIndex: number;
   steps: TodoStep[];
-  dependencies: string[];
+  dependencies: TodoDependency[];  // Changed from string[] to TodoDependency[]
+  dependentIds?: string[];         // Todos that depend on this one
+  isBlocked?: boolean;             // Has unmet dependencies
+  isReadyToStart?: boolean;        // PENDING with all dependencies met
   aiContext?: string;
   createdAt: string;
   startedAt?: string;
   completedAt?: string;
+}
+
+export interface TodoDependency {
+  id: string;
+  title: string;
+  status: TodoStatus;
 }
 
 export interface TodoStep {
@@ -164,12 +179,25 @@ export interface TimelineEvent {
   createdAt: string;
 }
 
+export type QuestionCategory =
+  | 'ARCHITECTURE' | 'IMPLEMENTATION' | 'CONFIGURATION' | 'SECURITY' | 'NAMING' | 'OTHER'
+  | 'CLARIFICATION' | 'DESIGN_DECISION' | 'PRIORITY' | 'SCOPE' | 'TECHNICAL' | 'RISK';
+
+export interface AIQuestionOption {
+  id: string;
+  label: string;
+  description?: string;
+}
+
 export interface AIQuestion {
   id: string;
   todoId: string;
+  todoTitle?: string;
   question: string;
   context?: string;
   status: 'PENDING' | 'ANSWERED';
+  category?: QuestionCategory;
+  options?: AIQuestionOption[];
   createdAt: string;
 }
 

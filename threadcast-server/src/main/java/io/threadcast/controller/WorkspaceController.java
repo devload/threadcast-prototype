@@ -95,6 +95,145 @@ public class WorkspaceController {
         return ResponseEntity.ok(ApiResponse.success(WorkspaceResponse.from(workspace)));
     }
 
+    /**
+     * Get workspace settings including autonomy level.
+     * Used by PM Agent to determine how autonomous AI should be.
+     */
+    @GetMapping("/{id}/settings")
+    public ResponseEntity<ApiResponse<WorkspaceSettingsResponse>> getSettings(@PathVariable UUID id) {
+        Workspace workspace = workspaceRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Workspace not found: " + id));
+
+        return ResponseEntity.ok(ApiResponse.success(new WorkspaceSettingsResponse(
+                workspace.getId(),
+                workspace.getAutonomy(),
+                workspace.getMeta()
+        )));
+    }
+
+    /**
+     * Update workspace settings.
+     */
+    @PutMapping("/{id}/settings")
+    public ResponseEntity<ApiResponse<WorkspaceSettingsResponse>> updateSettings(
+            @PathVariable UUID id,
+            @RequestBody UpdateSettingsRequest request) {
+        Workspace workspace = workspaceRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Workspace not found: " + id));
+
+        if (request.autonomy() != null) {
+            // Validate autonomy range 0-100
+            int autonomy = Math.max(0, Math.min(100, request.autonomy()));
+            workspace.setAutonomy(autonomy);
+        }
+        if (request.meta() != null) {
+            workspace.setMeta(request.meta());
+        }
+
+        workspace = workspaceRepository.save(workspace);
+        return ResponseEntity.ok(ApiResponse.success(new WorkspaceSettingsResponse(
+                workspace.getId(),
+                workspace.getAutonomy(),
+                workspace.getMeta()
+        )));
+    }
+
+    /**
+     * Get workspace meta.
+     */
+    @GetMapping("/{id}/meta")
+    public ResponseEntity<ApiResponse<java.util.Map<String, Object>>> getMeta(@PathVariable UUID id) {
+        Workspace workspace = workspaceRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Workspace not found: " + id));
+        if (workspace.getMeta() == null || workspace.getMeta().isEmpty()) {
+            return ResponseEntity.ok(ApiResponse.success(java.util.Map.of()));
+        }
+        try {
+            com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+            java.util.Map<String, Object> meta = mapper.readValue(workspace.getMeta(),
+                    new com.fasterxml.jackson.core.type.TypeReference<java.util.Map<String, Object>>() {});
+            return ResponseEntity.ok(ApiResponse.success(meta));
+        } catch (Exception e) {
+            return ResponseEntity.ok(ApiResponse.success(java.util.Map.of()));
+        }
+    }
+
+    /**
+     * Update workspace meta.
+     */
+    @PatchMapping("/{id}/meta")
+    @Transactional
+    public ResponseEntity<ApiResponse<java.util.Map<String, Object>>> updateMeta(
+            @PathVariable UUID id,
+            @RequestBody UpdateMetaRequest request) {
+        Workspace workspace = workspaceRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Workspace not found: " + id));
+
+        java.util.Map<String, Object> newMeta;
+        com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+
+        if (Boolean.TRUE.equals(request.replace())) {
+            newMeta = request.meta();
+        } else {
+            // Parse existing meta and merge
+            java.util.Map<String, Object> existingMeta = java.util.Map.of();
+            if (workspace.getMeta() != null && !workspace.getMeta().isEmpty()) {
+                try {
+                    existingMeta = mapper.readValue(workspace.getMeta(),
+                            new com.fasterxml.jackson.core.type.TypeReference<java.util.Map<String, Object>>() {});
+                } catch (Exception e) {
+                    // Ignore parse errors
+                }
+            }
+            newMeta = deepMerge(existingMeta, request.meta());
+        }
+
+        try {
+            workspace.setMeta(mapper.writeValueAsString(newMeta));
+        } catch (Exception e) {
+            workspace.setMeta("{}");
+        }
+        workspaceRepository.save(workspace);
+
+        return ResponseEntity.ok(ApiResponse.success(newMeta));
+    }
+
+    @SuppressWarnings("unchecked")
+    private java.util.Map<String, Object> deepMerge(java.util.Map<String, Object> base, java.util.Map<String, Object> override) {
+        java.util.Map<String, Object> result = new java.util.HashMap<>(base);
+        for (var entry : override.entrySet()) {
+            String key = entry.getKey();
+            Object overrideValue = entry.getValue();
+            Object baseValue = result.get(key);
+
+            if (baseValue instanceof java.util.Map && overrideValue instanceof java.util.Map) {
+                result.put(key, deepMerge(
+                        (java.util.Map<String, Object>) baseValue,
+                        (java.util.Map<String, Object>) overrideValue
+                ));
+            } else {
+                result.put(key, overrideValue);
+            }
+        }
+        return result;
+    }
+
+    public record UpdateMetaRequest(
+            java.util.Map<String, Object> meta,
+            Boolean replace
+    ) {}
+
+    public record WorkspaceSettingsResponse(
+            UUID id,
+            Integer autonomy,
+            String meta
+    ) {}
+
+    public record UpdateSettingsRequest(
+            Integer autonomy,
+            String meta
+    ) {}
+
     private UUID getUserIdFromToken(String authHeader) {
         String token = authHeader.replace("Bearer ", "");
         return jwtTokenProvider.getUserIdFromToken(token);

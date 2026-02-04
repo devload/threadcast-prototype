@@ -18,3 +18,12 @@ export * from './todo';
 
 // Timeline components
 export * from './timeline';
+
+// Dashboard components
+export * from './dashboard';
+
+// Search components
+export * from './search';
+
+// Onboarding components
+export * from './onboarding';

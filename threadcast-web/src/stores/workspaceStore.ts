@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { Workspace, Project } from '../types';
+import { Workspace, Project, ProjectDashboard } from '../types';
 import { api } from '../services/api';
 
 interface WorkspaceState {
@@ -8,6 +8,7 @@ interface WorkspaceState {
   currentWorkspace: Workspace | null;
   projects: Project[];
   currentProject: Project | null;
+  currentProjectDashboard: ProjectDashboard | null;
   isLoading: boolean;
   error: string | null;
 
@@ -21,6 +22,7 @@ interface WorkspaceState {
   // Projects
   fetchProjects: (workspaceId: string) => Promise<void>;
   fetchProject: (workspaceId: string, projectId: string) => Promise<void>;
+  fetchProjectDashboard: (workspaceId: string, projectId: string) => Promise<void>;
   setCurrentProject: (project: Project | null) => void;
   createProject: (workspaceId: string, data: CreateProjectData) => Promise<Project>;
   updateProject: (workspaceId: string, projectId: string, data: Partial<CreateProjectData>) => Promise<void>;
@@ -42,6 +44,7 @@ export const useWorkspaceStore = create<WorkspaceState>()(
       currentWorkspace: null,
       projects: [],
       currentProject: null,
+      currentProjectDashboard: null,
       isLoading: false,
       error: null,
 
@@ -140,6 +143,19 @@ export const useWorkspaceStore = create<WorkspaceState>()(
           set({ currentProject: project, isLoading: false });
         } catch (error: unknown) {
           const message = error instanceof Error ? error.message : 'Failed to fetch project';
+          set({ error: message, isLoading: false });
+        }
+      },
+
+      fetchProjectDashboard: async (workspaceId: string, projectId: string) => {
+        set({ isLoading: true, error: null });
+        try {
+          const dashboard = await api.get<ProjectDashboard>(
+            `/workspaces/${workspaceId}/projects/${projectId}/dashboard`
+          );
+          set({ currentProjectDashboard: dashboard, isLoading: false });
+        } catch (error: unknown) {
+          const message = error instanceof Error ? error.message : 'Failed to fetch project dashboard';
           set({ error: message, isLoading: false });
         }
       },

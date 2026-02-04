@@ -2,7 +2,7 @@ import { api } from './api';
 import type { TimelineEvent, EventType, PageResponse } from '../types';
 
 export interface TimelineParams {
-  workspaceId: string;
+  workspaceId?: string;
   missionId?: string;
   todoId?: string;
   eventTypes?: EventType[];

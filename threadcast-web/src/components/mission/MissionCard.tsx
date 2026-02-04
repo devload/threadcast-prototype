@@ -2,6 +2,20 @@ import { clsx } from 'clsx';
 import { MoreHorizontal, CheckSquare } from 'lucide-react';
 import type { Mission, MissionStatus, Priority } from '../../types';
 
+// Strip markdown syntax for plain text preview
+function stripMarkdown(text: string): string {
+  return text
+    .replace(/^#{1,6}\s+/gm, '')      // Remove headers (## )
+    .replace(/^\s*[-*+]\s+/gm, '')    // Remove list items (- )
+    .replace(/\*\*([^*]+)\*\*/g, '$1') // Remove bold
+    .replace(/\*([^*]+)\*/g, '$1')    // Remove italic
+    .replace(/`([^`]+)`/g, '$1')      // Remove inline code
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1') // Remove links
+    .replace(/\n{2,}/g, ' ')          // Replace multiple newlines with space
+    .replace(/\n/g, ' ')              // Replace single newlines with space
+    .trim();
+}
+
 interface MissionCardProps {
   mission: Mission;
   onClick?: () => void;
@@ -107,7 +121,7 @@ export function MissionCard({
       {/* Description */}
       {description && (
         <p className="text-[13px] text-slate-500 dark:text-slate-400 mb-3 line-clamp-2 leading-relaxed break-words">
-          {description}
+          {stripMarkdown(description)}
         </p>
       )}
 
