@@ -1201,8 +1201,19 @@ class ThreadCastClient {
     recentActivity: string[];
     summary: string;
   }> {
-    // 1. Get workspace info and meta
-    const workspace = await this.getWorkspace(workspaceId);
+    // 1. Get workspace info and meta (use listWorkspaces as fallback if getWorkspace fails)
+    let workspace: { id: string; name: string; path?: string };
+    try {
+      workspace = await this.getWorkspace(workspaceId);
+    } catch {
+      // Fallback: find workspace from list
+      const workspaces = await this.listWorkspaces();
+      const found = workspaces.find((w: { id: string }) => w.id === workspaceId);
+      if (!found) {
+        throw new Error(`Workspace not found: ${workspaceId}`);
+      }
+      workspace = found;
+    }
     const workspaceMeta = await this.getWorkspaceMeta(workspaceId);
 
     // 2. Find current active mission (THREADING status)
