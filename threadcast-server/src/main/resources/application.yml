@@ -1,9 +1,19 @@
+# ============================================================================
+# ThreadCast Server Configuration
+# ============================================================================
+# Profiles:
+#   - local: 로컬 개발 (PostgreSQL Docker, port 21000, Mock OAuth)
+#   - prod:  프로덕션 (AWS RDS, port 8080, SessionCast OAuth)
+#   - dev:   빠른 테스트 (H2 인메모리, port 21000)
+#   - demo:  데모용 (H2 + 샘플 데이터)
+# ============================================================================
+
 spring:
   application:
     name: threadcast-server
 
   profiles:
-    active: local  # Changed to use PostgreSQL by default
+    active: local
 
   jpa:
     open-in-view: false
@@ -12,38 +22,33 @@ spring:
         format_sql: true
         default_batch_fetch_size: 100
 
+# Default server port (overridden by prod profile)
 server:
   port: 21000
 
-# JWT Configuration
+# JWT Configuration (overridden by prod profile)
 jwt:
   secret: threadcast-secret-key-for-jwt-token-generation-must-be-at-least-256-bits-long
   access-token-expiration: 86400000   # 24 hours
   refresh-token-expiration: 604800000 # 7 days
 
-# SessionCast Configuration
+# SessionCast Relay Configuration (shared)
 sessioncast:
-  # OAuth Configuration
-  oauth:
-    auth-url: https://auth.sessioncast.io
-    client-id: threadcast
-    redirect-uri: http://localhost:5173/auth/callback
-  # Terminal streaming
   relay:
     url: wss://relay.sessioncast.io/ws
     token: ${SESSIONCAST_TOKEN:dev@localhost}
   agent:
     machine-id: threadcast-server
     label: ThreadCast Server
-    auto-connect: false  # Manual connect when needed
+    auto-connect: false
     auto-stream-on-create: true
 
-# ThreadCast Hub - Central orchestration agent
+# ThreadCast Hub (overridden by prod profile)
 threadcast:
   hub:
-    auto-start: true  # Auto-start hub on server startup
+    auto-start: true
 
-# Logging
+# Default Logging
 logging:
   level:
     io.threadcast: DEBUG
@@ -51,8 +56,18 @@ logging:
     org.springframework.security: DEBUG
     org.hibernate.SQL: DEBUG
 
+# ============================================================================
+# LOCAL Profile - 로컬 개발 환경
+# ============================================================================
+# - PostgreSQL: Docker (localhost:5432)
+# - Port: 21000
+# - OAuth: Mock Server (localhost:22081)
+# - Hub: Auto-start enabled (tmux 필요)
+#
+# 실행: ./gradlew bootRun (또는 SPRING_PROFILES_ACTIVE=local)
+# 필요: docker-compose up -d (PostgreSQL)
+# ============================================================================
 ---
-# Local Development Profile - PostgreSQL in Docker
 spring:
   config:
     activate:
@@ -76,45 +91,34 @@ spring:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
 
-# Local Auth Server (Mock Login)
+# Local Mock OAuth Server
 sessioncast:
   oauth:
     auth-url: http://localhost:22081
     client-id: threadcast
     redirect-uri: http://localhost:21002/auth/callback
 
+# ============================================================================
+# PROD Profile - 프로덕션 환경 (AWS)
+# ============================================================================
+# - PostgreSQL: AWS RDS
+# - Port: 8080
+# - OAuth: SessionCast Production (auth.sessioncast.io)
+# - Hub: Disabled (tmux 없음)
+#
+# 필수 환경변수:
+#   - DB_HOST, DB_PORT, DB_NAME, DB_USERNAME, DB_PASSWORD
+#   - JWT_SECRET
+#   - SPRING_PROFILES_ACTIVE=prod
+# ============================================================================
 ---
-# H2 In-Memory Profile - for quick testing without Docker
-spring:
-  config:
-    activate:
-      on-profile: dev
-
-  datasource:
-    url: jdbc:h2:mem:threadcast;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
-    driver-class-name: org.h2.Driver
-    username: sa
-    password:
-
-  h2:
-    console:
-      enabled: true
-      path: /h2-console
-
-  jpa:
-    hibernate:
-      ddl-auto: create-drop
-    show-sql: true
-
----
-# Production Profile
 spring:
   config:
     activate:
       on-profile: prod
 
   datasource:
-    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:threadcast}
+    url: jdbc:postgresql://${DB_HOST}:${DB_PORT:5432}/${DB_NAME:threadcast}
     driver-class-name: org.postgresql.Driver
     username: ${DB_USERNAME}
     password: ${DB_PASSWORD}
@@ -148,7 +152,7 @@ sessioncast:
     client-id: threadcast
     redirect-uri: https://threadcast.io/auth/callback
 
-# Disable Hub auto-start in production (no tmux)
+# Disable Hub (no tmux on EC2)
 threadcast:
   hub:
     auto-start: false
@@ -157,10 +161,49 @@ logging:
   level:
     io.threadcast: INFO
     org.springframework.web: WARN
+    org.springframework.security: WARN
     org.hibernate.SQL: WARN
 
+# ============================================================================
+# DEV Profile - 빠른 테스트용 (H2 인메모리)
+# ============================================================================
+# - H2: 인메모리 (서버 재시작 시 초기화)
+# - Port: 21000
+# - H2 Console: http://localhost:21000/h2-console
+#
+# 실행: SPRING_PROFILES_ACTIVE=dev ./gradlew bootRun
+# ============================================================================
 ---
-# Demo Profile - includes sample data
+spring:
+  config:
+    activate:
+      on-profile: dev
+
+  datasource:
+    url: jdbc:h2:mem:threadcast;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: true
+
+# ============================================================================
+# DEMO Profile - 데모/프레젠테이션용
+# ============================================================================
+# - H2: 인메모리 + 샘플 데이터 (DevDataInitializer)
+# - Port: 21000
+#
+# 실행: SPRING_PROFILES_ACTIVE=demo ./gradlew bootRun
+# ============================================================================
+---
 spring:
   config:
     activate:
@@ -189,44 +232,8 @@ logging:
     org.springframework.security: INFO
     org.hibernate.SQL: WARN
 
-# Demo user credentials
 demo:
   user:
     email: demo@threadcast.io
     password: demo1234
     name: Demo User
-
----
-# SessionCast Profile - File-based H2 for persistent development
-spring:
-  config:
-    activate:
-      on-profile: sessioncast
-
-  datasource:
-    url: jdbc:h2:file:./data/threadcast-sessioncast;DB_CLOSE_DELAY=-1;AUTO_SERVER=TRUE
-    driver-class-name: org.h2.Driver
-    username: sa
-    password:
-
-  h2:
-    console:
-      enabled: true
-      path: /h2-console
-
-  jpa:
-    hibernate:
-      ddl-auto: update
-    show-sql: false
-
-logging:
-  level:
-    io.threadcast: INFO
-    org.springframework.web: INFO
-    org.hibernate.SQL: WARN
-
-# SessionCast workspace for ThreadCast development
-sessioncast:
-  workspace:
-    name: SessionCast Development
-    description: ThreadCast 개발용 워크스페이스
