@@ -1,0 +1,220 @@
+spring:
+  application:
+    name: threadcast-server
+
+  profiles:
+    active: local  # Changed to use PostgreSQL by default
+
+  jpa:
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+        default_batch_fetch_size: 100
+
+server:
+  port: 21000
+
+# JWT Configuration
+jwt:
+  secret: threadcast-secret-key-for-jwt-token-generation-must-be-at-least-256-bits-long
+  access-token-expiration: 86400000   # 24 hours
+  refresh-token-expiration: 604800000 # 7 days
+
+# SessionCast Configuration
+sessioncast:
+  # OAuth Configuration
+  oauth:
+    auth-url: https://auth.sessioncast.io
+    client-id: threadcast
+    redirect-uri: http://localhost:5173/auth/callback
+  # Terminal streaming
+  relay:
+    url: wss://relay.sessioncast.io/ws
+    token: ${SESSIONCAST_TOKEN:dev@localhost}
+  agent:
+    machine-id: threadcast-server
+    label: ThreadCast Server
+    auto-connect: false  # Manual connect when needed
+    auto-stream-on-create: true
+
+# ThreadCast Hub - Central orchestration agent
+threadcast:
+  hub:
+    auto-start: true  # Auto-start hub on server startup
+
+# Logging
+logging:
+  level:
+    io.threadcast: DEBUG
+    org.springframework.web: INFO
+    org.springframework.security: DEBUG
+    org.hibernate.SQL: DEBUG
+
+---
+# Local Development Profile - PostgreSQL in Docker
+spring:
+  config:
+    activate:
+      on-profile: local
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/threadcast
+    driver-class-name: org.postgresql.Driver
+    username: threadcast
+    password: threadcast123
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 5
+      connection-timeout: 30000
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+# Local Auth Server (Mock Login)
+sessioncast:
+  oauth:
+    auth-url: http://localhost:22081
+    client-id: threadcast
+    redirect-uri: http://localhost:21002/auth/callback
+
+---
+# H2 In-Memory Profile - for quick testing without Docker
+spring:
+  config:
+    activate:
+      on-profile: dev
+
+  datasource:
+    url: jdbc:h2:mem:threadcast;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: true
+
+---
+# Production Profile
+spring:
+  config:
+    activate:
+      on-profile: prod
+
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:threadcast}
+    driver-class-name: org.postgresql.Driver
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 5
+      connection-timeout: 30000
+
+  h2:
+    console:
+      enabled: false
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+server:
+  port: 8080
+
+jwt:
+  secret: ${JWT_SECRET}
+
+logging:
+  level:
+    io.threadcast: INFO
+    org.springframework.web: WARN
+    org.hibernate.SQL: WARN
+
+---
+# Demo Profile - includes sample data
+spring:
+  config:
+    activate:
+      on-profile: demo
+
+  datasource:
+    url: jdbc:h2:mem:threadcast-demo;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false
+
+logging:
+  level:
+    io.threadcast: INFO
+    org.springframework.web: INFO
+    org.springframework.security: INFO
+    org.hibernate.SQL: WARN
+
+# Demo user credentials
+demo:
+  user:
+    email: demo@threadcast.io
+    password: demo1234
+    name: Demo User
+
+---
+# SessionCast Profile - File-based H2 for persistent development
+spring:
+  config:
+    activate:
+      on-profile: sessioncast
+
+  datasource:
+    url: jdbc:h2:file:./data/threadcast-sessioncast;DB_CLOSE_DELAY=-1;AUTO_SERVER=TRUE
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+
+logging:
+  level:
+    io.threadcast: INFO
+    org.springframework.web: INFO
+    org.hibernate.SQL: WARN
+
+# SessionCast workspace for ThreadCast development
+sessioncast:
+  workspace:
+    name: SessionCast Development
+    description: ThreadCast 개발용 워크스페이스
