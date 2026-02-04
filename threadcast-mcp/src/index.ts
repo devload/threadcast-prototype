@@ -2976,12 +2976,22 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
               const workspaceId = (mission as { workspaceId?: string }).workspaceId;
 
               if (workspaceId) {
+                // Get existing workspace meta to properly merge arrays
+                const existingMeta = await client.getWorkspaceMeta(workspaceId);
+                const existingContext = (existingMeta as { projectContext?: Record<string, string[]> })?.projectContext || {};
+
+                // Helper to merge arrays and remove duplicates
+                const mergeArrays = (existing: string[] | undefined, newItems: string[] | undefined): string[] => {
+                  const combined = [...(existing || []), ...(newItems || [])];
+                  return [...new Set(combined)];
+                };
+
                 // Accumulate learnings in workspace meta under 'projectContext'
                 const projectContext: Record<string, unknown> = {};
-                if (learnings.patterns?.length) projectContext.patterns = learnings.patterns;
-                if (learnings.conventions?.length) projectContext.conventions = learnings.conventions;
-                if (learnings.architecture?.length) projectContext.architecture = learnings.architecture;
-                if (learnings.dependencies?.length) projectContext.dependencies = learnings.dependencies;
+                if (learnings.patterns?.length) projectContext.patterns = mergeArrays(existingContext.patterns, learnings.patterns);
+                if (learnings.conventions?.length) projectContext.conventions = mergeArrays(existingContext.conventions, learnings.conventions);
+                if (learnings.architecture?.length) projectContext.architecture = mergeArrays(existingContext.architecture, learnings.architecture);
+                if (learnings.dependencies?.length) projectContext.dependencies = mergeArrays(existingContext.dependencies, learnings.dependencies);
 
                 if (Object.keys(projectContext).length > 0) {
                   await client.updateWorkspaceMeta(workspaceId, { projectContext }, true);
@@ -3060,13 +3070,23 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
               const workspaceId = (mission as { workspaceId?: string }).workspaceId;
 
               if (workspaceId) {
+                // Get existing workspace meta to properly merge arrays
+                const existingMeta = await client.getWorkspaceMeta(workspaceId);
+                const existingContext = (existingMeta as { projectContext?: Record<string, string[]> })?.projectContext || {};
+
+                // Helper to merge arrays and remove duplicates
+                const mergeArrays = (existing: string[] | undefined, newItems: string[] | undefined): string[] => {
+                  const combined = [...(existing || []), ...(newItems || [])];
+                  return [...new Set(combined)];
+                };
+
                 // Accumulate learnings in workspace meta under 'projectContext'
                 const projectContext: Record<string, unknown> = {};
-                if (learnings.patterns?.length) projectContext.patterns = learnings.patterns;
-                if (learnings.conventions?.length) projectContext.conventions = learnings.conventions;
-                if (learnings.architecture?.length) projectContext.architecture = learnings.architecture;
-                if (learnings.dependencies?.length) projectContext.dependencies = learnings.dependencies;
-                if (learnings.tips?.length) projectContext.tips = learnings.tips;
+                if (learnings.patterns?.length) projectContext.patterns = mergeArrays(existingContext.patterns, learnings.patterns);
+                if (learnings.conventions?.length) projectContext.conventions = mergeArrays(existingContext.conventions, learnings.conventions);
+                if (learnings.architecture?.length) projectContext.architecture = mergeArrays(existingContext.architecture, learnings.architecture);
+                if (learnings.dependencies?.length) projectContext.dependencies = mergeArrays(existingContext.dependencies, learnings.dependencies);
+                if (learnings.tips?.length) projectContext.tips = mergeArrays(existingContext.tips, learnings.tips);
 
                 if (Object.keys(projectContext).length > 0) {
                   await client.updateWorkspaceMeta(workspaceId, { projectContext }, true);
