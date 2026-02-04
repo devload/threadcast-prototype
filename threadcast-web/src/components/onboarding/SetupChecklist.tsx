@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useOnboardingStore } from './OnboardingStore';
+import { ClaudeCodeWizard } from './ClaudeCodeWizard';
 
 interface SetupChecklistProps {
   onStartTour: () => void;
@@ -44,11 +45,11 @@ export function SetupChecklist({ onStartTour, onOpenSettings: _onOpenSettings }:
     },
     {
       key: 'mcpConnected' as const,
-      title: 'MCP 서버 연결',
-      description: 'Claude Code에서 ThreadCast MCP 서버를 설정하세요',
-      icon: '🔌',
+      title: 'Claude Code 연동',
+      description: 'Claude Code에서 ThreadCast와 연결하여 AI 작업을 관리하세요',
+      icon: '🤖',
       action: () => setShowGuide('mcp'),
-      actionLabel: '설정 방법 보기',
+      actionLabel: '설정 가이드 보기',
     },
     {
       key: 'workspaceCreated' as const,
@@ -193,7 +194,7 @@ export function SetupChecklist({ onStartTour, onOpenSettings: _onOpenSettings }:
         />
       )}
       {showGuide === 'mcp' && (
-        <McpGuideModal
+        <ClaudeCodeWizard
           onClose={() => setShowGuide(null)}
           onComplete={() => {
             completeSetupStep('mcpConnected');
@@ -707,107 +708,3 @@ function SwiftCastGuideModal({ onClose, onComplete }: { onClose: () => void; onC
   );
 }
 
-function McpGuideModal({ onClose, onComplete }: { onClose: () => void; onComplete: () => void }) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-      <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl max-w-2xl w-full mx-4 max-h-[80vh] overflow-hidden">
-        {/* Header */}
-        <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-slate-900 dark:text-white flex items-center gap-2">
-            <span>🔌</span> MCP 서버 연결 가이드
-          </h2>
-          <button
-            onClick={onClose}
-            className="p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
-          >
-            <svg className="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-
-        {/* Content */}
-        <div className="p-6 overflow-y-auto max-h-[60vh]">
-          <div className="space-y-6">
-            {/* Step 1 */}
-            <div>
-              <h3 className="font-medium text-slate-900 dark:text-white mb-2 flex items-center gap-2">
-                <span className="w-6 h-6 rounded-full bg-indigo-100 dark:bg-indigo-900 text-indigo-600 dark:text-indigo-400 text-sm flex items-center justify-center font-bold">1</span>
-                Claude Code 설정 파일 열기
-              </h3>
-              <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">
-                터미널에서 다음 명령어를 실행하세요:
-              </p>
-              <pre className="bg-slate-900 text-slate-100 p-3 rounded-lg text-sm overflow-x-auto">
-                <code>code ~/.claude/claude_desktop_config.json</code>
-              </pre>
-            </div>
-
-            {/* Step 2 */}
-            <div>
-              <h3 className="font-medium text-slate-900 dark:text-white mb-2 flex items-center gap-2">
-                <span className="w-6 h-6 rounded-full bg-indigo-100 dark:bg-indigo-900 text-indigo-600 dark:text-indigo-400 text-sm flex items-center justify-center font-bold">2</span>
-                MCP 서버 설정 추가
-              </h3>
-              <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">
-                다음 내용을 추가하세요:
-              </p>
-              <pre className="bg-slate-900 text-slate-100 p-3 rounded-lg text-sm overflow-x-auto">
-                <code>{`{
-  "mcpServers": {
-    "threadcast": {
-      "command": "npx",
-      "args": ["-y", "threadcast-mcp"],
-      "env": {
-        "THREADCAST_API_URL": "https://api.threadcast.io",
-        "THREADCAST_TOKEN": "<your-token>"
-      }
-    }
-  }
-}`}</code>
-              </pre>
-            </div>
-
-            {/* Step 3 */}
-            <div>
-              <h3 className="font-medium text-slate-900 dark:text-white mb-2 flex items-center gap-2">
-                <span className="w-6 h-6 rounded-full bg-indigo-100 dark:bg-indigo-900 text-indigo-600 dark:text-indigo-400 text-sm flex items-center justify-center font-bold">3</span>
-                토큰 발급받기
-              </h3>
-              <p className="text-sm text-slate-600 dark:text-slate-400">
-                설정 페이지에서 API 토큰을 발급받아 위 설정의 <code className="bg-slate-100 dark:bg-slate-700 px-1 rounded">&lt;your-token&gt;</code> 부분을 교체하세요.
-              </p>
-            </div>
-
-            {/* Step 4 */}
-            <div>
-              <h3 className="font-medium text-slate-900 dark:text-white mb-2 flex items-center gap-2">
-                <span className="w-6 h-6 rounded-full bg-indigo-100 dark:bg-indigo-900 text-indigo-600 dark:text-indigo-400 text-sm flex items-center justify-center font-bold">4</span>
-                Claude Code 재시작
-              </h3>
-              <p className="text-sm text-slate-600 dark:text-slate-400">
-                설정을 저장한 후 Claude Code를 재시작하면 ThreadCast MCP가 연결됩니다.
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Footer */}
-        <div className="px-6 py-4 border-t border-slate-200 dark:border-slate-700 flex justify-end gap-3">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
-          >
-            나중에
-          </button>
-          <button
-            onClick={onComplete}
-            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors"
-          >
-            설정 완료했어요
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
