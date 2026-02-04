@@ -1193,6 +1193,131 @@ class ThreadCastClient {
     return res.data.data;
   }
 
+  // Session Context - aggregates current work state for context recovery
+  async getSessionContext(workspaceId: string): Promise<{
+    workspace: { id: string; name: string; path?: string; projectContext?: Record<string, unknown> };
+    currentMission?: { id: string; title: string; status: string; progress: number; description?: string };
+    currentTodo?: { id: string; title: string; status: string; currentStep?: string; recentProgress: string[] };
+    recentActivity: string[];
+    summary: string;
+  }> {
+    // 1. Get workspace info and meta
+    const workspace = await this.getWorkspace(workspaceId);
+    const workspaceMeta = await this.getWorkspaceMeta(workspaceId);
+
+    // 2. Find current active mission (THREADING status)
+    const missionsRes = await this.client.get(`/missions?workspaceId=${workspaceId}&status=THREADING&page=0&size=1`);
+    const missions = missionsRes.data.data?.content || [];
+    let currentMission = missions[0] || null;
+
+    // If no THREADING mission, check for most recent BACKLOG
+    if (!currentMission) {
+      const backlogRes = await this.client.get(`/missions?workspaceId=${workspaceId}&status=BACKLOG&page=0&size=1`);
+      const backlogMissions = backlogRes.data.data?.content || [];
+      currentMission = backlogMissions[0] || null;
+    }
+
+    // 3. Find current active todo (THREADING status)
+    let currentTodo = null;
+    let recentProgress: string[] = [];
+
+    if (currentMission) {
+      const todosRes = await this.client.get(`/todos?missionId=${currentMission.id}`);
+      const todos = todosRes.data.data || [];
+
+      // Find THREADING todo
+      currentTodo = todos.find((t: { status: string }) => t.status === "THREADING") || null;
+
+      // If no THREADING, find most recent one
+      if (!currentTodo && todos.length > 0) {
+        currentTodo = todos[0];
+      }
+
+      // Get todo meta for progress info
+      if (currentTodo) {
+        try {
+          const todoMeta = await this.getTodoMeta(currentTodo.id);
+          const steps = todoMeta?.steps || {};
+
+          // Extract progress from completed steps
+          for (const [stepName, stepData] of Object.entries(steps)) {
+            const data = stepData as { status?: string; result?: { summary?: string } };
+            if (data.status === "COMPLETED" && data.result?.summary) {
+              recentProgress.push(`${stepName}: ${data.result.summary}`);
+            }
+          }
+        } catch {
+          // Ignore meta fetch errors
+        }
+      }
+    }
+
+    // 4. Get recent timeline events
+    const recentActivity: string[] = [];
+    try {
+      const timelineRes = await this.client.get(`/timeline?workspaceId=${workspaceId}&limit=5`);
+      const events = timelineRes.data.data || [];
+      for (const event of events) {
+        const timeAgo = this.getTimeAgo(new Date(event.createdAt));
+        recentActivity.push(`${event.eventType}: ${event.title || event.description || ''} - ${timeAgo}`);
+      }
+    } catch {
+      // Timeline might not be available
+    }
+
+    // 5. Generate summary
+    let summary = "";
+    if (currentMission && currentTodo) {
+      const stepInfo = currentTodo.currentStep ? `, 현재 단계: ${currentTodo.currentStep}` : "";
+      summary = `미션 "${currentMission.title}" 진행 중 (${currentMission.progress}%). ` +
+        `현재 Todo: "${currentTodo.title}" (${currentTodo.status}${stepInfo}).`;
+      if (recentProgress.length > 0) {
+        summary += ` 최근 진행: ${recentProgress[recentProgress.length - 1]}`;
+      }
+    } else if (currentMission) {
+      summary = `미션 "${currentMission.title}" 대기 중. Todo 작업을 시작하세요.`;
+    } else {
+      summary = "진행 중인 미션이 없습니다. 새 미션을 생성하거나 기존 미션을 시작하세요.";
+    }
+
+    return {
+      workspace: {
+        id: workspaceId,
+        name: workspace.name,
+        path: workspace.path,
+        projectContext: workspaceMeta?.projectContext,
+      },
+      currentMission: currentMission ? {
+        id: currentMission.id,
+        title: currentMission.title,
+        status: currentMission.status,
+        progress: currentMission.progress,
+        description: currentMission.description,
+      } : undefined,
+      currentTodo: currentTodo ? {
+        id: currentTodo.id,
+        title: currentTodo.title,
+        status: currentTodo.status,
+        currentStep: currentTodo.currentStep,
+        recentProgress,
+      } : undefined,
+      recentActivity,
+      summary,
+    };
+  }
+
+  private getTimeAgo(date: Date): string {
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    if (diffMins < 1) return "방금 전";
+    if (diffMins < 60) return `${diffMins}분 전`;
+    const diffHours = Math.floor(diffMins / 60);
+    if (diffHours < 24) return `${diffHours}시간 전`;
+    const diffDays = Math.floor(diffHours / 24);
+    return `${diffDays}일 전`;
+  }
+
   // AI Mission Generation
   async generateMissionFromPrompt(prompt: string): Promise<GeneratedMission> {
     const lowerPrompt = prompt.toLowerCase();
@@ -2163,6 +2288,25 @@ const tools = [
       required: ["meta"],
     },
   },
+  // Session Context - for context recovery after compaction
+  {
+    name: "threadcast_get_session_context",
+    description:
+      "Get current session context for context recovery after compaction. " +
+      "Returns aggregated information about: current workspace (with projectContext), " +
+      "active mission and todo, recent progress, and a summary of what was being worked on. " +
+      "Call this after context compaction to restore your working state.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        workspaceId: {
+          type: "string",
+          description: "Workspace ID to get session context for",
+        },
+      },
+      required: ["workspaceId"],
+    },
+  },
   // Project Scanning
   {
     name: "threadcast_scan_workspace",
@@ -2820,6 +2964,15 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           args?.merge !== false // default to true
         );
         break;
+
+      case "threadcast_get_session_context": {
+        const workspaceId = args?.workspaceId as string;
+        if (!workspaceId) {
+          throw new Error("workspaceId is required for get_session_context");
+        }
+        result = await client.getSessionContext(workspaceId);
+        break;
+      }
 
       // Project Scanning
       case "threadcast_scan_workspace": {

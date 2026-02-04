@@ -1,17 +1,29 @@
 package io.threadcast.controller;
 
+import io.threadcast.domain.Mission;
+import io.threadcast.domain.Todo;
+import io.threadcast.domain.TimelineEvent;
 import io.threadcast.domain.Workspace;
+import io.threadcast.domain.enums.MissionStatus;
+import io.threadcast.domain.enums.TodoStatus;
 import io.threadcast.dto.response.ApiResponse;
 import io.threadcast.dto.response.WorkspaceResponse;
 import io.threadcast.exception.NotFoundException;
+import io.threadcast.repository.MissionRepository;
+import io.threadcast.repository.TimelineEventRepository;
 import io.threadcast.repository.WorkspaceRepository;
 import io.threadcast.security.JwtTokenProvider;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.Duration;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @RestController
@@ -20,6 +32,8 @@ import java.util.UUID;
 public class WorkspaceController {
 
     private final WorkspaceRepository workspaceRepository;
+    private final MissionRepository missionRepository;
+    private final TimelineEventRepository timelineEventRepository;
     private final JwtTokenProvider jwtTokenProvider;
 
     @GetMapping
@@ -157,6 +171,170 @@ public class WorkspaceController {
             return ResponseEntity.ok(ApiResponse.success(java.util.Map.of()));
         }
     }
+
+    /**
+     * Get session context for context recovery after compaction.
+     * Returns aggregated information about current work state.
+     */
+    @GetMapping("/{id}/session-context")
+    @Transactional(readOnly = true)
+    public ResponseEntity<ApiResponse<SessionContextResponse>> getSessionContext(@PathVariable UUID id) {
+        Workspace workspace = workspaceRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Workspace not found: " + id));
+
+        // Parse workspace meta for projectContext
+        Map<String, Object> projectContext = Map.of();
+        if (workspace.getMeta() != null && !workspace.getMeta().isEmpty()) {
+            try {
+                com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+                Map<String, Object> meta = mapper.readValue(workspace.getMeta(),
+                        new com.fasterxml.jackson.core.type.TypeReference<Map<String, Object>>() {});
+                if (meta.containsKey("projectContext")) {
+                    projectContext = (Map<String, Object>) meta.get("projectContext");
+                }
+            } catch (Exception e) {
+                // Ignore parse errors
+            }
+        }
+
+        // Find current active mission (THREADING first, then BACKLOG)
+        Mission currentMission = missionRepository.findByWorkspaceIdAndStatus(id, MissionStatus.THREADING,
+                        PageRequest.of(0, 1))
+                .getContent().stream().findFirst().orElse(null);
+        if (currentMission == null) {
+            currentMission = missionRepository.findByWorkspaceIdAndStatus(id, MissionStatus.BACKLOG,
+                            PageRequest.of(0, 1))
+                    .getContent().stream().findFirst().orElse(null);
+        }
+
+        // Find current active todo
+        Todo currentTodo = null;
+        List<String> recentProgress = new ArrayList<>();
+        if (currentMission != null) {
+            currentTodo = currentMission.getTodos().stream()
+                    .filter(t -> t.getStatus() == TodoStatus.THREADING)
+                    .findFirst()
+                    .orElse(currentMission.getTodos().stream().findFirst().orElse(null));
+
+            // Extract recent progress from todo meta
+            if (currentTodo != null && currentTodo.getMeta() != null) {
+                try {
+                    com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+                    Map<String, Object> todoMeta = mapper.readValue(currentTodo.getMeta(),
+                            new com.fasterxml.jackson.core.type.TypeReference<Map<String, Object>>() {});
+                    if (todoMeta.containsKey("steps")) {
+                        Map<String, Object> steps = (Map<String, Object>) todoMeta.get("steps");
+                        for (var entry : steps.entrySet()) {
+                            Map<String, Object> stepData = (Map<String, Object>) entry.getValue();
+                            if ("COMPLETED".equals(stepData.get("status"))) {
+                                Map<String, Object> result = (Map<String, Object>) stepData.get("result");
+                                if (result != null && result.containsKey("summary")) {
+                                    recentProgress.add(entry.getKey() + ": " + result.get("summary"));
+                                }
+                            }
+                        }
+                    }
+                } catch (Exception e) {
+                    // Ignore
+                }
+            }
+        }
+
+        // Get recent timeline events
+        List<String> recentActivity = new ArrayList<>();
+        try {
+            List<TimelineEvent> events = timelineEventRepository.findByWorkspaceIdOrderByCreatedAtDesc(id,
+                    PageRequest.of(0, 5)).getContent();
+            for (TimelineEvent event : events) {
+                String timeAgo = getTimeAgo(event.getCreatedAt());
+                recentActivity.add(event.getEventType() + ": " + event.getDescription() + " - " + timeAgo);
+            }
+        } catch (Exception e) {
+            // Timeline might not be available
+        }
+
+        // Generate summary
+        String summary;
+        if (currentMission != null && currentTodo != null) {
+            String stepInfo = currentTodo.getCurrentStep() != null ?
+                    ", 현재 단계: " + currentTodo.getCurrentStep() : "";
+            summary = String.format("미션 \"%s\" 진행 중 (%d%%). 현재 Todo: \"%s\" (%s%s).",
+                    currentMission.getTitle(),
+                    currentMission.getProgress(),
+                    currentTodo.getTitle(),
+                    currentTodo.getStatus(),
+                    stepInfo);
+            if (!recentProgress.isEmpty()) {
+                summary += " 최근 진행: " + recentProgress.get(recentProgress.size() - 1);
+            }
+        } else if (currentMission != null) {
+            summary = String.format("미션 \"%s\" 대기 중. Todo 작업을 시작하세요.", currentMission.getTitle());
+        } else {
+            summary = "진행 중인 미션이 없습니다. 새 미션을 생성하거나 기존 미션을 시작하세요.";
+        }
+
+        return ResponseEntity.ok(ApiResponse.success(new SessionContextResponse(
+                new WorkspaceInfo(workspace.getId(), workspace.getName(), workspace.getPath(), projectContext),
+                currentMission != null ? new MissionInfo(
+                        currentMission.getId(),
+                        currentMission.getTitle(),
+                        currentMission.getStatus().name(),
+                        currentMission.getProgress(),
+                        currentMission.getDescription()
+                ) : null,
+                currentTodo != null ? new TodoInfo(
+                        currentTodo.getId(),
+                        currentTodo.getTitle(),
+                        currentTodo.getStatus().name(),
+                        currentTodo.getCurrentStep() != null ? currentTodo.getCurrentStep().name() : null,
+                        recentProgress
+                ) : null,
+                recentActivity,
+                summary
+        )));
+    }
+
+    private String getTimeAgo(LocalDateTime dateTime) {
+        Duration duration = Duration.between(dateTime, LocalDateTime.now());
+        long minutes = duration.toMinutes();
+        if (minutes < 1) return "방금 전";
+        if (minutes < 60) return minutes + "분 전";
+        long hours = duration.toHours();
+        if (hours < 24) return hours + "시간 전";
+        long days = duration.toDays();
+        return days + "일 전";
+    }
+
+    public record SessionContextResponse(
+            WorkspaceInfo workspace,
+            MissionInfo currentMission,
+            TodoInfo currentTodo,
+            List<String> recentActivity,
+            String summary
+    ) {}
+
+    public record WorkspaceInfo(
+            UUID id,
+            String name,
+            String path,
+            Map<String, Object> projectContext
+    ) {}
+
+    public record MissionInfo(
+            UUID id,
+            String title,
+            String status,
+            Integer progress,
+            String description
+    ) {}
+
+    public record TodoInfo(
+            UUID id,
+            String title,
+            String status,
+            String currentStep,
+            List<String> recentProgress
+    ) {}
 
     /**
      * Update workspace meta.
