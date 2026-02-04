@@ -26,6 +26,17 @@ spring:
 server:
   port: 21000
 
+# Actuator endpoints
+management:
+  endpoints:
+    web:
+      base-path: /api
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: when-authorized
+
 # JWT Configuration (overridden by prod profile)
 jwt:
   secret: threadcast-secret-key-for-jwt-token-generation-must-be-at-least-256-bits-long
