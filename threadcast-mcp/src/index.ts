@@ -1338,22 +1338,26 @@ class ThreadCastClient {
       template.keywords.some((keyword) => lowerPrompt.includes(keyword.toLowerCase()))
     );
 
-    const template = matchedTemplate || DEFAULT_MISSION_TEMPLATE;
-
-    // Customize title if default template
-    let title = template.title;
-    let description = template.description;
-
-    if (!matchedTemplate) {
-      title = prompt.length > 50 ? prompt.substring(0, 47) + "..." : prompt;
-      description = `## 목표\n${prompt}\n\n## 요구사항\n- 상세 요구사항 분석 필요\n- 설계 및 구현\n- 테스트 및 검증`;
+    // If template found, use it
+    if (matchedTemplate) {
+      return {
+        title: matchedTemplate.title,
+        description: matchedTemplate.description,
+        priority: matchedTemplate.priority,
+        suggestedTodos: matchedTemplate.todos,
+      };
     }
+
+    // No template matched - use default template
+    // Note: AI question generation is handled by PM Agent (Claude Code), not here
+    const title = prompt.length > 50 ? prompt.substring(0, 47) + "..." : prompt;
+    const description = `## 목표\n${prompt}\n\n## 요구사항\n- 상세 요구사항 분석 필요\n- 설계 및 구현\n- 테스트 및 검증`;
 
     return {
       title,
       description,
-      priority: template.priority,
-      suggestedTodos: template.todos,
+      priority: "MEDIUM",
+      suggestedTodos: DEFAULT_MISSION_TEMPLATE.todos,
     };
   }
 
@@ -1799,6 +1803,11 @@ const DEFAULT_MISSION_TEMPLATE: MissionTemplate = {
     },
   ],
 };
+
+// ============================================
+// Note: AI question generation is handled by PM Agent (Claude Code)
+// The MCP provides basic tools, Claude Code analyzes prompts and generates questions
+// ============================================
 
 // MCP Server
 const client = new ThreadCastClient();

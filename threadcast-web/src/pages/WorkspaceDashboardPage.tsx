@@ -4,6 +4,7 @@ import { Home, Settings, RefreshCw } from 'lucide-react';
 import { useWorkspaceStore } from '../stores/workspaceStore';
 import { useMissionStore } from '../stores/missionStore';
 import { useUIStore } from '../stores/uiStore';
+import { useAIQuestionStore } from '../stores/aiQuestionStore';
 import { useTranslation } from '../hooks/useTranslation';
 import { Button } from '../components/common/Button';
 
@@ -13,6 +14,7 @@ export const WorkspaceDashboardPage = () => {
   const { workspaceId: urlWorkspaceId } = useParams<{ workspaceId: string }>();
   const { currentWorkspace, fetchWorkspaceDashboard, isLoading } = useWorkspaceStore();
   const { fetchMissions } = useMissionStore();
+  const { fetchQuestions } = useAIQuestionStore();
   const { currentWorkspaceId, setCurrentWorkspaceId } = useUIStore();
 
   // Use URL workspaceId or fallback to store
@@ -29,8 +31,9 @@ export const WorkspaceDashboardPage = () => {
     if (currentWorkspace?.id) {
       fetchWorkspaceDashboard(currentWorkspace.id);
       fetchMissions(currentWorkspace.id);
+      fetchQuestions(currentWorkspace.id);
     }
-  }, [currentWorkspace?.id, fetchWorkspaceDashboard, fetchMissions]);
+  }, [currentWorkspace?.id, fetchWorkspaceDashboard, fetchMissions, fetchQuestions]);
 
   if (!currentWorkspace) {
     return (

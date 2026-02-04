@@ -1,5 +1,5 @@
 import { useEffect, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import {
   DashboardGrid,
   DashboardGridItem,
@@ -23,20 +23,31 @@ import type { Mission } from '../types';
 export function UserDashboardPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const { workspaceId: urlWorkspaceId } = useParams<{ workspaceId: string }>();
   const { user } = useAuthStore();
-  const { currentWorkspaceId } = useUIStore();
+  const { currentWorkspaceId, setCurrentWorkspaceId } = useUIStore();
   const { missions, isLoading: missionsLoading, fetchMissions } = useMissionStore();
   const { events, isLoading: timelineLoading, fetchEvents } = useTimelineStore();
   const { questions: aiQuestions, fetchQuestions } = useAIQuestionStore();
 
+  // Sync URL workspaceId with store
+  useEffect(() => {
+    if (urlWorkspaceId && urlWorkspaceId !== currentWorkspaceId) {
+      setCurrentWorkspaceId(urlWorkspaceId);
+    }
+  }, [urlWorkspaceId, currentWorkspaceId, setCurrentWorkspaceId]);
+
+  // Use URL workspaceId or fallback to store
+  const workspaceId = urlWorkspaceId || currentWorkspaceId;
+
   // Fetch data on mount
   useEffect(() => {
-    if (currentWorkspaceId) {
-      fetchMissions(currentWorkspaceId);
-      fetchEvents({ workspaceId: currentWorkspaceId, size: 10 });
-      fetchQuestions(currentWorkspaceId);
+    if (workspaceId) {
+      fetchMissions(workspaceId);
+      fetchEvents({ workspaceId, size: 10 });
+      fetchQuestions(workspaceId);
     }
-  }, [currentWorkspaceId, fetchMissions, fetchEvents, fetchQuestions]);
+  }, [workspaceId, fetchMissions, fetchEvents, fetchQuestions]);
 
   // Calculate dashboard stats
   const stats = useMemo(() => {
