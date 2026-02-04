@@ -903,10 +903,28 @@ class ContextAnalyzer {
 
 // ThreadCast API Configuration
 const API_BASE_URL = process.env.THREADCAST_API_URL || "http://localhost:21000/api";
-const DEFAULT_WORKSPACE_ID = process.env.THREADCAST_WORKSPACE_ID || "default";
+const DEFAULT_WORKSPACE_ID: string | null = process.env.THREADCAST_WORKSPACE_ID || null;
 const AUTH_EMAIL = process.env.THREADCAST_EMAIL || "test@threadcast.io";
 const AUTH_PASSWORD = process.env.THREADCAST_PASSWORD || "test1234";
 const AUTH_TOKEN = process.env.THREADCAST_TOKEN || ""; // Direct token for OAuth users
+
+/**
+ * 워크스페이스 ID를 가져옵니다.
+ * 파라미터로 전달되지 않고 환경변수도 설정되지 않은 경우 명확한 에러를 반환합니다.
+ */
+function getWorkspaceId(providedId?: string | null): string {
+  const workspaceId = providedId || DEFAULT_WORKSPACE_ID;
+  if (!workspaceId) {
+    throw new Error(
+      "워크스페이스 ID가 필요합니다.\n" +
+      "다음 중 하나를 수행하세요:\n" +
+      "1. workspaceId 파라미터를 전달\n" +
+      "2. THREADCAST_WORKSPACE_ID 환경변수 설정\n\n" +
+      "워크스페이스 목록은 threadcast_list_workspaces로 확인할 수 있습니다."
+    );
+  }
+  return workspaceId;
+}
 
 // API Client
 class ThreadCastClient {
@@ -2570,7 +2588,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       // Mission
       case "threadcast_list_missions":
         result = await client.listMissions(
-          (args?.workspaceId as string) || DEFAULT_WORKSPACE_ID,
+          getWorkspaceId(args?.workspaceId as string),
           args?.status as string
         );
         break;
@@ -2579,7 +2597,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         break;
       case "threadcast_create_mission":
         result = await client.createMission(
-          (args?.workspaceId as string) || DEFAULT_WORKSPACE_ID,
+          getWorkspaceId(args?.workspaceId as string),
           args?.title as string,
           args?.description as string,
           (args?.priority as string) || "MEDIUM"
@@ -2657,7 +2675,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       // Workspace Settings
       case "threadcast_get_workspace_settings":
         result = await client.getWorkspaceSettings(
-          (args?.workspaceId as string) || DEFAULT_WORKSPACE_ID
+          getWorkspaceId(args?.workspaceId as string)
         );
         break;
 
@@ -2675,7 +2693,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       // Timeline
       case "threadcast_get_timeline":
         result = await client.getTimeline(
-          (args?.workspaceId as string) || DEFAULT_WORKSPACE_ID,
+          getWorkspaceId(args?.workspaceId as string),
           (args?.limit as number) || 20
         );
         break;
@@ -2687,7 +2705,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       case "threadcast_create_mission_ai": {
         const generated = await client.generateMissionFromPrompt(args?.prompt as string);
         const createResult = await client.createMissionWithTodos(
-          (args?.workspaceId as string) || DEFAULT_WORKSPACE_ID,
+          getWorkspaceId(args?.workspaceId as string),
           generated,
           args?.createQuestions !== false // default to true
         );
@@ -2730,12 +2748,12 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         break;
       case "threadcast_get_workspace_meta":
         result = await client.getWorkspaceMeta(
-          (args?.workspaceId as string) || DEFAULT_WORKSPACE_ID
+          getWorkspaceId(args?.workspaceId as string)
         );
         break;
       case "threadcast_update_workspace_meta":
         result = await client.updateWorkspaceMeta(
-          (args?.workspaceId as string) || DEFAULT_WORKSPACE_ID,
+          getWorkspaceId(args?.workspaceId as string),
           args?.meta as Record<string, unknown>,
           args?.merge !== false // default to true
         );
@@ -3082,7 +3100,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
       // Knowledge Base
       case "threadcast_remember": {
-        const workspaceId = (args?.workspaceId as string) || DEFAULT_WORKSPACE_ID;
+        const workspaceId = getWorkspaceId(args?.workspaceId as string);
         const topic = args?.topic as string;
         const summary = args?.summary as string;
         const details = args?.details as Record<string, unknown> | undefined;
@@ -3180,7 +3198,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         ].slice(0, 10);
 
         // Get workspace ID from effective meta
-        const workspaceId = (effectiveMeta as Record<string, unknown>)?.workspaceId as string || DEFAULT_WORKSPACE_ID;
+        const workspaceId = getWorkspaceId((effectiveMeta as Record<string, unknown>)?.workspaceId as string);
 
         // Save knowledge
         const currentMeta = await client.getWorkspaceMeta(workspaceId);
@@ -3206,7 +3224,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }
 
       case "threadcast_get_knowledge": {
-        const workspaceId = (args?.workspaceId as string) || DEFAULT_WORKSPACE_ID;
+        const workspaceId = getWorkspaceId(args?.workspaceId as string);
         const topic = args?.topic as string;
 
         const currentMeta = await client.getWorkspaceMeta(workspaceId);
@@ -3230,7 +3248,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }
 
       case "threadcast_list_knowledge": {
-        const workspaceId = (args?.workspaceId as string) || DEFAULT_WORKSPACE_ID;
+        const workspaceId = getWorkspaceId(args?.workspaceId as string);
 
         const currentMeta = await client.getWorkspaceMeta(workspaceId);
         const knowledge = (currentMeta as Record<string, unknown>)?.knowledge as Record<string, unknown> || {};
@@ -3255,7 +3273,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }
 
       case "threadcast_search_knowledge": {
-        const workspaceId = (args?.workspaceId as string) || DEFAULT_WORKSPACE_ID;
+        const workspaceId = getWorkspaceId(args?.workspaceId as string);
         const query = (args?.query as string).toLowerCase();
 
         const currentMeta = await client.getWorkspaceMeta(workspaceId);
@@ -3303,7 +3321,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }
 
       case "threadcast_forget": {
-        const workspaceId = (args?.workspaceId as string) || DEFAULT_WORKSPACE_ID;
+        const workspaceId = getWorkspaceId(args?.workspaceId as string);
         const topic = args?.topic as string;
 
         const currentMeta = await client.getWorkspaceMeta(workspaceId);
@@ -3395,16 +3413,16 @@ server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
 
     switch (uri) {
       case "threadcast://missions":
-        data = await client.listMissions(DEFAULT_WORKSPACE_ID);
+        data = await client.listMissions(getWorkspaceId());
         break;
       case "threadcast://todos":
         data = await client.listTodos();
         break;
       case "threadcast://questions":
-        data = await client.listAIQuestions(DEFAULT_WORKSPACE_ID);
+        data = await client.listAIQuestions(getWorkspaceId());
         break;
       case "threadcast://timeline":
-        data = await client.getTimeline(DEFAULT_WORKSPACE_ID, 50);
+        data = await client.getTimeline(getWorkspaceId(), 50);
         break;
       default:
         throw new Error(`Unknown resource: ${uri}`);
