@@ -2261,6 +2261,11 @@ const tools = [
               items: { type: "string" },
               description: "Issues or blockers encountered",
             },
+            insights: {
+              type: "array",
+              items: { type: "string" },
+              description: "Contextual insights discovered (patterns, conventions, architecture)",
+            },
           },
         },
       },
@@ -2297,6 +2302,32 @@ const tools = [
               description: "Files that were modified in this step",
             },
             nextStepHints: { type: "string", description: "Hints for the next step" },
+            learnings: {
+              type: "object",
+              description: "Contextual knowledge learned (saved to workspace knowledge base)",
+              properties: {
+                patterns: {
+                  type: "array",
+                  items: { type: "string" },
+                  description: "Code patterns discovered (e.g., 'CVA for component variants')",
+                },
+                conventions: {
+                  type: "array",
+                  items: { type: "string" },
+                  description: "Coding conventions found (e.g., 'cn() for className merge')",
+                },
+                architecture: {
+                  type: "array",
+                  items: { type: "string" },
+                  description: "Architecture decisions (e.g., 'Zustand for state management')",
+                },
+                dependencies: {
+                  type: "array",
+                  items: { type: "string" },
+                  description: "Key dependencies used (e.g., 'class-variance-authority')",
+                },
+              },
+            },
           },
         },
         nextStep: {
@@ -2349,6 +2380,37 @@ const tools = [
               description: "Suggested follow-up tasks",
             },
             notes: { type: "string", description: "Additional notes or caveats" },
+            learnings: {
+              type: "object",
+              description: "Knowledge gained from this work (auto-saved to workspace knowledge base)",
+              properties: {
+                patterns: {
+                  type: "array",
+                  items: { type: "string" },
+                  description: "Code patterns discovered",
+                },
+                conventions: {
+                  type: "array",
+                  items: { type: "string" },
+                  description: "Coding conventions found",
+                },
+                architecture: {
+                  type: "array",
+                  items: { type: "string" },
+                  description: "Architecture decisions",
+                },
+                dependencies: {
+                  type: "array",
+                  items: { type: "string" },
+                  description: "Key dependencies used",
+                },
+                tips: {
+                  type: "array",
+                  items: { type: "string" },
+                  description: "Tips for future similar work",
+                },
+              },
+            },
           },
         },
       },
@@ -2902,6 +2964,36 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           },
         };
 
+        // 2.5. If learnings provided, save to workspace knowledge base
+        const learnings = stepResult?.learnings as Record<string, string[]> | undefined;
+        if (learnings && Object.keys(learnings).length > 0) {
+          try {
+            // Get workspace ID from todo's mission
+            const todo = await client.getTodo(todoId);
+            const missionId = (todo as { missionId?: string }).missionId;
+            if (missionId) {
+              const mission = await client.getMission(missionId);
+              const workspaceId = (mission as { workspaceId?: string }).workspaceId;
+
+              if (workspaceId) {
+                // Accumulate learnings in workspace meta under 'projectContext'
+                const projectContext: Record<string, unknown> = {};
+                if (learnings.patterns?.length) projectContext.patterns = learnings.patterns;
+                if (learnings.conventions?.length) projectContext.conventions = learnings.conventions;
+                if (learnings.architecture?.length) projectContext.architecture = learnings.architecture;
+                if (learnings.dependencies?.length) projectContext.dependencies = learnings.dependencies;
+
+                if (Object.keys(projectContext).length > 0) {
+                  await client.updateWorkspaceMeta(workspaceId, { projectContext }, true);
+                }
+              }
+            }
+          } catch (e) {
+            // Silently ignore if saving learnings fails
+            console.error("Failed to save learnings:", e);
+          }
+        }
+
         // 3. Determine and start next step
         const stepOrder = ["ANALYSIS", "DESIGN", "IMPLEMENTATION", "VERIFICATION", "REVIEW", "INTEGRATION"];
         const currentIndex = stepOrder.indexOf(step);
@@ -2955,6 +3047,37 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           },
         };
         await client.updateTodoMeta(todoId, completeMeta, true);
+
+        // 1.5. If learnings provided, save to workspace knowledge base
+        const learnings = finalResult?.learnings as Record<string, string[]> | undefined;
+        if (learnings && Object.keys(learnings).length > 0) {
+          try {
+            // Get workspace ID from todo's mission
+            const todo = await client.getTodo(todoId);
+            const missionId = (todo as { missionId?: string }).missionId;
+            if (missionId) {
+              const mission = await client.getMission(missionId);
+              const workspaceId = (mission as { workspaceId?: string }).workspaceId;
+
+              if (workspaceId) {
+                // Accumulate learnings in workspace meta under 'projectContext'
+                const projectContext: Record<string, unknown> = {};
+                if (learnings.patterns?.length) projectContext.patterns = learnings.patterns;
+                if (learnings.conventions?.length) projectContext.conventions = learnings.conventions;
+                if (learnings.architecture?.length) projectContext.architecture = learnings.architecture;
+                if (learnings.dependencies?.length) projectContext.dependencies = learnings.dependencies;
+                if (learnings.tips?.length) projectContext.tips = learnings.tips;
+
+                if (Object.keys(projectContext).length > 0) {
+                  await client.updateWorkspaceMeta(workspaceId, { projectContext }, true);
+                }
+              }
+            }
+          } catch (e) {
+            // Silently ignore if saving learnings fails
+            console.error("Failed to save learnings:", e);
+          }
+        }
 
         // 2. Update todo status to WOVEN
         await client.updateTodoStatus(todoId, "WOVEN");
