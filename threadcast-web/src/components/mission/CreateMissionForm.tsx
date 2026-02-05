@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import { clsx } from 'clsx';
-import { X, Plus, Sparkles } from 'lucide-react';
+import { X, Plus, Sparkles, PenLine, Link2 } from 'lucide-react';
 import { Button } from '../common/Button';
+import { JiraTicketSelector } from './JiraTicketSelector';
 import type { Priority } from '../../types';
+import type { JiraIssue } from '../../services/jiraService';
 
 export interface CreateMissionFormData {
   title: string;
@@ -34,18 +36,48 @@ const priorityColors: Record<Priority, string> = {
 
 const suggestedTags = ['backend', 'frontend', 'api', 'database', 'auth', 'ui', 'test', 'docs', 'refactor', 'feature'];
 
+type CreateMode = 'manual' | 'jira';
+
 export function CreateMissionForm({
   onSubmit,
   onCancel,
   isLoading = false,
   defaultPriority = 'MEDIUM',
 }: CreateMissionFormProps) {
+  const [createMode, setCreateMode] = useState<CreateMode>('manual');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [priority, setPriority] = useState<Priority>(defaultPriority);
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState('');
   const [errors, setErrors] = useState<{ title?: string }>({});
+  const [selectedJiraIssue, setSelectedJiraIssue] = useState<JiraIssue | null>(null);
+
+  const handleJiraIssueSelect = (issue: JiraIssue) => {
+    setSelectedJiraIssue(issue);
+    setTitle(issue.summary);
+    setDescription(issue.description || '');
+
+    // Map JIRA priority to our priority
+    const jiraPriority = issue.priority?.toLowerCase() || '';
+    if (jiraPriority.includes('highest') || jiraPriority.includes('critical')) {
+      setPriority('CRITICAL');
+    } else if (jiraPriority.includes('high')) {
+      setPriority('HIGH');
+    } else if (jiraPriority.includes('low') || jiraPriority.includes('lowest')) {
+      setPriority('LOW');
+    } else {
+      setPriority('MEDIUM');
+    }
+
+    // Add issue type as tag
+    if (issue.issueType) {
+      const typeTag = issue.issueType.toLowerCase().replace(/\s+/g, '-');
+      if (!tags.includes(typeTag)) {
+        setTags(prev => [...prev, typeTag]);
+      }
+    }
+  };
 
   const handleAddTag = (tag: string) => {
     const normalizedTag = tag.trim().toLowerCase();
@@ -91,7 +123,57 @@ export function CreateMissionForm({
   const availableSuggestedTags = suggestedTags.filter(tag => !tags.includes(tag));
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <div className="space-y-6">
+      {/* Create Mode Tabs */}
+      <div className="flex gap-2 p-1 bg-slate-100 rounded-lg">
+        <button
+          type="button"
+          onClick={() => setCreateMode('manual')}
+          className={clsx(
+            'flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium rounded-md transition-colors',
+            createMode === 'manual'
+              ? 'bg-white text-slate-900 shadow-sm'
+              : 'text-slate-600 hover:text-slate-900'
+          )}
+        >
+          <PenLine size={16} />
+          직접 입력
+        </button>
+        <button
+          type="button"
+          onClick={() => setCreateMode('jira')}
+          className={clsx(
+            'flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium rounded-md transition-colors',
+            createMode === 'jira'
+              ? 'bg-white text-slate-900 shadow-sm'
+              : 'text-slate-600 hover:text-slate-900'
+          )}
+        >
+          <Link2 size={16} />
+          JIRA에서 가져오기
+        </button>
+      </div>
+
+      {/* JIRA Ticket Selector */}
+      {createMode === 'jira' && (
+        <div className="border border-slate-200 rounded-lg p-4 bg-slate-50">
+          <JiraTicketSelector
+            onSelect={handleJiraIssueSelect}
+            selectedIssueKey={selectedJiraIssue?.key}
+          />
+          {selectedJiraIssue && (
+            <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+              <div className="flex items-center gap-2 text-sm">
+                <span className="font-mono text-blue-600">{selectedJiraIssue.key}</span>
+                <span className="text-slate-500">→</span>
+                <span className="font-medium text-slate-900">아래 내용으로 Mission 생성</span>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      <form onSubmit={handleSubmit} className="space-y-6">
       {/* Title */}
       <div>
         <label htmlFor="mission-title" className="block text-sm font-medium text-slate-700 mb-2">
@@ -261,7 +343,8 @@ export function CreateMissionForm({
           Mission 생성
         </Button>
       </div>
-    </form>
+      </form>
+    </div>
   );
 }
 

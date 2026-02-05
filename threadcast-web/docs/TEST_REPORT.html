@@ -1,0 +1,1016 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ThreadCast E2E Test Report</title>
+  <style>
+    :root {
+      --primary: #6366f1;
+      --primary-dark: #4f46e5;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --gray-50: #f9fafb;
+      --gray-100: #f3f4f6;
+      --gray-200: #e5e7eb;
+      --gray-300: #d1d5db;
+      --gray-500: #6b7280;
+      --gray-700: #374151;
+      --gray-900: #111827;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background: var(--gray-50);
+      color: var(--gray-900);
+      line-height: 1.6;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 2rem;
+    }
+
+    header {
+      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+      color: white;
+      padding: 3rem 2rem;
+      margin-bottom: 2rem;
+      border-radius: 16px;
+    }
+
+    header h1 {
+      font-size: 2.5rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+    }
+
+    header p {
+      opacity: 0.9;
+      font-size: 1.1rem;
+    }
+
+    .meta-info {
+      display: flex;
+      gap: 2rem;
+      margin-top: 1.5rem;
+      flex-wrap: wrap;
+    }
+
+    .meta-item {
+      background: rgba(255,255,255,0.15);
+      padding: 0.5rem 1rem;
+      border-radius: 8px;
+      font-size: 0.9rem;
+    }
+
+    /* Summary Cards */
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+    }
+
+    .summary-card {
+      background: white;
+      border-radius: 12px;
+      padding: 1.5rem;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      text-align: center;
+    }
+
+    .summary-card.highlight {
+      background: linear-gradient(135deg, var(--success) 0%, #059669 100%);
+      color: white;
+    }
+
+    .summary-card .value {
+      font-size: 2.5rem;
+      font-weight: 700;
+      margin-bottom: 0.25rem;
+    }
+
+    .summary-card .label {
+      font-size: 0.9rem;
+      opacity: 0.8;
+    }
+
+    .summary-card.passed { border-left: 4px solid var(--success); }
+    .summary-card.failed { border-left: 4px solid var(--danger); }
+    .summary-card.skipped { border-left: 4px solid var(--warning); }
+
+    /* Progress Bar */
+    .progress-container {
+      background: white;
+      border-radius: 12px;
+      padding: 1.5rem;
+      margin-bottom: 2rem;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+
+    .progress-bar {
+      height: 24px;
+      background: var(--gray-200);
+      border-radius: 12px;
+      overflow: hidden;
+      display: flex;
+    }
+
+    .progress-segment {
+      height: 100%;
+      transition: width 0.3s ease;
+    }
+
+    .progress-segment.passed { background: var(--success); }
+    .progress-segment.skipped { background: var(--warning); }
+    .progress-segment.failed { background: var(--danger); }
+
+    .progress-legend {
+      display: flex;
+      justify-content: center;
+      gap: 2rem;
+      margin-top: 1rem;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.9rem;
+    }
+
+    .legend-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+    }
+
+    /* Section */
+    .section {
+      background: white;
+      border-radius: 12px;
+      padding: 1.5rem;
+      margin-bottom: 2rem;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+
+    .section h2 {
+      font-size: 1.5rem;
+      margin-bottom: 1rem;
+      padding-bottom: 0.75rem;
+      border-bottom: 2px solid var(--gray-100);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .section h3 {
+      font-size: 1.1rem;
+      margin: 1.5rem 0 0.75rem;
+      color: var(--gray-700);
+    }
+
+    /* Tables */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.9rem;
+    }
+
+    th, td {
+      padding: 0.75rem 1rem;
+      text-align: left;
+      border-bottom: 1px solid var(--gray-200);
+    }
+
+    th {
+      background: var(--gray-50);
+      font-weight: 600;
+      color: var(--gray-700);
+      position: sticky;
+      top: 0;
+    }
+
+    tr:hover {
+      background: var(--gray-50);
+    }
+
+    /* Status Badges */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 0.25rem 0.75rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    .badge-pass {
+      background: #d1fae5;
+      color: #065f46;
+    }
+
+    .badge-fail {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    .badge-skip {
+      background: #fef3c7;
+      color: #92400e;
+    }
+
+    .badge-high {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    .badge-medium {
+      background: #fef3c7;
+      color: #92400e;
+    }
+
+    .badge-low {
+      background: #dbeafe;
+      color: #1e40af;
+    }
+
+    .badge-critical {
+      background: #fce7f3;
+      color: #9d174d;
+    }
+
+    /* Tabs */
+    .tabs {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .tab {
+      padding: 0.5rem 1rem;
+      border: none;
+      background: var(--gray-100);
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      transition: all 0.2s;
+    }
+
+    .tab:hover {
+      background: var(--gray-200);
+    }
+
+    .tab.active {
+      background: var(--primary);
+      color: white;
+    }
+
+    .tab-content {
+      display: none;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    /* Screenshots Gallery */
+    .screenshot-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 1.5rem;
+    }
+
+    .screenshot-card {
+      background: white;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+
+    .screenshot-card img {
+      width: 100%;
+      height: 200px;
+      object-fit: cover;
+      object-position: top;
+      border-bottom: 1px solid var(--gray-200);
+    }
+
+    .screenshot-card .info {
+      padding: 1rem;
+    }
+
+    .screenshot-card .title {
+      font-weight: 600;
+      margin-bottom: 0.25rem;
+    }
+
+    .screenshot-card .desc {
+      font-size: 0.85rem;
+      color: var(--gray-500);
+    }
+
+    /* Collapsible */
+    .collapsible {
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .collapsible::before {
+      content: '▶';
+      display: inline-block;
+      margin-right: 0.5rem;
+      transition: transform 0.2s;
+    }
+
+    .collapsible.open::before {
+      transform: rotate(90deg);
+    }
+
+    .collapsible-content {
+      display: none;
+      padding-top: 1rem;
+    }
+
+    .collapsible-content.open {
+      display: block;
+    }
+
+    /* Code */
+    code {
+      background: var(--gray-100);
+      padding: 0.2rem 0.4rem;
+      border-radius: 4px;
+      font-family: 'SF Mono', Monaco, Consolas, monospace;
+      font-size: 0.85em;
+    }
+
+    /* Footer */
+    footer {
+      text-align: center;
+      padding: 2rem;
+      color: var(--gray-500);
+      font-size: 0.9rem;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .container {
+        padding: 1rem;
+      }
+
+      header {
+        padding: 2rem 1rem;
+      }
+
+      header h1 {
+        font-size: 1.75rem;
+      }
+
+      .meta-info {
+        gap: 1rem;
+      }
+
+      table {
+        display: block;
+        overflow-x: auto;
+      }
+    }
+
+    /* Print */
+    @media print {
+      body {
+        background: white;
+      }
+
+      .section {
+        break-inside: avoid;
+      }
+
+      .tabs, .tab {
+        display: none !important;
+      }
+
+      .tab-content {
+        display: block !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>🧵 ThreadCast E2E Test Report</h1>
+      <p>Comprehensive End-to-End Testing Documentation</p>
+      <div class="meta-info">
+        <div class="meta-item">📅 Test Date: 2026-01-27</div>
+        <div class="meta-item">⏱️ Duration: 68.2 seconds</div>
+        <div class="meta-item">📊 Total Features: 78</div>
+        <div class="meta-item">🧪 Total Test Cases: 172</div>
+      </div>
+    </header>
+
+    <!-- Summary Cards -->
+    <div class="summary-grid">
+      <div class="summary-card highlight">
+        <div class="value">100%</div>
+        <div class="label">Pass Rate</div>
+      </div>
+      <div class="summary-card passed">
+        <div class="value">40</div>
+        <div class="label">Tests Passed</div>
+      </div>
+      <div class="summary-card failed">
+        <div class="value">0</div>
+        <div class="label">Tests Failed</div>
+      </div>
+      <div class="summary-card skipped">
+        <div class="value">9</div>
+        <div class="label">Tests Skipped</div>
+      </div>
+      <div class="summary-card">
+        <div class="value">49</div>
+        <div class="label">Total Executed</div>
+      </div>
+    </div>
+
+    <!-- Progress Bar -->
+    <div class="progress-container">
+      <h3 style="margin-bottom: 1rem;">Test Execution Progress</h3>
+      <div class="progress-bar">
+        <div class="progress-segment passed" style="width: 81.6%"></div>
+        <div class="progress-segment skipped" style="width: 18.4%"></div>
+        <div class="progress-segment failed" style="width: 0%"></div>
+      </div>
+      <div class="progress-legend">
+        <div class="legend-item">
+          <div class="legend-dot" style="background: var(--success)"></div>
+          <span>Passed (40)</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-dot" style="background: var(--warning)"></div>
+          <span>Skipped (9)</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-dot" style="background: var(--danger)"></div>
+          <span>Failed (0)</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Feature Specification -->
+    <div class="section">
+      <h2>📋 Feature Specification</h2>
+      <p style="margin-bottom: 1rem; color: var(--gray-500);">Total 78 features across 9 pages/modals</p>
+
+      <div class="tabs">
+        <button class="tab active" onclick="showTab('feat-p01')">P01 HomePage</button>
+        <button class="tab" onclick="showTab('feat-p02')">P02 Dashboard</button>
+        <button class="tab" onclick="showTab('feat-p03')">P03 Missions</button>
+        <button class="tab" onclick="showTab('feat-p04')">P04 Todos</button>
+        <button class="tab" onclick="showTab('feat-p05')">P05 Timeline</button>
+        <button class="tab" onclick="showTab('feat-m01')">M01 Settings</button>
+        <button class="tab" onclick="showTab('feat-m02')">M02 AI Panel</button>
+        <button class="tab" onclick="showTab('feat-m03')">M03 Mission Modal</button>
+      </div>
+
+      <!-- P01 Features -->
+      <div id="feat-p01" class="tab-content active">
+        <table>
+          <thead>
+            <tr>
+              <th>Feature ID</th>
+              <th>Feature Name</th>
+              <th>Type</th>
+              <th>Description</th>
+              <th>Priority</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>P01-F01</td><td>Display Global Stats</td><td>Display</td><td>5개 통계 카드 표시 (Workspaces, Missions, Todos, AI Actions, Pending Questions)</td><td><span class="badge badge-high">High</span></td></tr>
+            <tr><td>P01-F02</td><td>Workspace Card List</td><td>Display</td><td>등록된 Workspace 카드 목록 표시</td><td><span class="badge badge-high">High</span></td></tr>
+            <tr><td>P01-F03</td><td>Workspace Card Stats</td><td>Display</td><td>각 카드에 Projects, Missions, Todos, Progress 표시</td><td><span class="badge badge-high">High</span></td></tr>
+            <tr><td>P01-F04</td><td>Workspace Click Navigate</td><td>Action</td><td>Workspace 클릭 시 Dashboard로 이동</td><td><span class="badge badge-high">High</span></td></tr>
+            <tr><td>P01-F05</td><td>AI Alert Banner</td><td>Display</td><td>대기중 질문 있을 때 핑크 배너 표시</td><td><span class="badge badge-high">High</span></td></tr>
+            <tr><td>P01-F06</td><td>AI Alert Click</td><td>Action</td><td>배너 클릭 시 AI Question Panel 열기</td><td><span class="badge badge-high">High</span></td></tr>
+            <tr><td>P01-F07</td><td>Create Workspace Button</td><td>Action</td><td>"+ 새 Workspace 추가" 버튼 클릭 → 모달 열기</td><td><span class="badge badge-medium">Medium</span></td></tr>
+            <tr><td>P01-F08</td><td>Create Workspace Modal</td><td>Form</td><td>이름, 설명, 경로 입력 폼</td><td><span class="badge badge-medium">Medium</span></td></tr>
+            <tr><td>P01-F09</td><td>Create Workspace Submit</td><td>Action</td><td>생성 API 호출 및 목록 갱신</td><td><span class="badge badge-medium">Medium</span></td></tr>
+            <tr><td>P01-F10</td><td>Recent Activity List</td><td>Display</td><td>최근 5개 활동 목록 표시</td><td><span class="badge badge-medium">Medium</span></td></tr>
+            <tr><td>P01-F11</td><td>Settings Button</td><td>Action</td><td>설정 버튼 클릭 → Settings Modal 열기</td><td><span class="badge badge-medium">Medium</span></td></tr>
+            <tr><td>P01-F13</td><td>Workspace Question Badge</td><td>Display</td><td>질문 있는 Workspace에 배지 표시</td><td><span class="badge badge-medium">Medium</span></td></tr>
+            <tr><td>P01-F15</td><td>Progress Calculation</td><td>Logic</td><td>완료 미션/전체 미션 비율 계산</td><td><span class="badge badge-medium">Medium</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- P02 Features -->
+      <div id="feat-p02" class="tab-content">
+        <table>
+          <thead>
+            <tr>
+              <th>Feature ID</th>
+              <th>Feature Name</th>
+              <th>Type</th>
+              <th>Description</th>
+              <th>Priority</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>P02-F01</td><td>Workspace Info Header</td><td>Display</td><td>Workspace 이름, 경로, 설명 표시</td><td><span class="badge badge-high">High</span></td></tr>
+            <tr><td>P02-F02</td><td>Stats Cards</td><td>Display</td><td>4개 통계 (Projects, Missions, Completed, Todos)</td><td><span class="badge badge-high">High</span></td></tr>
+            <tr><td>P02-F03</td><td>Projects List</td><td>Display</td><td>프로젝트 목록 (아이콘, 이름, 경로)</td><td><span class="badge badge-high">High</span></td></tr>
+            <tr><td>P02-F04</td><td>Project Click Navigate</td><td>Action</td><td>프로젝트 클릭 → Project Dashboard 이동</td><td><span class="badge badge-high">High</span></td></tr>
+            <tr><td>P02-F05</td><td>Recent Missions List</td><td>Display</td><td>최근 5개 미션 (진행도 바, 상태 배지)</td><td><span class="badge badge-high">High</span></td></tr>
+            <tr><td>P02-F06</td><td>Mission Status Badge</td><td>Display</td><td>Threading/Woven/Archived 상태 표시</td><td><span class="badge badge-medium">Medium</span></td></tr>
+            <tr><td>P02-F07</td><td>Add Project Button</td><td>Action</td><td>"+ 추가" 버튼 클릭 → 프로젝트 생성 모달</td><td><span class="badge badge-medium">Medium</span></td></tr>
+            <tr><td>P02-F09</td><td>New Mission Quick Action</td><td>Action</td><td>"New Mission" 버튼 → Missions 페이지 이동</td><td><span class="badge badge-medium">Medium</span></td></tr>
+            <tr><td>P02-F10</td><td>Timeline Quick Action</td><td>Action</td><td>"Timeline" 버튼 → Timeline 페이지 이동</td><td><span class="badge badge-medium">Medium</span></td></tr>
+            <tr><td>P02-F11</td><td>Back Navigation</td><td>Action</td><td>"← Home" 클릭 → HomePage 이동</td><td><span class="badge badge-high">High</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- P03 Features -->
+      <div id="feat-p03" class="tab-content">
+        <table>
+          <thead>
+            <tr>
+              <th>Feature ID</th>
+              <th>Feature Name</th>
+              <th>Type</th>
+              <th>Description</th>
+              <th>Priority</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>P03-F01</td><td>Mission Kanban Board</td><td>Display</td><td>4개 컬럼 (Backlog, Threading, Woven, Archived)</td><td><span class="badge badge-high">High</span></td></tr>
+            <tr><td>P03-F02</td><td>Mission Card Display</td><td>Display</td><td>각 카드에 ID, 제목, 설명, 진행도, Todo 수 표시</td><td><span class="badge badge-high">High</span></td></tr>
+            <tr><td>P03-F03</td><td>Mission Card Click</td><td>Action</td><td>카드 클릭 → MissionDetailModal 열기</td><td><span class="badge badge-high">High</span></td></tr>
+            <tr><td>P03-F04</td><td>AI Question Banner</td><td>Display</td><td>대기중 질문 수, 관련 미션 태그 표시</td><td><span class="badge badge-high">High</span></td></tr>
+            <tr><td>P03-F05</td><td>AI Banner Click</td><td>Action</td><td>배너 클릭 → AI Question Panel 열기</td><td><span class="badge badge-high">High</span></td></tr>
+            <tr><td>P03-F07</td><td>New Mission Button</td><td>Action</td><td>"+ New Mission" 클릭 → 생성 모달 열기</td><td><span class="badge badge-high">High</span></td></tr>
+            <tr><td>P03-F08</td><td>Create Mission Modal</td><td>Form</td><td>제목, 설명, 우선순위, 템플릿 선택</td><td><span class="badge badge-high">High</span></td></tr>
+            <tr><td>P03-F09</td><td>Create Mission Submit</td><td>Action</td><td>생성 API 호출 및 Kanban 갱신</td><td><span class="badge badge-high">High</span></td></tr>
+            <tr><td>P03-F11</td><td>Overview Stats</td><td>Display</td><td>Total, Active, Success Rate, Remaining 표시</td><td><span class="badge badge-medium">Medium</span></td></tr>
+            <tr><td>P03-F12</td><td>Sidebar Filter</td><td>Action</td><td>All/Active/Completed/Archived 필터</td><td><span class="badge badge-medium">Medium</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- P04 Features -->
+      <div id="feat-p04" class="tab-content">
+        <table>
+          <thead>
+            <tr>
+              <th>Feature ID</th>
+              <th>Feature Name</th>
+              <th>Type</th>
+              <th>Description</th>
+              <th>Priority</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>P04-F01</td><td>Todo Kanban Board</td><td>Display</td><td>5개 컬럼 (Backlog, Pending, Threading, Woven, Tangled)</td><td><span class="badge badge-high">High</span></td></tr>
+            <tr><td>P04-F02</td><td>Todo Card Display</td><td>Display</td><td>ID, 제목, 진행 단계 바, 예상 시간, 복잡도 표시</td><td><span class="badge badge-high">High</span></td></tr>
+            <tr><td>P04-F03</td><td>Todo Card Click</td><td>Action</td><td>카드 클릭 → 상세 드로어 열기</td><td><span class="badge badge-high">High</span></td></tr>
+            <tr><td>P04-F04</td><td>Current Mission Info</td><td>Display</td><td>선택된 미션 제목, 전체 진행도 표시</td><td><span class="badge badge-high">High</span></td></tr>
+            <tr><td>P04-F05</td><td>Status Filter</td><td>Action</td><td>All/Backlog/Pending/Threading/Woven/Tangled 필터</td><td><span class="badge badge-medium">Medium</span></td></tr>
+            <tr><td>P04-F07</td><td>Add Todo Button</td><td>Action</td><td>"+ Add Todo" 클릭 → 생성 모달 열기</td><td><span class="badge badge-high">High</span></td></tr>
+            <tr><td>P04-F08</td><td>Create Todo Modal</td><td>Form</td><td>제목, 설명, 복잡도, 예상 시간 입력</td><td><span class="badge badge-high">High</span></td></tr>
+            <tr><td>P04-F09</td><td>Todo Detail Drawer</td><td>Display</td><td>설명, 우선순위, 복잡도, Progress Steps 표시</td><td><span class="badge badge-high">High</span></td></tr>
+            <tr><td>P04-F10</td><td>Progress Step Toggle</td><td>Action</td><td>Step 체크박스 토글 → 상태 변경 API</td><td><span class="badge badge-high">High</span></td></tr>
+            <tr><td>P04-F11</td><td>Step Status Update</td><td>Logic</td><td>Step 완료 시 Todo 진행률 재계산</td><td><span class="badge badge-high">High</span></td></tr>
+            <tr><td>P04-F12</td><td>Overview Stats</td><td>Display</td><td>Total, Threading, Woven, Tangled 카운트</td><td><span class="badge badge-medium">Medium</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- P05 Features -->
+      <div id="feat-p05" class="tab-content">
+        <table>
+          <thead>
+            <tr>
+              <th>Feature ID</th>
+              <th>Feature Name</th>
+              <th>Type</th>
+              <th>Description</th>
+              <th>Priority</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>P05-F01</td><td>Timeline Event List</td><td>Display</td><td>날짜별 그룹화된 이벤트 목록</td><td><span class="badge badge-high">High</span></td></tr>
+            <tr><td>P05-F02</td><td>Event Type Filter</td><td>Action</td><td>All/Missions/Todos/AI Activity/System 필터</td><td><span class="badge badge-high">High</span></td></tr>
+            <tr><td>P05-F03</td><td>Event Card Display</td><td>Display</td><td>아이콘, 제목, 상태 배지, 시간, 메타데이터</td><td><span class="badge badge-high">High</span></td></tr>
+            <tr><td>P05-F04</td><td>Date Grouping</td><td>Display</td><td>Today, Yesterday, 날짜별 그룹 헤더</td><td><span class="badge badge-medium">Medium</span></td></tr>
+            <tr><td>P05-F07</td><td>Load More Button</td><td>Action</td><td>"더 불러오기" 클릭 → 페이지네이션</td><td><span class="badge badge-medium">Medium</span></td></tr>
+            <tr><td>P05-F08</td><td>Refresh Button</td><td>Action</td><td>새로고침 버튼 → 최신 데이터 조회</td><td><span class="badge badge-medium">Medium</span></td></tr>
+            <tr><td>P05-F10</td><td>Overview Stats</td><td>Display</td><td>Woven, Threading, AI Actions, Total Events</td><td><span class="badge badge-medium">Medium</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- M01 Features -->
+      <div id="feat-m01" class="tab-content">
+        <table>
+          <thead>
+            <tr>
+              <th>Feature ID</th>
+              <th>Feature Name</th>
+              <th>Type</th>
+              <th>Description</th>
+              <th>Priority</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>M01-F01</td><td>Language Selection</td><td>Action</td><td>한국어/English 버튼 클릭 → 언어 변경</td><td><span class="badge badge-high">High</span></td></tr>
+            <tr><td>M01-F02</td><td>Language Persistence</td><td>Logic</td><td>언어 설정 localStorage 저장</td><td><span class="badge badge-high">High</span></td></tr>
+            <tr><td>M01-F03</td><td>Theme Selection</td><td>Action</td><td>Light/Dark/System 버튼 클릭 → 테마 변경</td><td><span class="badge badge-medium">Medium</span></td></tr>
+            <tr><td>M01-F04</td><td>Close Modal</td><td>Action</td><td>ESC 키 또는 외부 클릭 → 모달 닫기</td><td><span class="badge badge-high">High</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- M02 Features -->
+      <div id="feat-m02" class="tab-content">
+        <table>
+          <thead>
+            <tr>
+              <th>Feature ID</th>
+              <th>Feature Name</th>
+              <th>Type</th>
+              <th>Description</th>
+              <th>Priority</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>M02-F01</td><td>Question List Display</td><td>Display</td><td>대기중 질문 목록 (미션/Todo 태그 포함)</td><td><span class="badge badge-high">High</span></td></tr>
+            <tr><td>M02-F02</td><td>Answer Input</td><td>Form</td><td>각 질문별 답변 입력 (선택지 또는 텍스트)</td><td><span class="badge badge-high">High</span></td></tr>
+            <tr><td>M02-F03</td><td>Submit Answer</td><td>Action</td><td>답변 제출 → API 호출 → AI Agent 알림</td><td><span class="badge badge-critical">Critical</span></td></tr>
+            <tr><td>M02-F04</td><td>Skip Question</td><td>Action</td><td>질문 건너뛰기</td><td><span class="badge badge-medium">Medium</span></td></tr>
+            <tr><td>M02-F05</td><td>Skip All Button</td><td>Action</td><td>"모두 건너뛰기" 클릭</td><td><span class="badge badge-low">Low</span></td></tr>
+            <tr><td>M02-F06</td><td>Close Panel</td><td>Action</td><td>X 버튼 또는 ESC → 패널 닫기</td><td><span class="badge badge-high">High</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- M03 Features -->
+      <div id="feat-m03" class="tab-content">
+        <table>
+          <thead>
+            <tr>
+              <th>Feature ID</th>
+              <th>Feature Name</th>
+              <th>Type</th>
+              <th>Description</th>
+              <th>Priority</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>M03-F01</td><td>Mission Info Header</td><td>Display</td><td>ID, 제목, 상태 배지, 태그</td><td><span class="badge badge-high">High</span></td></tr>
+            <tr><td>M03-F02</td><td>Mission Description</td><td>Display</td><td>미션 설명 텍스트</td><td><span class="badge badge-high">High</span></td></tr>
+            <tr><td>M03-F03</td><td>Progress Section</td><td>Display</td><td>진행도 바, 4개 통계 (Total, Threading, Woven, Pending)</td><td><span class="badge badge-high">High</span></td></tr>
+            <tr><td>M03-F04</td><td>Todo List</td><td>Display</td><td>미션의 Todo 목록 (상태 dot, 단계 수, 시간)</td><td><span class="badge badge-high">High</span></td></tr>
+            <tr><td>M03-F06</td><td>Todo Click</td><td>Action</td><td>Todo 클릭 → Todos 페이지로 이동 (highlight)</td><td><span class="badge badge-high">High</span></td></tr>
+            <tr><td>M03-F07</td><td>Start Weaving Button</td><td>Action</td><td>"Start Weaving" 클릭 → 미션 시작 API</td><td><span class="badge badge-critical">Critical</span></td></tr>
+            <tr><td>M03-F08</td><td>Pause Weaving Button</td><td>Action</td><td>"Pause Weaving" 클릭 → 미션 일시정지</td><td><span class="badge badge-medium">Medium</span></td></tr>
+            <tr><td>M03-F10</td><td>Close Modal</td><td>Action</td><td>ESC 키 또는 X 버튼 → 모달 닫기</td><td><span class="badge badge-high">High</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- E2E Test Results -->
+    <div class="section">
+      <h2>🧪 E2E Test Execution Results</h2>
+
+      <div class="tabs">
+        <button class="tab active" onclick="showTab('results-passed')">✅ Passed (40)</button>
+        <button class="tab" onclick="showTab('results-skipped')">⏭️ Skipped (9)</button>
+        <button class="tab" onclick="showTab('results-all')">📋 All Results</button>
+      </div>
+
+      <!-- Passed Results -->
+      <div id="results-passed" class="tab-content active">
+        <table>
+          <thead>
+            <tr>
+              <th>Test ID</th>
+              <th>Description</th>
+              <th>Status</th>
+              <th>Detail</th>
+              <th>Time</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td><code>TC-P01-F01-01</code></td><td>통계 카드 5개 표시</td><td><span class="badge badge-pass">PASS</span></td><td>5개 발견</td><td>07:49:40</td></tr>
+            <tr><td><code>TC-P01-F02-01</code></td><td>Workspace 카드 표시</td><td><span class="badge badge-pass">PASS</span></td><td>2개 Workspace</td><td>07:49:40</td></tr>
+            <tr><td><code>TC-P01-F03-01</code></td><td>카드 내 통계 표시</td><td><span class="badge badge-pass">PASS</span></td><td>-</td><td>07:49:40</td></tr>
+            <tr><td><code>TC-P01-F04-01</code></td><td>Workspace 클릭 → Dashboard 이동</td><td><span class="badge badge-pass">PASS</span></td><td>/dashboard</td><td>07:49:42</td></tr>
+            <tr><td><code>TC-P01-F05-01</code></td><td>AI Alert 배너 표시</td><td><span class="badge badge-pass">PASS</span></td><td>-</td><td>07:49:44</td></tr>
+            <tr><td><code>TC-P01-F06-01</code></td><td>AI 배너 클릭 → Panel 열기</td><td><span class="badge badge-pass">PASS</span></td><td>-</td><td>07:49:45</td></tr>
+            <tr><td><code>TC-P01-F11-01</code></td><td>설정 버튼 → Settings Modal</td><td><span class="badge badge-pass">PASS</span></td><td>-</td><td>07:49:46</td></tr>
+            <tr><td><code>TC-P01-ED-03</code></td><td>긴 이름 truncate 처리</td><td><span class="badge badge-pass">PASS</span></td><td>-</td><td>07:49:46</td></tr>
+            <tr><td><code>TC-P02-F01-01</code></td><td>Workspace 정보 헤더</td><td><span class="badge badge-pass">PASS</span></td><td>-</td><td>07:49:49</td></tr>
+            <tr><td><code>TC-P02-F02-01</code></td><td>통계 카드 표시</td><td><span class="badge badge-pass">PASS</span></td><td>8개</td><td>07:49:49</td></tr>
+            <tr><td><code>TC-P02-F03-01</code></td><td>프로젝트 목록 섹션</td><td><span class="badge badge-pass">PASS</span></td><td>-</td><td>07:49:49</td></tr>
+            <tr><td><code>TC-P02-F05-01</code></td><td>최근 미션 목록</td><td><span class="badge badge-pass">PASS</span></td><td>-</td><td>07:49:49</td></tr>
+            <tr><td><code>TC-P02-F09-01</code></td><td>Quick Action 버튼</td><td><span class="badge badge-pass">PASS</span></td><td>-</td><td>07:49:49</td></tr>
+            <tr><td><code>TC-P02-F11-01</code></td><td>Back Navigation 링크</td><td><span class="badge badge-pass">PASS</span></td><td>-</td><td>07:49:49</td></tr>
+            <tr><td><code>TC-P03-F01-01</code></td><td>Kanban 4개 컬럼 표시</td><td><span class="badge badge-pass">PASS</span></td><td>4개 컬럼</td><td>07:49:51</td></tr>
+            <tr><td><code>TC-P03-F04-01</code></td><td>AI Question 배너</td><td><span class="badge badge-pass">PASS</span></td><td>표시됨</td><td>07:49:51</td></tr>
+            <tr><td><code>TC-P03-F07-01</code></td><td>New Mission 버튼 → 모달</td><td><span class="badge badge-pass">PASS</span></td><td>-</td><td>07:49:52</td></tr>
+            <tr><td><code>TC-P03-F08-01</code></td><td>Mission 생성 폼 필드</td><td><span class="badge badge-pass">PASS</span></td><td>-</td><td>07:49:52</td></tr>
+            <tr><td><code>TC-P03-F11-01</code></td><td>Overview 통계 표시</td><td><span class="badge badge-pass">PASS</span></td><td>-</td><td>07:49:52</td></tr>
+            <tr><td><code>TC-P03-F12-01</code></td><td>Sidebar 필터 버튼</td><td><span class="badge badge-pass">PASS</span></td><td>-</td><td>07:49:52</td></tr>
+            <tr><td><code>TC-P04-F01-01</code></td><td>Todo Kanban 5개 컬럼</td><td><span class="badge badge-pass">PASS</span></td><td>5개</td><td>07:49:54</td></tr>
+            <tr><td><code>TC-P04-F02-01</code></td><td>Todo 카드 표시</td><td><span class="badge badge-pass">PASS</span></td><td>4개</td><td>07:49:54</td></tr>
+            <tr><td><code>TC-P04-F07-01</code></td><td>Add Todo 버튼 → 모달</td><td><span class="badge badge-pass">PASS</span></td><td>-</td><td>07:49:56</td></tr>
+            <tr><td><code>TC-P04-F12-01</code></td><td>Overview 통계</td><td><span class="badge badge-pass">PASS</span></td><td>-</td><td>07:49:56</td></tr>
+            <tr><td><code>TC-P05-F01-01</code></td><td>Timeline 이벤트 목록</td><td><span class="badge badge-pass">PASS</span></td><td>15개</td><td>07:49:59</td></tr>
+            <tr><td><code>TC-P05-F01-02</code></td><td>날짜 그룹화</td><td><span class="badge badge-pass">PASS</span></td><td>-</td><td>07:49:59</td></tr>
+            <tr><td><code>TC-P05-F02-01</code></td><td>필터 탭 표시</td><td><span class="badge badge-pass">PASS</span></td><td>4개</td><td>07:49:59</td></tr>
+            <tr><td><code>TC-P05-F10-01</code></td><td>Overview 통계</td><td><span class="badge badge-pass">PASS</span></td><td>-</td><td>07:49:59</td></tr>
+            <tr><td><code>TC-M01-F01-01</code></td><td>한국어 옵션 표시</td><td><span class="badge badge-pass">PASS</span></td><td>-</td><td>07:50:01</td></tr>
+            <tr><td><code>TC-M01-F01-02</code></td><td>English 선택</td><td><span class="badge badge-pass">PASS</span></td><td>-</td><td>07:50:01</td></tr>
+            <tr><td><code>TC-M01-F03-01</code></td><td>테마 옵션 표시</td><td><span class="badge badge-pass">PASS</span></td><td>-</td><td>07:50:01</td></tr>
+            <tr><td><code>TC-M01-F04-01</code></td><td>ESC로 모달 닫기</td><td><span class="badge badge-pass">PASS</span></td><td>-</td><td>07:50:02</td></tr>
+            <tr><td><code>TC-M01-F02-01</code></td><td>새로고침 후 언어 유지</td><td><span class="badge badge-pass">PASS</span></td><td>-</td><td>07:50:03</td></tr>
+            <tr><td><code>TC-M02-F01-01</code></td><td>AI 질문 목록 표시</td><td><span class="badge badge-pass">PASS</span></td><td>-</td><td>07:50:06</td></tr>
+            <tr><td><code>TC-M02-F06-01</code></td><td>ESC로 Panel 닫기</td><td><span class="badge badge-pass">PASS</span></td><td>-</td><td>07:50:06</td></tr>
+            <tr><td><code>TC-P01-PF-01</code></td><td>느린 네트워크 (3G) 로드</td><td><span class="badge badge-pass">PASS</span></td><td>33.2초 (임계값: 45초)</td><td>07:50:41</td></tr>
+            <tr><td><code>TC-P03-PF-03</code></td><td>필터 전환 속도</td><td><span class="badge badge-pass">PASS</span></td><td>133ms</td><td>07:50:42</td></tr>
+            <tr><td><code>TC-RESP-01</code></td><td>Mobile Layout (375x812)</td><td><span class="badge badge-pass">PASS</span></td><td>-</td><td>07:50:44</td></tr>
+            <tr><td><code>TC-RESP-02</code></td><td>Tablet Layout (768x1024)</td><td><span class="badge badge-pass">PASS</span></td><td>-</td><td>07:50:45</td></tr>
+            <tr><td><code>TC-RESP-03</code></td><td>Desktop Layout (1440x900)</td><td><span class="badge badge-pass">PASS</span></td><td>-</td><td>07:50:46</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Skipped Results -->
+      <div id="results-skipped" class="tab-content">
+        <table>
+          <thead>
+            <tr>
+              <th>Test ID</th>
+              <th>Description</th>
+              <th>Status</th>
+              <th>Reason</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td><code>TC-P01-ED-01</code></td><td>Empty state UI</td><td><span class="badge badge-skip">SKIP</span></td><td>데이터 있음 (Empty state 테스트 불가)</td></tr>
+            <tr><td><code>TC-P03-F02-01</code></td><td>Mission 카드 표시</td><td><span class="badge badge-skip">SKIP</span></td><td>Kanban 보드에 Mission 카드 0개</td></tr>
+            <tr><td><code>TC-P03-F03-01</code></td><td>Mission 클릭 → Detail Modal</td><td><span class="badge badge-skip">SKIP</span></td><td>클릭할 Mission 카드 없음</td></tr>
+            <tr><td><code>TC-P04-F03-01</code></td><td>Todo 클릭 → 상세 드로어</td><td><span class="badge badge-skip">SKIP</span></td><td>셀렉터로 특정 Todo 카드 못찾음</td></tr>
+            <tr><td><code>TC-P04-F05-01</code></td><td>Status 필터 표시</td><td><span class="badge badge-skip">SKIP</span></td><td>필터 섹션 셀렉터 매칭 안됨</td></tr>
+            <tr><td><code>TC-M02-F02-01</code></td><td>답변 입력 영역</td><td><span class="badge badge-skip">SKIP</span></td><td>모든 질문 답변 완료 상태</td></tr>
+            <tr><td><code>TC-M02-F03-01</code></td><td>답변 제출 API</td><td><span class="badge badge-skip">SKIP</span></td><td>데이터 변경 방지 (실제 제출 안함)</td></tr>
+            <tr><td><code>TC-M02-F03-02</code></td><td>답변 API 호출 확인</td><td><span class="badge badge-skip">SKIP</span></td><td>데이터 변경 방지</td></tr>
+            <tr><td><code>TC-M03-F01-01</code></td><td>Mission Detail Modal</td><td><span class="badge badge-skip">SKIP</span></td><td>클릭할 Mission 카드 없음</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- All Results -->
+      <div id="results-all" class="tab-content">
+        <h3>Test Coverage by Page</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Page/Modal</th>
+              <th>Total</th>
+              <th>Passed</th>
+              <th>Skipped</th>
+              <th>Failed</th>
+              <th>Coverage</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>P01 HomePage</td><td>9</td><td>8</td><td>1</td><td>0</td><td><div style="background:#d1fae5;padding:0.25rem 0.5rem;border-radius:4px;display:inline-block">88.9%</div></td></tr>
+            <tr><td>P02 WorkspaceDashboard</td><td>6</td><td>6</td><td>0</td><td>0</td><td><div style="background:#d1fae5;padding:0.25rem 0.5rem;border-radius:4px;display:inline-block">100%</div></td></tr>
+            <tr><td>P03 MissionsPage</td><td>8</td><td>6</td><td>2</td><td>0</td><td><div style="background:#d1fae5;padding:0.25rem 0.5rem;border-radius:4px;display:inline-block">75%</div></td></tr>
+            <tr><td>P04 TodosPage</td><td>6</td><td>4</td><td>2</td><td>0</td><td><div style="background:#fef3c7;padding:0.25rem 0.5rem;border-radius:4px;display:inline-block">66.7%</div></td></tr>
+            <tr><td>P05 TimelinePage</td><td>4</td><td>4</td><td>0</td><td>0</td><td><div style="background:#d1fae5;padding:0.25rem 0.5rem;border-radius:4px;display:inline-block">100%</div></td></tr>
+            <tr><td>M01 SettingsModal</td><td>5</td><td>5</td><td>0</td><td>0</td><td><div style="background:#d1fae5;padding:0.25rem 0.5rem;border-radius:4px;display:inline-block">100%</div></td></tr>
+            <tr><td>M02 AIQuestionPanel</td><td>5</td><td>2</td><td>3</td><td>0</td><td><div style="background:#fef3c7;padding:0.25rem 0.5rem;border-radius:4px;display:inline-block">40%</div></td></tr>
+            <tr><td>M03 MissionDetailModal</td><td>1</td><td>0</td><td>1</td><td>0</td><td><div style="background:#fef3c7;padding:0.25rem 0.5rem;border-radius:4px;display:inline-block">0%</div></td></tr>
+            <tr><td>Performance</td><td>2</td><td>2</td><td>0</td><td>0</td><td><div style="background:#d1fae5;padding:0.25rem 0.5rem;border-radius:4px;display:inline-block">100%</div></td></tr>
+            <tr><td>Responsive</td><td>3</td><td>3</td><td>0</td><td>0</td><td><div style="background:#d1fae5;padding:0.25rem 0.5rem;border-radius:4px;display:inline-block">100%</div></td></tr>
+            <tr style="font-weight:bold;background:#f3f4f6"><td>Total</td><td>49</td><td>40</td><td>9</td><td>0</td><td><div style="background:#d1fae5;padding:0.25rem 0.5rem;border-radius:4px;display:inline-block">81.6%</div></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Test Case Categories -->
+    <div class="section">
+      <h2>📊 Test Case Categories (172 Total)</h2>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Category</th>
+            <th>Normal</th>
+            <th>Exception</th>
+            <th>Edge</th>
+            <th>Performance</th>
+            <th>Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>P01 HomePage</td><td>18</td><td>6</td><td>7</td><td>3</td><td><strong>34</strong></td></tr>
+          <tr><td>P03 MissionsPage</td><td>16</td><td>5</td><td>7</td><td>4</td><td><strong>32</strong></td></tr>
+          <tr><td>P04 TodosPage</td><td>15</td><td>6</td><td>7</td><td>3</td><td><strong>31</strong></td></tr>
+          <tr><td>P05 TimelinePage</td><td>8</td><td>3</td><td>5</td><td>3</td><td><strong>19</strong></td></tr>
+          <tr><td>M01 SettingsModal</td><td>6</td><td>0</td><td>2</td><td>0</td><td><strong>8</strong></td></tr>
+          <tr><td>M02 AIQuestionPanel</td><td>8</td><td>6</td><td>7</td><td>3</td><td><strong>24</strong></td></tr>
+          <tr><td>M03 MissionDetailModal</td><td>11</td><td>5</td><td>5</td><td>3</td><td><strong>24</strong></td></tr>
+          <tr style="font-weight:bold;background:#f3f4f6"><td>Total</td><td>82</td><td>31</td><td>40</td><td>19</td><td><strong>172</strong></td></tr>
+        </tbody>
+      </table>
+
+      <h3>Critical Path Tests (Must Pass)</h3>
+      <ul style="margin-top:0.5rem;padding-left:1.5rem;">
+        <li><code>TC-M02-F03-01</code>: AI 답변 제출</li>
+        <li><code>TC-M02-F03-02</code>: AI 답변 API 호출</li>
+        <li><code>TC-M02-EX-01</code>: AI 답변 실패 처리</li>
+        <li><code>TC-M03-F07-01</code>: Mission Start Weaving</li>
+        <li><code>TC-M03-F07-03</code>: Start Weaving API 호출</li>
+      </ul>
+    </div>
+
+    <!-- Screenshots -->
+    <div class="section">
+      <h2>📸 Test Screenshots</h2>
+      <p style="margin-bottom: 1rem; color: var(--gray-500);">Screenshots captured during E2E test execution</p>
+
+      <div class="screenshot-grid">
+        <div class="screenshot-card">
+          <img src="../e2e-tests/screenshots/TC-P01-F01_homepage_stats.png" alt="Homepage Stats" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 300 200%22><rect fill=%22%23f3f4f6%22 width=%22300%22 height=%22200%22/><text x=%22150%22 y=%22100%22 text-anchor=%22middle%22 fill=%22%236b7280%22>Image not found</text></svg>'">
+          <div class="info">
+            <div class="title">P01 HomePage</div>
+            <div class="desc">Global stats cards and workspace list</div>
+          </div>
+        </div>
+
+        <div class="screenshot-card">
+          <img src="../e2e-tests/screenshots/TC-P02-F01_workspace_dashboard.png" alt="Workspace Dashboard" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 300 200%22><rect fill=%22%23f3f4f6%22 width=%22300%22 height=%22200%22/><text x=%22150%22 y=%22100%22 text-anchor=%22middle%22 fill=%22%236b7280%22>Image not found</text></svg>'">
+          <div class="info">
+            <div class="title">P02 Workspace Dashboard</div>
+            <div class="desc">Projects and recent missions</div>
+          </div>
+        </div>
+
+        <div class="screenshot-card">
+          <img src="../e2e-tests/screenshots/TC-P03-F01_missions_page.png" alt="Missions Page" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 300 200%22><rect fill=%22%23f3f4f6%22 width=%22300%22 height=%22200%22/><text x=%22150%22 y=%22100%22 text-anchor=%22middle%22 fill=%22%236b7280%22>Image not found</text></svg>'">
+          <div class="info">
+            <div class="title">P03 Missions Page</div>
+            <div class="desc">Kanban board with 4 columns</div>
+          </div>
+        </div>
+
+        <div class="screenshot-card">
+          <img src="../e2e-tests/screenshots/TC-P04-F01_todos_page.png" alt="Todos Page" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 300 200%22><rect fill=%22%23f3f4f6%22 width=%22300%22 height=%22200%22/><text x=%22150%22 y=%22100%22 text-anchor=%22middle%22 fill=%22%236b7280%22>Image not found</text></svg>'">
+          <div class="info">
+            <div class="title">P04 Todos Page</div>
+            <div class="desc">Todo board with 5 status columns</div>
+          </div>
+        </div>
+
+        <div class="screenshot-card">
+          <img src="../e2e-tests/screenshots/TC-P05-F01_timeline_page.png" alt="Timeline Page" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 300 200%22><rect fill=%22%23f3f4f6%22 width=%22300%22 height=%22200%22/><text x=%22150%22 y=%22100%22 text-anchor=%22middle%22 fill=%22%236b7280%22>Image not found</text></svg>'">
+          <div class="info">
+            <div class="title">P05 Timeline Page</div>
+            <div class="desc">Activity events with date grouping</div>
+          </div>
+        </div>
+
+        <div class="screenshot-card">
+          <img src="../e2e-tests/screenshots/TC-P01-F11_settings_modal.png" alt="Settings Modal" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 300 200%22><rect fill=%22%23f3f4f6%22 width=%22300%22 height=%22200%22/><text x=%22150%22 y=%22100%22 text-anchor=%22middle%22 fill=%22%236b7280%22>Image not found</text></svg>'">
+          <div class="info">
+            <div class="title">M01 Settings Modal</div>
+            <div class="desc">Language and theme settings</div>
+          </div>
+        </div>
+
+        <div class="screenshot-card">
+          <img src="../e2e-tests/screenshots/TC-P04-F07_add_todo_modal.png" alt="Add Todo Modal" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 300 200%22><rect fill=%22%23f3f4f6%22 width=%22300%22 height=%22200%22/><text x=%22150%22 y=%22100%22 text-anchor=%22middle%22 fill=%22%236b7280%22>Image not found</text></svg>'">
+          <div class="info">
+            <div class="title">Add Todo Modal</div>
+            <div class="desc">Todo creation form</div>
+          </div>
+        </div>
+
+        <div class="screenshot-card">
+          <img src="../e2e-tests/screenshots/TC-P03-F07_create_mission_modal.png" alt="Create Mission Modal" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 300 200%22><rect fill=%22%23f3f4f6%22 width=%22300%22 height=%22200%22/><text x=%22150%22 y=%22100%22 text-anchor=%22middle%22 fill=%22%236b7280%22>Image not found</text></svg>'">
+          <div class="info">
+            <div class="title">Create Mission Modal</div>
+            <div class="desc">Mission creation with templates</div>
+          </div>
+        </div>
+
+        <div class="screenshot-card">
+          <img src="../e2e-tests/screenshots/TC-RESP-01_mobile.png" alt="Mobile Layout" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 300 200%22><rect fill=%22%23f3f4f6%22 width=%22300%22 height=%22200%22/><text x=%22150%22 y=%22100%22 text-anchor=%22middle%22 fill=%22%236b7280%22>Image not found</text></svg>'">
+          <div class="info">
+            <div class="title">Responsive - Mobile</div>
+            <div class="desc">375x812 viewport</div>
+          </div>
+        </div>
+
+        <div class="screenshot-card">
+          <img src="../e2e-tests/screenshots/TC-RESP-02_tablet.png" alt="Tablet Layout" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 300 200%22><rect fill=%22%23f3f4f6%22 width=%22300%22 height=%22200%22/><text x=%22150%22 y=%22100%22 text-anchor=%22middle%22 fill=%22%236b7280%22>Image not found</text></svg>'">
+          <div class="info">
+            <div class="title">Responsive - Tablet</div>
+            <div class="desc">768x1024 viewport</div>
+          </div>
+        </div>
+
+        <div class="screenshot-card">
+          <img src="../e2e-tests/screenshots/TC-RESP-03_desktop.png" alt="Desktop Layout" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 300 200%22><rect fill=%22%23f3f4f6%22 width=%22300%22 height=%22200%22/><text x=%22150%22 y=%22100%22 text-anchor=%22middle%22 fill=%22%236b7280%22>Image not found</text></svg>'">
+          <div class="info">
+            <div class="title">Responsive - Desktop</div>
+            <div class="desc">1440x900 viewport</div>
+          </div>
+        </div>
+
+        <div class="screenshot-card">
+          <img src="../e2e-tests/screenshots/TC-M01-F02_homepage_english.png" alt="English UI" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 300 200%22><rect fill=%22%23f3f4f6%22 width=%22300%22 height=%22200%22/><text x=%22150%22 y=%22100%22 text-anchor=%22middle%22 fill=%22%236b7280%22>Image not found</text></svg>'">
+          <div class="info">
+            <div class="title">i18n - English</div>
+            <div class="desc">Language switched to English</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Test Environment -->
+    <div class="section">
+      <h2>🔧 Test Environment</h2>
+
+      <table>
+        <tbody>
+          <tr><td style="width:200px;font-weight:600">Test Framework</td><td>Puppeteer (Headless Chrome)</td></tr>
+          <tr><td style="font-weight:600">Browser</td><td>Chrome (Headless)</td></tr>
+          <tr><td style="font-weight:600">Viewport (Desktop)</td><td>1440 x 900</td></tr>
+          <tr><td style="font-weight:600">Viewport (Tablet)</td><td>768 x 1024</td></tr>
+          <tr><td style="font-weight:600">Viewport (Mobile)</td><td>375 x 812</td></tr>
+          <tr><td style="font-weight:600">Base URL</td><td><code>http://localhost:21001</code></td></tr>
+          <tr><td style="font-weight:600">Test Date</td><td>2026-01-27</td></tr>
+          <tr><td style="font-weight:600">Duration</td><td>68.2 seconds</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Network Conditions Tested</h3>
+      <ul style="margin-top:0.5rem;padding-left:1.5rem;">
+        <li>Normal (Fast network)</li>
+        <li>Slow 3G (50KB/s, 2000ms latency)</li>
+      </ul>
+    </div>
+
+    <footer>
+      <p>Generated by ThreadCast E2E Test Suite</p>
+      <p style="margin-top:0.5rem;opacity:0.7">© 2026 ThreadCast Hub</p>
+    </footer>
+  </div>
+
+  <script>
+    function showTab(tabId) {
+      // Hide all tab contents in the same section
+      const clickedTab = event.target;
+      const tabGroup = clickedTab.closest('.section');
+
+      tabGroup.querySelectorAll('.tab-content').forEach(content => {
+        content.classList.remove('active');
+      });
+      tabGroup.querySelectorAll('.tab').forEach(tab => {
+        tab.classList.remove('active');
+      });
+
+      // Show selected tab
+      document.getElementById(tabId).classList.add('active');
+      clickedTab.classList.add('active');
+    }
+
+    // Collapsible sections
+    document.querySelectorAll('.collapsible').forEach(elem => {
+      elem.addEventListener('click', function() {
+        this.classList.toggle('open');
+        const content = this.nextElementSibling;
+        content.classList.toggle('open');
+      });
+    });
+  </script>
+</body>
+</html>

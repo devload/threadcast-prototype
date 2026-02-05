@@ -6,6 +6,7 @@ import { useUIStore } from '../stores/uiStore';
 import { Button } from '../components/common/Button';
 import { Logo } from '../components/common/Logo';
 import { Alert } from '../components/feedback/Alert';
+import { useTranslation } from '../hooks/useTranslation';
 
 // Capacitor detection
 const isCapacitorNative = (): boolean => {
@@ -15,8 +16,13 @@ const isCapacitorNative = (): boolean => {
 export function LoginPage() {
   const navigate = useNavigate();
   const { error, clearError } = useAuthStore();
+  const { t, language, setLanguage } = useTranslation();
   const [isOAuthLoading, setIsOAuthLoading] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
+
+  const toggleLanguage = () => {
+    setLanguage(language === 'ko' ? 'en' : 'ko');
+  };
 
   useEffect(() => {
     // Listen for deep link callbacks (Capacitor native app)
@@ -54,7 +60,7 @@ export function LoginPage() {
             }
           } catch (err) {
             console.error('Failed to parse URL:', err);
-            setLocalError('로그인 처리 중 오류가 발생했습니다.');
+            setLocalError(t('auth.loginError'));
             setIsOAuthLoading(false);
           }
         });
@@ -97,7 +103,7 @@ export function LoginPage() {
       navigate('/workspaces', { replace: true });
     } catch (err) {
       console.error('OAuth callback failed:', err);
-      setLocalError(err instanceof Error ? err.message : '로그인에 실패했습니다.');
+      setLocalError(err instanceof Error ? err.message : t('auth.loginFailed'));
       setIsOAuthLoading(false);
     }
   };
@@ -111,7 +117,7 @@ export function LoginPage() {
       // For native: Browser will open, then appUrlOpen listener handles callback
     } catch (err) {
       console.error('Login failed:', err);
-      setLocalError(err instanceof Error ? err.message : '로그인을 시작할 수 없습니다.');
+      setLocalError(err instanceof Error ? err.message : t('auth.cannotStartLogin'));
       setIsOAuthLoading(false);
     }
   };
@@ -119,15 +125,24 @@ export function LoginPage() {
   const displayError = localError || error;
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-indigo-50/30 to-purple-50/30 dark:from-slate-900 dark:via-indigo-950/30 dark:to-purple-950/30 px-4">
+    <div className="relative min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-indigo-50/30 to-purple-50/30 dark:from-slate-900 dark:via-indigo-950/30 dark:to-purple-950/30 px-4">
       <div className="w-full max-w-md">
         {/* Logo & Tagline */}
         <div className="flex flex-col items-center mb-8">
           <Logo size="xl" />
           <p className="text-slate-500 dark:text-slate-400 mt-3 text-center">
-            AI-Powered Kanban for Development Teams
+            {t('auth.tagline')}
           </p>
         </div>
+
+        {/* Language Toggle */}
+        <button
+          onClick={toggleLanguage}
+          className="absolute top-4 right-4 px-3 py-1.5 rounded-full bg-white dark:bg-slate-800 shadow-md border border-slate-200 dark:border-slate-700 text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
+          aria-label="Toggle language"
+        >
+          {language === 'ko' ? '🇺🇸 EN' : '🇰🇷 KO'}
+        </button>
 
         {/* Login Card */}
         <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl shadow-indigo-500/5 border border-slate-200 dark:border-slate-700 p-8">
@@ -147,10 +162,10 @@ export function LoginPage() {
 
           <div className="text-center mb-6">
             <h2 className="text-xl font-semibold text-slate-900 dark:text-white">
-              Welcome to ThreadCast
+              {t('auth.welcome')}
             </h2>
             <p className="text-slate-500 dark:text-slate-400 mt-2 text-sm">
-              Sign in with your SessionCast account to continue
+              {t('auth.signInDesc')}
             </p>
           </div>
 
@@ -177,17 +192,17 @@ export function LoginPage() {
                 strokeLinejoin="round"
               />
             </svg>
-            Sign in with SessionCast
+            {t('auth.signInWithSessionCast')}
           </Button>
 
           <p className="text-center text-xs text-slate-400 dark:text-slate-500 mt-6">
-            By signing in, you agree to our Terms of Service and Privacy Policy
+            {t('auth.termsAgreement')}
           </p>
         </div>
 
         {/* Footer */}
         <p className="text-center text-xs text-slate-400 dark:text-slate-500 mt-8">
-          Weave your development workflow with AI
+          {t('auth.footer')}
         </p>
       </div>
     </div>

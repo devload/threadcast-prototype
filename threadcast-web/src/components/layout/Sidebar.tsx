@@ -9,6 +9,7 @@ import {
 import { SearchTrigger } from '../search';
 import { Logo } from '../common/Logo';
 import { SidebarFooter } from './SidebarFooter';
+import { useTranslation } from '../../hooks/useTranslation';
 
 interface SidebarProps {
   brandName?: string;
@@ -61,6 +62,8 @@ export function Sidebar({
   onAIQuestionsClick,
   onCreateMission,
 }: SidebarProps) {
+  const { t } = useTranslation();
+
   return (
     <aside data-tour="sidebar" className="flex flex-col h-screen w-[260px] bg-white border-r border-slate-200 overflow-y-auto">
       {/* Header - Logo & Workspace */}
@@ -128,7 +131,7 @@ export function Sidebar({
           }`}
         >
           <span className="text-lg">🤔</span>
-          <span className="flex-1 text-left font-medium">AI 질문</span>
+          <span className="flex-1 text-left font-medium">{t('sidebar.aiQuestions')}</span>
           {pendingQuestions > 0 && (
             <span className="px-2 py-0.5 bg-pink-500 text-white text-xs font-bold rounded-full animate-pulse">
               {pendingQuestions}

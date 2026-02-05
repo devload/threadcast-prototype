@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useLocation, useParams } from 'react-router-dom';
-import { Settings, Home, Sparkles, PenLine, ChevronRight, Clock, Zap } from 'lucide-react';
-import { useMissionStore, useUIStore, useToast, useAuthStore, useAIQuestionStore, useTodoStore } from '../stores';
+import { Settings, Home, Sparkles, PenLine, ChevronRight, Clock, Zap, Download, Link2 } from 'lucide-react';
+import { useMissionStore, useUIStore, useToast, useAuthStore, useAIQuestionStore, useTodoStore, useJiraStore } from '../stores';
 import { useOnboardingStore } from '../components/onboarding';
 import { api, aiAnalysisService } from '../services';
 import { MissionBoard } from '../components/mission/MissionBoard';
@@ -12,13 +12,15 @@ import { Modal } from '../components/feedback/Modal';
 import { Input, TextArea } from '../components/form/Input';
 import { Select } from '../components/form/Select';
 import { Button } from '../components/common/Button';
-import { SettingsModal } from '../components/settings/SettingsModal';
+import { JiraImportModal } from '../components/jira';
+import { JiraTicketSelector } from '../components/mission/JiraTicketSelector';
+import type { JiraIssue } from '../services/jiraService';
 import { useTranslation } from '../hooks/useTranslation';
 import type { Mission, Priority, Todo } from '../types';
 import type { GeneratedMission } from '../services/aiAnalysisService';
 import { clsx } from 'clsx';
 
-type CreateMode = 'manual' | 'ai';
+type CreateMode = 'manual' | 'ai' | 'jira';
 
 export function MissionsPage() {
   const navigate = useNavigate();
@@ -44,8 +46,11 @@ export function MissionsPage() {
   const { t } = useTranslation();
 
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isJiraImportOpen, setIsJiraImportOpen] = useState(false);
   const [selectedMission, setSelectedMission] = useState<Mission | null>(null);
+
+  // JIRA integration
+  const { integration, fetchStatus } = useJiraStore();
   const [newMission, setNewMission] = useState({
     title: '',
     description: '',
@@ -58,6 +63,9 @@ export function MissionsPage() {
   const [aiPrompt, setAiPrompt] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedMission, setGeneratedMission] = useState<GeneratedMission | null>(null);
+
+  // JIRA Mission Creation states
+  const [selectedJiraIssue, setSelectedJiraIssue] = useState<JiraIssue | null>(null);
 
   // Todo detail drawer (for tour)
   const [selectedTodo, setSelectedTodo] = useState<Todo | null>(null);
@@ -74,8 +82,9 @@ export function MissionsPage() {
     if (workspaceId) {
       fetchMissions(workspaceId);
       fetchQuestions(workspaceId);
+      fetchStatus(workspaceId);
     }
-  }, [workspaceId, fetchMissions, fetchQuestions]);
+  }, [workspaceId, fetchMissions, fetchQuestions, fetchStatus]);
 
   // Register tour context when tour is active
   useEffect(() => {
@@ -123,6 +132,26 @@ export function MissionsPage() {
     setCreateMode('manual');
     setAiPrompt('');
     setGeneratedMission(null);
+    setSelectedJiraIssue(null);
+  };
+
+  // Handle JIRA issue selection
+  const handleJiraIssueSelect = (issue: JiraIssue) => {
+    setSelectedJiraIssue(issue);
+    setNewMission({
+      title: issue.summary,
+      description: issue.description || '',
+      priority: mapJiraPriority(issue.priority),
+    });
+  };
+
+  // Map JIRA priority to our priority
+  const mapJiraPriority = (jiraPriority?: string): Priority => {
+    const p = jiraPriority?.toLowerCase() || '';
+    if (p.includes('highest') || p.includes('critical')) return 'CRITICAL';
+    if (p.includes('high')) return 'HIGH';
+    if (p.includes('low') || p.includes('lowest')) return 'LOW';
+    return 'MEDIUM';
   };
 
   // Generate mission from AI prompt
@@ -140,22 +169,41 @@ export function MissionsPage() {
     }
   };
 
-  // Create mission (manual or from AI-generated)
+  // Create mission (manual, AI-generated, or from JIRA)
   const handleCreateMission = async () => {
     if (!workspaceId) return;
 
     // Determine mission data based on mode
-    const missionData = createMode === 'ai' && generatedMission
-      ? {
-          title: generatedMission.title,
-          description: generatedMission.description,
-          priority: generatedMission.priority,
-        }
-      : {
-          title: newMission.title,
-          description: newMission.description || undefined,
-          priority: newMission.priority,
-        };
+    let missionData: {
+      title: string;
+      description?: string;
+      priority: Priority;
+      jiraIssueKey?: string;
+      jiraIssueUrl?: string;
+    };
+
+    if (createMode === 'ai' && generatedMission) {
+      missionData = {
+        title: generatedMission.title,
+        description: generatedMission.description,
+        priority: generatedMission.priority,
+      };
+    } else if (createMode === 'jira' && selectedJiraIssue) {
+      // JIRA 모드: JIRA 정보 포함
+      missionData = {
+        title: newMission.title,
+        description: newMission.description || undefined,
+        priority: newMission.priority,
+        jiraIssueKey: selectedJiraIssue.key,
+        jiraIssueUrl: `${integration?.baseUrl}/browse/${selectedJiraIssue.key}`,
+      };
+    } else {
+      missionData = {
+        title: newMission.title,
+        description: newMission.description || undefined,
+        priority: newMission.priority,
+      };
+    }
 
     if (!missionData.title?.trim()) return;
 
@@ -181,6 +229,26 @@ export function MissionsPage() {
         } catch (todoError) {
           console.error('Failed to create todos:', todoError);
           toast.success(t('toast.missionCreated'), '미션이 생성되었습니다 (TODO 생성 일부 실패)');
+        }
+      } else if (createMode === 'jira' && selectedJiraIssue) {
+        // JIRA 모드에서 AI Todo가 생성되었으면 함께 저장
+        if (generatedMission && created) {
+          try {
+            for (const todo of generatedMission.suggestedTodos) {
+              await api.post('/todos', {
+                missionId: created.id,
+                title: todo.title,
+                description: todo.description,
+                priority: 'MEDIUM',
+              });
+            }
+            toast.success(t('toast.missionCreated'), `${selectedJiraIssue.key} → 미션 + ${generatedMission.suggestedTodos.length}개 TODO 생성됨`);
+          } catch (todoError) {
+            console.error('Failed to create todos:', todoError);
+            toast.success(t('toast.missionCreated'), `${selectedJiraIssue.key}에서 미션 생성됨 (TODO 생성 일부 실패)`);
+          }
+        } else {
+          toast.success(t('toast.missionCreated'), `${selectedJiraIssue.key}에서 Mission이 생성되었습니다`);
         }
       } else {
         toast.success(t('toast.missionCreated'), t('toast.missionCreatedDesc'));
@@ -303,14 +371,25 @@ export function MissionsPage() {
             </button>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
           <button
-            onClick={() => setIsSettingsOpen(true)}
+            onClick={() => navigate('/settings')}
             className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
             title={t('settings.title')}
           >
             <Settings size={20} className="text-slate-500 dark:text-slate-400" />
           </button>
+          {integration?.connected && (
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => setIsJiraImportOpen(true)}
+              className="flex items-center gap-1.5"
+            >
+              <Download size={16} />
+              JIRA Import
+            </Button>
+          )}
           <Button size="sm" onClick={() => setIsCreateModalOpen(true)} data-tour="create-mission-btn">
             {t('mission.newMission')}
           </Button>
@@ -431,10 +510,16 @@ export function MissionsPage() {
             <Button
               onClick={handleCreateMission}
               isLoading={isCreating}
-              disabled={createMode === 'manual' ? !newMission.title.trim() : !generatedMission}
+              disabled={
+                createMode === 'ai'
+                  ? !generatedMission
+                  : !newMission.title.trim()
+              }
             >
               {createMode === 'ai' && generatedMission
                 ? `미션 + ${generatedMission.suggestedTodos.length}개 TODO 생성`
+                : createMode === 'jira' && selectedJiraIssue
+                ? `${selectedJiraIssue.key} → Mission 생성`
                 : t('mission.createMission')}
             </Button>
           </>
@@ -466,6 +551,18 @@ export function MissionsPage() {
             >
               <Sparkles size={16} />
               AI로 생성
+            </button>
+            <button
+              onClick={() => setCreateMode('jira')}
+              className={clsx(
+                'flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all whitespace-nowrap',
+                createMode === 'jira'
+                  ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white shadow-sm'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+              )}
+            >
+              <Link2 size={16} />
+              JIRA
             </button>
           </div>
 
@@ -680,11 +777,186 @@ export function MissionsPage() {
               )}
             </>
           )}
+
+          {/* JIRA Mode */}
+          {createMode === 'jira' && (
+            <div className="space-y-4">
+              {/* JIRA Ticket Selector */}
+              <div className="border border-slate-200 dark:border-slate-700 rounded-lg p-4 bg-slate-50 dark:bg-slate-800/50">
+                <JiraTicketSelector
+                  onSelect={handleJiraIssueSelect}
+                  selectedIssueKey={selectedJiraIssue?.key}
+                />
+              </div>
+
+              {/* Selected Issue Preview */}
+              {selectedJiraIssue && (
+                <div className="space-y-3 p-4 bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-blue-950/30 dark:to-cyan-950/30 rounded-lg border border-blue-200 dark:border-blue-800">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <div className="flex items-center gap-2 mb-1">
+                        <Link2 size={14} className="text-blue-500" />
+                        <span className="text-xs font-mono font-medium text-blue-600 dark:text-blue-400">
+                          {selectedJiraIssue.key}
+                        </span>
+                        {selectedJiraIssue.issueType && (
+                          <span className="text-xs px-1.5 py-0.5 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded">
+                            {selectedJiraIssue.issueType}
+                          </span>
+                        )}
+                      </div>
+                      <h4 className="font-semibold text-slate-900 dark:text-white">
+                        {selectedJiraIssue.summary}
+                      </h4>
+                    </div>
+                    <span className={clsx(
+                      'px-2 py-0.5 text-xs font-medium rounded',
+                      newMission.priority === 'CRITICAL' && 'bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300',
+                      newMission.priority === 'HIGH' && 'bg-orange-100 text-orange-700 dark:bg-orange-900/50 dark:text-orange-300',
+                      newMission.priority === 'MEDIUM' && 'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300',
+                      newMission.priority === 'LOW' && 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300',
+                    )}>
+                      {newMission.priority}
+                    </span>
+                  </div>
+
+                  {selectedJiraIssue.description && (
+                    <p className="text-sm text-slate-600 dark:text-slate-400 line-clamp-3">
+                      {selectedJiraIssue.description}
+                    </p>
+                  )}
+
+                  {/* JIRA Status */}
+                  <div className="flex items-center gap-2 text-xs">
+                    <span className={clsx(
+                      'px-1.5 py-0.5 rounded',
+                      selectedJiraIssue.statusCategory === 'done' && 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300',
+                      selectedJiraIssue.statusCategory === 'indeterminate' && 'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300',
+                      selectedJiraIssue.statusCategory === 'new' && 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300'
+                    )}>
+                      {selectedJiraIssue.status}
+                    </span>
+                    {selectedJiraIssue.assignee && (
+                      <span className="text-slate-500 dark:text-slate-400">
+                        담당: {selectedJiraIssue.assignee}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* AI Todo 분석 버튼 */}
+                  <div className="pt-3 border-t border-blue-200 dark:border-blue-700">
+                    {!generatedMission ? (
+                      <div className="flex flex-col gap-2">
+                        <button
+                          onClick={() => {
+                            // JIRA 티켓 내용으로 AI 프롬프트 설정
+                            const prompt = `${selectedJiraIssue.summary}\n\n${selectedJiraIssue.description || ''}`;
+                            setAiPrompt(prompt);
+                            handleGenerateMission();
+                          }}
+                          disabled={isGenerating}
+                          className="flex items-center justify-center gap-2 w-full px-4 py-2.5 bg-gradient-to-r from-purple-500 to-pink-500 text-white text-sm font-semibold rounded-lg hover:from-purple-600 hover:to-pink-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md hover:shadow-lg"
+                        >
+                          {isGenerating ? (
+                            <>
+                              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                              AI 분석 중...
+                            </>
+                          ) : (
+                            <>
+                              <Sparkles size={16} />
+                              AI로 Todo 자동 생성
+                            </>
+                          )}
+                        </button>
+                        <span className="text-xs text-slate-500 dark:text-slate-400 text-center">
+                          JIRA 티켓 내용을 AI가 분석하여 Todo를 자동으로 생성합니다
+                        </span>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-medium text-green-600 dark:text-green-400 flex items-center gap-1">
+                            <Sparkles size={12} />
+                            AI 분석 완료 - {generatedMission.suggestedTodos.length}개 Todo 생성 예정
+                          </span>
+                          <button
+                            onClick={() => setGeneratedMission(null)}
+                            className="text-xs text-slate-500 hover:text-slate-700"
+                          >
+                            다시 분석
+                          </button>
+                        </div>
+                        <div className="space-y-1.5 max-h-32 overflow-y-auto">
+                          {generatedMission.suggestedTodos.map((todo, index) => (
+                            <div
+                              key={index}
+                              className="flex items-center gap-2 p-2 bg-white dark:bg-slate-800 rounded border border-slate-200 dark:border-slate-700 text-sm"
+                            >
+                              <span className="w-5 h-5 rounded bg-green-100 dark:bg-green-900/50 flex items-center justify-center text-xs text-green-600 dark:text-green-400">
+                                {index + 1}
+                              </span>
+                              <span className="text-slate-700 dark:text-slate-200 truncate">{todo.title}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Mission fields for JIRA mode (editable) */}
+              {selectedJiraIssue && (
+                <div className="space-y-3 pt-2 border-t border-slate-200 dark:border-slate-700">
+                  <div className="text-xs text-slate-500 dark:text-slate-400 mb-2">
+                    필요시 아래 내용을 수정할 수 있습니다:
+                  </div>
+                  <Input
+                    label="Mission 제목"
+                    value={newMission.title}
+                    onChange={(e) => setNewMission({ ...newMission, title: e.target.value })}
+                    placeholder="Mission 제목"
+                    fullWidth
+                  />
+                  <TextArea
+                    label="설명"
+                    value={newMission.description}
+                    onChange={(e) => setNewMission({ ...newMission, description: e.target.value })}
+                    placeholder="Mission 설명"
+                    fullWidth
+                    rows={3}
+                  />
+                  <Select
+                    label="우선순위"
+                    value={newMission.priority}
+                    onChange={(e) => setNewMission({ ...newMission, priority: e.target.value as Priority })}
+                    options={[
+                      { value: 'CRITICAL', label: t('mission.priorityCritical') },
+                      { value: 'HIGH', label: t('mission.priorityHigh') },
+                      { value: 'MEDIUM', label: t('mission.priorityMedium') },
+                      { value: 'LOW', label: t('mission.priorityLow') },
+                    ]}
+                    fullWidth
+                  />
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </Modal>
 
-      {/* Settings Modal */}
-      <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
+      {/* JIRA Import Modal */}
+      <JiraImportModal
+        isOpen={isJiraImportOpen}
+        onClose={() => setIsJiraImportOpen(false)}
+        onImportComplete={() => {
+          if (workspaceId) {
+            fetchMissions(workspaceId);
+          }
+          setIsJiraImportOpen(false);
+        }}
+      />
     </div>
   );
 }

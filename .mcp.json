@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "threadcast": {
+      "command": "node",
+      "args": ["/Users/devload/threadcast/threadcast-mcp/dist/index.js"],
+      "env": {
+        "THREADCAST_API_URL": "https://api.threadcast.io/api",
+        "THREADCAST_WORKSPACE_ID": "57c6b945-00de-4a0b-9b4c-b20d5369e833",
+        "THREADCAST_TOKEN": "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJhYWE5OTQxYy0xMzhiLTQyZmYtODllOS01YzhiYTBjNzI3MzMiLCJlbWFpbCI6ImRldmxvYWRAd2hhdGFwLmlvIiwiaWF0IjoxNzcwMTkwNjMxLCJleHAiOjE3NzAyNzcwMzF9.UCjhMRz_mlu6ATNgcxTbESm1gYFSF_hBFK3etd6y0ORJN0gOLuQDNJykCpNTC9VbD_kFigH0LX4OSdZqaRwRBg"
+      }
+    }
+  }
+}

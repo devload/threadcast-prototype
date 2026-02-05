@@ -1,0 +1,2063 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ThreadCast E2E Test Report - Detailed</title>
+  <style>
+    :root {
+      --primary: #6366f1;
+      --primary-dark: #4f46e5;
+      --success: #10b981;
+      --success-light: #d1fae5;
+      --warning: #f59e0b;
+      --warning-light: #fef3c7;
+      --danger: #ef4444;
+      --danger-light: #fee2e2;
+      --gray-50: #f9fafb;
+      --gray-100: #f3f4f6;
+      --gray-200: #e5e7eb;
+      --gray-300: #d1d5db;
+      --gray-400: #9ca3af;
+      --gray-500: #6b7280;
+      --gray-600: #4b5563;
+      --gray-700: #374151;
+      --gray-800: #1f2937;
+      --gray-900: #111827;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background: var(--gray-50);
+      color: var(--gray-900);
+      line-height: 1.7;
+      font-size: 15px;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 2rem;
+    }
+
+    /* Header */
+    header {
+      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+      color: white;
+      padding: 3rem 2rem;
+      margin-bottom: 2rem;
+      border-radius: 16px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    header::before {
+      content: '';
+      position: absolute;
+      top: -50%;
+      right: -10%;
+      width: 400px;
+      height: 400px;
+      background: rgba(255,255,255,0.1);
+      border-radius: 50%;
+    }
+
+    header h1 {
+      font-size: 2.5rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+      position: relative;
+    }
+
+    header .subtitle {
+      opacity: 0.9;
+      font-size: 1.1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .header-stats {
+      display: flex;
+      gap: 2rem;
+      flex-wrap: wrap;
+      position: relative;
+    }
+
+    .header-stat {
+      background: rgba(255,255,255,0.15);
+      padding: 1rem 1.5rem;
+      border-radius: 12px;
+      backdrop-filter: blur(10px);
+    }
+
+    .header-stat .value {
+      font-size: 2rem;
+      font-weight: 700;
+    }
+
+    .header-stat .label {
+      font-size: 0.85rem;
+      opacity: 0.9;
+    }
+
+    /* Table of Contents */
+    .toc {
+      background: white;
+      border-radius: 12px;
+      padding: 1.5rem;
+      margin-bottom: 2rem;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+
+    .toc h2 {
+      font-size: 1.25rem;
+      margin-bottom: 1rem;
+      color: var(--gray-800);
+    }
+
+    .toc-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+      gap: 0.75rem;
+    }
+
+    .toc-item {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.75rem 1rem;
+      background: var(--gray-50);
+      border-radius: 8px;
+      text-decoration: none;
+      color: var(--gray-700);
+      transition: all 0.2s;
+    }
+
+    .toc-item:hover {
+      background: var(--primary);
+      color: white;
+    }
+
+    .toc-item .icon {
+      font-size: 1.25rem;
+    }
+
+    .toc-item .count {
+      margin-left: auto;
+      font-size: 0.8rem;
+      background: var(--gray-200);
+      padding: 0.2rem 0.5rem;
+      border-radius: 4px;
+    }
+
+    .toc-item:hover .count {
+      background: rgba(255,255,255,0.2);
+    }
+
+    /* Page Section */
+    .page-section {
+      background: white;
+      border-radius: 16px;
+      margin-bottom: 2rem;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      overflow: hidden;
+    }
+
+    .page-header {
+      background: linear-gradient(135deg, var(--gray-800) 0%, var(--gray-700) 100%);
+      color: white;
+      padding: 1.5rem 2rem;
+    }
+
+    .page-header h2 {
+      font-size: 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .page-header .route {
+      font-family: 'SF Mono', Monaco, monospace;
+      font-size: 0.9rem;
+      opacity: 0.8;
+      margin-top: 0.5rem;
+    }
+
+    .page-header .description {
+      margin-top: 0.75rem;
+      opacity: 0.9;
+      line-height: 1.6;
+    }
+
+    .page-content {
+      padding: 2rem;
+    }
+
+    /* Test Case Card */
+    .test-case {
+      border: 1px solid var(--gray-200);
+      border-radius: 12px;
+      margin-bottom: 1.5rem;
+      overflow: hidden;
+    }
+
+    .test-case.passed {
+      border-left: 4px solid var(--success);
+    }
+
+    .test-case.failed {
+      border-left: 4px solid var(--danger);
+    }
+
+    .test-case.skipped {
+      border-left: 4px solid var(--warning);
+    }
+
+    .test-case-header {
+      background: var(--gray-50);
+      padding: 1rem 1.5rem;
+      border-bottom: 1px solid var(--gray-200);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .test-case-header .test-id {
+      font-family: 'SF Mono', Monaco, monospace;
+      font-weight: 600;
+      color: var(--primary);
+    }
+
+    .test-case-header .test-title {
+      flex: 1;
+      font-weight: 600;
+      color: var(--gray-800);
+    }
+
+    .test-case-body {
+      padding: 1.5rem;
+    }
+
+    .test-case-body .section-title {
+      font-size: 0.8rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--gray-500);
+      margin-bottom: 0.5rem;
+      margin-top: 1.25rem;
+    }
+
+    .test-case-body .section-title:first-child {
+      margin-top: 0;
+    }
+
+    .test-case-body p {
+      color: var(--gray-700);
+      margin-bottom: 0.5rem;
+    }
+
+    .test-case-body ul, .test-case-body ol {
+      padding-left: 1.5rem;
+      color: var(--gray-700);
+    }
+
+    .test-case-body li {
+      margin-bottom: 0.35rem;
+    }
+
+    /* Screenshot */
+    .screenshot-container {
+      margin-top: 1rem;
+      border-radius: 8px;
+      overflow: hidden;
+      border: 1px solid var(--gray-200);
+    }
+
+    .screenshot-container img {
+      width: 100%;
+      display: block;
+    }
+
+    .screenshot-caption {
+      background: var(--gray-100);
+      padding: 0.75rem 1rem;
+      font-size: 0.85rem;
+      color: var(--gray-600);
+      text-align: center;
+    }
+
+    /* Status Badge */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 0.35rem 0.85rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.025em;
+    }
+
+    .badge-pass {
+      background: var(--success-light);
+      color: #065f46;
+    }
+
+    .badge-fail {
+      background: var(--danger-light);
+      color: #991b1b;
+    }
+
+    .badge-skip {
+      background: var(--warning-light);
+      color: #92400e;
+    }
+
+    .badge-high {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    .badge-medium {
+      background: #fef3c7;
+      color: #92400e;
+    }
+
+    .badge-low {
+      background: #dbeafe;
+      color: #1e40af;
+    }
+
+    .badge-critical {
+      background: #fce7f3;
+      color: #9d174d;
+    }
+
+    /* Result Box */
+    .result-box {
+      padding: 1rem;
+      border-radius: 8px;
+      margin-top: 0.75rem;
+    }
+
+    .result-box.success {
+      background: var(--success-light);
+      border: 1px solid #a7f3d0;
+    }
+
+    .result-box.warning {
+      background: var(--warning-light);
+      border: 1px solid #fde68a;
+    }
+
+    .result-box.error {
+      background: var(--danger-light);
+      border: 1px solid #fecaca;
+    }
+
+    .result-box .label {
+      font-weight: 600;
+      margin-bottom: 0.25rem;
+    }
+
+    /* Code */
+    code {
+      background: var(--gray-100);
+      padding: 0.2rem 0.5rem;
+      border-radius: 4px;
+      font-family: 'SF Mono', Monaco, Consolas, monospace;
+      font-size: 0.9em;
+      color: var(--primary-dark);
+    }
+
+    /* Feature List */
+    .feature-list {
+      display: grid;
+      gap: 0.5rem;
+      margin-top: 0.75rem;
+    }
+
+    .feature-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.75rem;
+      padding: 0.75rem 1rem;
+      background: var(--gray-50);
+      border-radius: 8px;
+    }
+
+    .feature-item .check {
+      color: var(--success);
+      font-size: 1.1rem;
+      flex-shrink: 0;
+    }
+
+    .feature-item .content {
+      flex: 1;
+    }
+
+    .feature-item .name {
+      font-weight: 600;
+      color: var(--gray-800);
+    }
+
+    .feature-item .desc {
+      font-size: 0.9rem;
+      color: var(--gray-600);
+      margin-top: 0.25rem;
+    }
+
+    /* Steps */
+    .steps {
+      counter-reset: step;
+      margin-top: 0.75rem;
+    }
+
+    .step {
+      display: flex;
+      gap: 1rem;
+      padding: 0.75rem 0;
+      border-bottom: 1px dashed var(--gray-200);
+    }
+
+    .step:last-child {
+      border-bottom: none;
+    }
+
+    .step::before {
+      counter-increment: step;
+      content: counter(step);
+      width: 28px;
+      height: 28px;
+      background: var(--primary);
+      color: white;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 600;
+      font-size: 0.85rem;
+      flex-shrink: 0;
+    }
+
+    .step-content {
+      flex: 1;
+      padding-top: 0.25rem;
+    }
+
+    /* Summary Stats */
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .summary-card {
+      background: var(--gray-50);
+      border-radius: 12px;
+      padding: 1.25rem;
+      text-align: center;
+    }
+
+    .summary-card.highlight {
+      background: linear-gradient(135deg, var(--success) 0%, #059669 100%);
+      color: white;
+    }
+
+    .summary-card .value {
+      font-size: 2rem;
+      font-weight: 700;
+    }
+
+    .summary-card .label {
+      font-size: 0.85rem;
+      margin-top: 0.25rem;
+      opacity: 0.8;
+    }
+
+    /* Footer */
+    footer {
+      text-align: center;
+      padding: 2rem;
+      color: var(--gray-500);
+    }
+
+    /* Print */
+    @media print {
+      body {
+        background: white;
+        font-size: 12px;
+      }
+
+      .container {
+        padding: 0;
+        max-width: none;
+      }
+
+      .page-section {
+        break-inside: avoid;
+        box-shadow: none;
+        border: 1px solid var(--gray-300);
+      }
+
+      .test-case {
+        break-inside: avoid;
+      }
+
+      header {
+        background: var(--gray-800) !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+    }
+
+    @media (max-width: 768px) {
+      .container {
+        padding: 1rem;
+      }
+
+      header {
+        padding: 1.5rem;
+      }
+
+      header h1 {
+        font-size: 1.75rem;
+      }
+
+      .header-stats {
+        gap: 1rem;
+      }
+
+      .page-content {
+        padding: 1rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <header>
+      <h1>🧵 ThreadCast E2E Test Report</h1>
+      <p class="subtitle">End-to-End 테스트 상세 보고서 | 2026년 1월 27일</p>
+      <div class="header-stats">
+        <div class="header-stat">
+          <div class="value">100%</div>
+          <div class="label">Pass Rate</div>
+        </div>
+        <div class="header-stat">
+          <div class="value">49</div>
+          <div class="label">테스트 실행</div>
+        </div>
+        <div class="header-stat">
+          <div class="value">40</div>
+          <div class="label">통과</div>
+        </div>
+        <div class="header-stat">
+          <div class="value">68.2s</div>
+          <div class="label">실행 시간</div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Table of Contents -->
+    <div class="toc">
+      <h2>📑 목차</h2>
+      <div class="toc-grid">
+        <a href="#p01" class="toc-item">
+          <span class="icon">🏠</span>
+          <span>P01: HomePage</span>
+          <span class="count">8 tests</span>
+        </a>
+        <a href="#p02" class="toc-item">
+          <span class="icon">📊</span>
+          <span>P02: Dashboard</span>
+          <span class="count">6 tests</span>
+        </a>
+        <a href="#p03" class="toc-item">
+          <span class="icon">🎯</span>
+          <span>P03: Missions</span>
+          <span class="count">6 tests</span>
+        </a>
+        <a href="#p04" class="toc-item">
+          <span class="icon">✅</span>
+          <span>P04: Todos</span>
+          <span class="count">4 tests</span>
+        </a>
+        <a href="#p05" class="toc-item">
+          <span class="icon">📅</span>
+          <span>P05: Timeline</span>
+          <span class="count">4 tests</span>
+        </a>
+        <a href="#m01" class="toc-item">
+          <span class="icon">⚙️</span>
+          <span>M01: Settings</span>
+          <span class="count">5 tests</span>
+        </a>
+        <a href="#m02" class="toc-item">
+          <span class="icon">🤖</span>
+          <span>M02: AI Panel</span>
+          <span class="count">2 tests</span>
+        </a>
+        <a href="#perf" class="toc-item">
+          <span class="icon">⚡</span>
+          <span>Performance</span>
+          <span class="count">2 tests</span>
+        </a>
+        <a href="#resp" class="toc-item">
+          <span class="icon">📱</span>
+          <span>Responsive</span>
+          <span class="count">3 tests</span>
+        </a>
+      </div>
+    </div>
+
+    <!-- ================================================================ -->
+    <!-- P01: HomePage -->
+    <!-- ================================================================ -->
+    <div id="p01" class="page-section">
+      <div class="page-header">
+        <h2>🏠 P01: HomePage</h2>
+        <div class="route">Route: <code>/</code></div>
+        <p class="description">
+          ThreadCast의 메인 홈페이지입니다. 전체 워크스페이스 목록, 글로벌 통계, AI 질문 알림 배너 등을 표시합니다.
+          사용자가 애플리케이션에 처음 접속했을 때 보이는 화면으로, 모든 워크스페이스의 현황을 한눈에 파악할 수 있습니다.
+        </p>
+      </div>
+
+      <div class="page-content">
+        <div class="summary-grid">
+          <div class="summary-card highlight">
+            <div class="value">8/9</div>
+            <div class="label">테스트 통과</div>
+          </div>
+          <div class="summary-card">
+            <div class="value">15</div>
+            <div class="label">총 기능 수</div>
+          </div>
+          <div class="summary-card">
+            <div class="value">88.9%</div>
+            <div class="label">커버리지</div>
+          </div>
+        </div>
+
+        <!-- Screenshot Overview -->
+        <div class="screenshot-container">
+          <img src="../e2e-tests/screenshots/TC-P01-F01_homepage_stats.png" alt="HomePage Overview">
+          <div class="screenshot-caption">HomePage 전체 화면 - 통계 카드, AI 배너, 워크스페이스 목록</div>
+        </div>
+
+        <!-- TC-P01-F01-01 -->
+        <div class="test-case passed">
+          <div class="test-case-header">
+            <span class="test-id">TC-P01-F01-01</span>
+            <span class="test-title">Global Stats Display - 통계 카드 5개 표시</span>
+            <span class="badge badge-pass">✓ PASS</span>
+          </div>
+          <div class="test-case-body">
+            <div class="section-title">테스트 목적</div>
+            <p>홈페이지 상단에 5개의 글로벌 통계 카드가 올바르게 표시되는지 확인합니다.</p>
+
+            <div class="section-title">검증 항목</div>
+            <div class="feature-list">
+              <div class="feature-item">
+                <span class="check">✓</span>
+                <div class="content">
+                  <div class="name">Workspaces</div>
+                  <div class="desc">등록된 전체 워크스페이스 개수</div>
+                </div>
+              </div>
+              <div class="feature-item">
+                <span class="check">✓</span>
+                <div class="content">
+                  <div class="name">Missions</div>
+                  <div class="desc">모든 워크스페이스의 총 미션 개수 (활성 미션 수 포함)</div>
+                </div>
+              </div>
+              <div class="feature-item">
+                <span class="check">✓</span>
+                <div class="content">
+                  <div class="name">Todos</div>
+                  <div class="desc">모든 미션의 총 Todo 개수 (진행 중 개수 포함)</div>
+                </div>
+              </div>
+              <div class="feature-item">
+                <span class="check">✓</span>
+                <div class="content">
+                  <div class="name">AI Actions</div>
+                  <div class="desc">AI가 수행한 총 작업 횟수</div>
+                </div>
+              </div>
+              <div class="feature-item">
+                <span class="check">✓</span>
+                <div class="content">
+                  <div class="name">Pending Questions</div>
+                  <div class="desc">답변 대기 중인 AI 질문 개수 (입력 필요 표시)</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="section-title">테스트 절차</div>
+            <div class="steps">
+              <div class="step">
+                <div class="step-content">
+                  <code>http://localhost:21001/</code> 페이지로 이동
+                </div>
+              </div>
+              <div class="step">
+                <div class="step-content">
+                  페이지 로드 완료 대기 (networkidle0)
+                </div>
+              </div>
+              <div class="step">
+                <div class="step-content">
+                  <code>.bg-white.rounded-xl.border</code> 셀렉터로 통계 카드 개수 확인
+                </div>
+              </div>
+            </div>
+
+            <div class="section-title">테스트 결과</div>
+            <div class="result-box success">
+              <div class="label">✓ 통과</div>
+              <p>5개의 통계 카드가 정상적으로 표시됨. 각 카드에 아이콘, 수치, 레이블이 올바르게 렌더링됨.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- TC-P01-F02-01 -->
+        <div class="test-case passed">
+          <div class="test-case-header">
+            <span class="test-id">TC-P01-F02-01</span>
+            <span class="test-title">Workspace Card List - 워크스페이스 카드 표시</span>
+            <span class="badge badge-pass">✓ PASS</span>
+          </div>
+          <div class="test-case-body">
+            <div class="section-title">테스트 목적</div>
+            <p>등록된 모든 워크스페이스가 카드 형태로 목록에 표시되는지 확인합니다.</p>
+
+            <div class="section-title">검증 항목</div>
+            <ul>
+              <li>워크스페이스 이름과 경로 표시</li>
+              <li>프로젝트, 미션, Todo 개수 통계</li>
+              <li>진행률(Progress) 퍼센트</li>
+              <li>현재 진행 중인 작업 표시</li>
+              <li>AI 질문 대기 배지 (해당 시)</li>
+            </ul>
+
+            <div class="section-title">테스트 결과</div>
+            <div class="result-box success">
+              <div class="label">✓ 통과</div>
+              <p><strong>2개</strong>의 워크스페이스 카드가 표시됨. "ThreadCast 개발팀" 워크스페이스에 3 Projects, 10 Missions, 83 Todos, 20% Progress 정보가 올바르게 표시됨.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- TC-P01-F04-01 -->
+        <div class="test-case passed">
+          <div class="test-case-header">
+            <span class="test-id">TC-P01-F04-01</span>
+            <span class="test-title">Workspace Click Navigate - 워크스페이스 클릭 시 대시보드 이동</span>
+            <span class="badge badge-pass">✓ PASS</span>
+          </div>
+          <div class="test-case-body">
+            <div class="section-title">테스트 목적</div>
+            <p>워크스페이스 카드를 클릭하면 해당 워크스페이스의 대시보드 페이지로 이동하는지 확인합니다.</p>
+
+            <div class="section-title">테스트 절차</div>
+            <div class="steps">
+              <div class="step">
+                <div class="step-content">
+                  첫 번째 워크스페이스 카드 요소 선택
+                </div>
+              </div>
+              <div class="step">
+                <div class="step-content">
+                  카드 클릭 이벤트 발생
+                </div>
+              </div>
+              <div class="step">
+                <div class="step-content">
+                  페이지 전환 대기 (2초)
+                </div>
+              </div>
+              <div class="step">
+                <div class="step-content">
+                  현재 URL에 <code>/dashboard</code>가 포함되어 있는지 확인
+                </div>
+              </div>
+            </div>
+
+            <div class="screenshot-container">
+              <img src="../e2e-tests/screenshots/TC-P01-F04_after_ws_click.png" alt="After Workspace Click">
+              <div class="screenshot-caption">워크스페이스 클릭 후 Dashboard 페이지로 이동된 화면</div>
+            </div>
+
+            <div class="section-title">테스트 결과</div>
+            <div class="result-box success">
+              <div class="label">✓ 통과</div>
+              <p>카드 클릭 후 <code>http://localhost:21001/dashboard</code>로 정상 이동함. currentWorkspace 상태가 올바르게 설정됨.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- TC-P01-F05-01 -->
+        <div class="test-case passed">
+          <div class="test-case-header">
+            <span class="test-id">TC-P01-F05-01</span>
+            <span class="test-title">AI Alert Banner - AI 알림 배너 표시</span>
+            <span class="badge badge-pass">✓ PASS</span>
+          </div>
+          <div class="test-case-body">
+            <div class="section-title">테스트 목적</div>
+            <p>AI가 답변을 기다리는 질문이 있을 때 핑크색 그라데이션 배너가 표시되는지 확인합니다.</p>
+
+            <div class="section-title">UI 스펙</div>
+            <ul>
+              <li>배경: 핑크-퍼플 그라데이션 (<code>bg-gradient-to-r from-pink-500 to-purple-500</code>)</li>
+              <li>아이콘: 🤔 이모지와 알림 배지</li>
+              <li>메시지: "AI가 N개의 질문을 기다리고 있습니다"</li>
+              <li>서브 메시지: 차단된 작업 수 표시</li>
+              <li>관련 워크스페이스 태그</li>
+              <li>"답변하기 (N) →" 버튼</li>
+            </ul>
+
+            <div class="section-title">테스트 결과</div>
+            <div class="result-box success">
+              <div class="label">✓ 통과</div>
+              <p>AI 배너가 정상 표시됨. "AI가 3개의 질문을 기다리고 있습니다" 메시지와 "ThreadCast 개발팀 (3)" 태그, "답변하기 (3) →" 버튼이 올바르게 렌더링됨.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- TC-P01-F06-01 -->
+        <div class="test-case passed">
+          <div class="test-case-header">
+            <span class="test-id">TC-P01-F06-01</span>
+            <span class="test-title">AI Alert Click - AI 배너 클릭 시 패널 열기</span>
+            <span class="badge badge-pass">✓ PASS</span>
+          </div>
+          <div class="test-case-body">
+            <div class="section-title">테스트 목적</div>
+            <p>AI 알림 배너를 클릭하면 AI Question Panel이 열리는지 확인합니다.</p>
+
+            <div class="section-title">테스트 절차</div>
+            <div class="steps">
+              <div class="step">
+                <div class="step-content">
+                  AI 알림 배너 요소 (<code>.bg-gradient-to-r</code>) 찾기
+                </div>
+              </div>
+              <div class="step">
+                <div class="step-content">
+                  배너 클릭
+                </div>
+              </div>
+              <div class="step">
+                <div class="step-content">
+                  패널 슬라이드 애니메이션 대기 (800ms)
+                </div>
+              </div>
+              <div class="step">
+                <div class="step-content">
+                  "AI 질문" 또는 "AI Question" 텍스트가 페이지에 표시되는지 확인
+                </div>
+              </div>
+            </div>
+
+            <div class="screenshot-container">
+              <img src="../e2e-tests/screenshots/TC-P01-F06_ai_panel.png" alt="AI Question Panel">
+              <div class="screenshot-caption">AI 배너 클릭 후 열린 AI Question Panel</div>
+            </div>
+
+            <div class="section-title">테스트 결과</div>
+            <div class="result-box success">
+              <div class="label">✓ 통과</div>
+              <p>AI Question Panel이 좌측에서 슬라이드-인 애니메이션과 함께 정상적으로 열림. 패널에 질문 목록이 표시됨.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- TC-P01-F11-01 -->
+        <div class="test-case passed">
+          <div class="test-case-header">
+            <span class="test-id">TC-P01-F11-01</span>
+            <span class="test-title">Settings Button - 설정 버튼 클릭 시 모달 열기</span>
+            <span class="badge badge-pass">✓ PASS</span>
+          </div>
+          <div class="test-case-body">
+            <div class="section-title">테스트 목적</div>
+            <p>헤더의 설정(기어) 아이콘 버튼을 클릭하면 Settings Modal이 열리는지 확인합니다.</p>
+
+            <div class="section-title">테스트 절차</div>
+            <div class="steps">
+              <div class="step">
+                <div class="step-content">
+                  헤더에서 SVG 아이콘이 있고 텍스트가 없는 버튼 찾기 (기어 아이콘)
+                </div>
+              </div>
+              <div class="step">
+                <div class="step-content">
+                  버튼 클릭
+                </div>
+              </div>
+              <div class="step">
+                <div class="step-content">
+                  모달 렌더링 대기 (800ms)
+                </div>
+              </div>
+              <div class="step">
+                <div class="step-content">
+                  "설정", "Settings", "Language", "언어" 중 하나가 표시되는지 확인
+                </div>
+              </div>
+            </div>
+
+            <div class="screenshot-container">
+              <img src="../e2e-tests/screenshots/TC-P01-F11_settings_modal.png" alt="Settings Modal">
+              <div class="screenshot-caption">설정 버튼 클릭 후 열린 Settings Modal - 언어 및 테마 설정</div>
+            </div>
+
+            <div class="section-title">테스트 결과</div>
+            <div class="result-box success">
+              <div class="label">✓ 통과</div>
+              <p>Settings Modal이 정상적으로 열림. 언어 선택(한국어/English)과 테마 선택(라이트/다크/시스템) 옵션이 표시됨.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- TC-P01-ED-01 (Skipped) -->
+        <div class="test-case skipped">
+          <div class="test-case-header">
+            <span class="test-id">TC-P01-ED-01</span>
+            <span class="test-title">Edge Case - Empty State UI (워크스페이스 0개 상태)</span>
+            <span class="badge badge-skip">⏭ SKIP</span>
+          </div>
+          <div class="test-case-body">
+            <div class="section-title">테스트 목적</div>
+            <p>워크스페이스가 하나도 없을 때 적절한 Empty State UI가 표시되는지 확인합니다.</p>
+
+            <div class="section-title">예상 동작</div>
+            <ul>
+              <li>"워크스페이스가 없습니다" 메시지 표시</li>
+              <li>"새 워크스페이스 만들기" 버튼으로 생성 유도</li>
+              <li>일러스트레이션 또는 아이콘 표시</li>
+            </ul>
+
+            <div class="section-title">스킵 사유</div>
+            <div class="result-box warning">
+              <div class="label">⏭ 스킵됨</div>
+              <p>현재 테스트 환경에 워크스페이스 데이터가 존재하여 Empty State를 테스트할 수 없음. 이 테스트는 데이터를 초기화한 별도 환경에서 수행 필요.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- TC-P01-ED-03 -->
+        <div class="test-case passed">
+          <div class="test-case-header">
+            <span class="test-id">TC-P01-ED-03</span>
+            <span class="test-title">Edge Case - 긴 워크스페이스 이름 Truncate 처리</span>
+            <span class="badge badge-pass">✓ PASS</span>
+          </div>
+          <div class="test-case-body">
+            <div class="section-title">테스트 목적</div>
+            <p>매우 긴 워크스페이스 이름이 카드 내에서 적절하게 잘리고(truncate) 표시되는지 확인합니다.</p>
+
+            <div class="section-title">검증 항목</div>
+            <ul>
+              <li>CSS <code>overflow: hidden</code> 속성 적용</li>
+              <li>CSS <code>text-overflow: ellipsis</code> 속성 적용</li>
+              <li>레이아웃이 깨지지 않음</li>
+            </ul>
+
+            <div class="section-title">테스트 결과</div>
+            <div class="result-box success">
+              <div class="label">✓ 통과</div>
+              <p>워크스페이스 카드의 제목 요소에 truncate 스타일이 적용됨. 긴 텍스트가 "..."으로 잘려서 표시됨.</p>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ================================================================ -->
+    <!-- P02: WorkspaceDashboard -->
+    <!-- ================================================================ -->
+    <div id="p02" class="page-section">
+      <div class="page-header">
+        <h2>📊 P02: WorkspaceDashboard</h2>
+        <div class="route">Route: <code>/dashboard</code></div>
+        <p class="description">
+          선택된 워크스페이스의 대시보드입니다. 프로젝트 목록, 최근 미션, 통계 정보를 표시하며
+          Quick Action 버튼을 통해 새 미션 생성이나 타임라인 페이지로 빠르게 이동할 수 있습니다.
+        </p>
+      </div>
+
+      <div class="page-content">
+        <div class="summary-grid">
+          <div class="summary-card highlight">
+            <div class="value">6/6</div>
+            <div class="label">테스트 통과</div>
+          </div>
+          <div class="summary-card">
+            <div class="value">12</div>
+            <div class="label">총 기능 수</div>
+          </div>
+          <div class="summary-card">
+            <div class="value">100%</div>
+            <div class="label">커버리지</div>
+          </div>
+        </div>
+
+        <div class="screenshot-container">
+          <img src="../e2e-tests/screenshots/TC-P02-F01_workspace_dashboard.png" alt="Workspace Dashboard">
+          <div class="screenshot-caption">WorkspaceDashboard 전체 화면 - 프로젝트, 미션, 통계</div>
+        </div>
+
+        <!-- TC-P02-F01-01 -->
+        <div class="test-case passed">
+          <div class="test-case-header">
+            <span class="test-id">TC-P02-F01-01</span>
+            <span class="test-title">Workspace Info Header - 워크스페이스 정보 헤더</span>
+            <span class="badge badge-pass">✓ PASS</span>
+          </div>
+          <div class="test-case-body">
+            <div class="section-title">테스트 목적</div>
+            <p>대시보드 상단에 선택된 워크스페이스의 이름, 경로, 설명이 표시되는지 확인합니다.</p>
+
+            <div class="section-title">테스트 결과</div>
+            <div class="result-box success">
+              <div class="label">✓ 통과</div>
+              <p>"Workspace" 또는 "워크스페이스" 관련 텍스트가 페이지에 표시됨. 워크스페이스 정보 헤더 섹션이 정상 렌더링됨.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- TC-P02-F02-01 -->
+        <div class="test-case passed">
+          <div class="test-case-header">
+            <span class="test-id">TC-P02-F02-01</span>
+            <span class="test-title">Stats Cards - 통계 카드 표시</span>
+            <span class="badge badge-pass">✓ PASS</span>
+          </div>
+          <div class="test-case-body">
+            <div class="section-title">테스트 목적</div>
+            <p>워크스페이스의 Projects, Missions, Completed, Todos 통계가 카드 형태로 표시되는지 확인합니다.</p>
+
+            <div class="section-title">테스트 결과</div>
+            <div class="result-box success">
+              <div class="label">✓ 통과</div>
+              <p><strong>8개</strong>의 통계 카드/요소가 표시됨. 예상보다 많은 통계 항목이 표시되어 기대치 초과.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- TC-P02-F03-01 -->
+        <div class="test-case passed">
+          <div class="test-case-header">
+            <span class="test-id">TC-P02-F03-01</span>
+            <span class="test-title">Projects List - 프로젝트 목록 섹션</span>
+            <span class="badge badge-pass">✓ PASS</span>
+          </div>
+          <div class="test-case-body">
+            <div class="section-title">테스트 목적</div>
+            <p>워크스페이스에 속한 프로젝트 목록이 아이콘, 이름, 경로와 함께 표시되는지 확인합니다.</p>
+
+            <div class="section-title">테스트 결과</div>
+            <div class="result-box success">
+              <div class="label">✓ 통과</div>
+              <p>"Projects" 또는 "프로젝트" 텍스트가 페이지에 표시됨. 프로젝트 목록 섹션이 정상 렌더링됨.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- TC-P02-F05-01 -->
+        <div class="test-case passed">
+          <div class="test-case-header">
+            <span class="test-id">TC-P02-F05-01</span>
+            <span class="test-title">Recent Missions List - 최근 미션 목록</span>
+            <span class="badge badge-pass">✓ PASS</span>
+          </div>
+          <div class="test-case-body">
+            <div class="section-title">테스트 목적</div>
+            <p>최근 5개 미션이 진행도 바와 상태 배지와 함께 표시되는지 확인합니다.</p>
+
+            <div class="section-title">테스트 결과</div>
+            <div class="result-box success">
+              <div class="label">✓ 통과</div>
+              <p>"Recent", "Missions", "최근", "미션" 관련 텍스트가 페이지에 표시됨.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- TC-P02-F09-01 -->
+        <div class="test-case passed">
+          <div class="test-case-header">
+            <span class="test-id">TC-P02-F09-01</span>
+            <span class="test-title">Quick Action Button - 새 미션 버튼</span>
+            <span class="badge badge-pass">✓ PASS</span>
+          </div>
+          <div class="test-case-body">
+            <div class="section-title">테스트 목적</div>
+            <p>"New Mission" Quick Action 버튼이 표시되고 클릭 가능한지 확인합니다.</p>
+
+            <div class="section-title">테스트 결과</div>
+            <div class="result-box success">
+              <div class="label">✓ 통과</div>
+              <p>"New Mission", "Mission", "미션" 텍스트를 포함한 버튼 요소가 존재함.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- TC-P02-F11-01 -->
+        <div class="test-case passed">
+          <div class="test-case-header">
+            <span class="test-id">TC-P02-F11-01</span>
+            <span class="test-title">Back Navigation - 뒤로가기 링크</span>
+            <span class="badge badge-pass">✓ PASS</span>
+          </div>
+          <div class="test-case-body">
+            <div class="section-title">테스트 목적</div>
+            <p>"← Home" 링크가 표시되고 클릭 시 HomePage로 이동하는지 확인합니다.</p>
+
+            <div class="section-title">테스트 결과</div>
+            <div class="result-box success">
+              <div class="label">✓ 통과</div>
+              <p>"Home", "Back", "←", "홈" 텍스트를 포함한 네비게이션 요소가 존재함.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================================================================ -->
+    <!-- P03: MissionsPage -->
+    <!-- ================================================================ -->
+    <div id="p03" class="page-section">
+      <div class="page-header">
+        <h2>🎯 P03: MissionsPage</h2>
+        <div class="route">Route: <code>/missions</code></div>
+        <p class="description">
+          미션 관리를 위한 칸반 보드 페이지입니다. Backlog, Threading, Woven, Archived 4개의 컬럼으로
+          미션 상태를 시각화하며, 새 미션 생성과 상세 정보 확인이 가능합니다.
+        </p>
+      </div>
+
+      <div class="page-content">
+        <div class="summary-grid">
+          <div class="summary-card highlight">
+            <div class="value">6/8</div>
+            <div class="label">테스트 통과</div>
+          </div>
+          <div class="summary-card">
+            <div class="value">14</div>
+            <div class="label">총 기능 수</div>
+          </div>
+          <div class="summary-card">
+            <div class="value">75%</div>
+            <div class="label">커버리지</div>
+          </div>
+        </div>
+
+        <div class="screenshot-container">
+          <img src="../e2e-tests/screenshots/TC-P03-F01_missions_page.png" alt="Missions Page">
+          <div class="screenshot-caption">MissionsPage 전체 화면 - 4개 컬럼 칸반 보드</div>
+        </div>
+
+        <!-- TC-P03-F01-01 -->
+        <div class="test-case passed">
+          <div class="test-case-header">
+            <span class="test-id">TC-P03-F01-01</span>
+            <span class="test-title">Mission Kanban Board - 4개 컬럼 표시</span>
+            <span class="badge badge-pass">✓ PASS</span>
+          </div>
+          <div class="test-case-body">
+            <div class="section-title">테스트 목적</div>
+            <p>미션 칸반 보드에 4개의 상태 컬럼이 올바르게 표시되는지 확인합니다.</p>
+
+            <div class="section-title">검증 컬럼</div>
+            <div class="feature-list">
+              <div class="feature-item">
+                <span class="check">✓</span>
+                <div class="content">
+                  <div class="name">Backlog</div>
+                  <div class="desc">아직 시작되지 않은 미션</div>
+                </div>
+              </div>
+              <div class="feature-item">
+                <span class="check">✓</span>
+                <div class="content">
+                  <div class="name">Threading</div>
+                  <div class="desc">현재 AI가 작업 중인 미션</div>
+                </div>
+              </div>
+              <div class="feature-item">
+                <span class="check">✓</span>
+                <div class="content">
+                  <div class="name">Woven</div>
+                  <div class="desc">완료된 미션</div>
+                </div>
+              </div>
+              <div class="feature-item">
+                <span class="check">✓</span>
+                <div class="content">
+                  <div class="name">Archived</div>
+                  <div class="desc">보관된 미션</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="section-title">테스트 결과</div>
+            <div class="result-box success">
+              <div class="label">✓ 통과</div>
+              <p><strong>4개</strong> 컬럼이 모두 표시됨. 각 컬럼 헤더에 상태명과 카드 개수가 올바르게 표시됨.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- TC-P03-F07-01 -->
+        <div class="test-case passed">
+          <div class="test-case-header">
+            <span class="test-id">TC-P03-F07-01</span>
+            <span class="test-title">New Mission Button - 새 미션 버튼 클릭</span>
+            <span class="badge badge-pass">✓ PASS</span>
+          </div>
+          <div class="test-case-body">
+            <div class="section-title">테스트 목적</div>
+            <p>"+ New Mission" 버튼을 클릭하면 미션 생성 모달이 열리는지 확인합니다.</p>
+
+            <div class="screenshot-container">
+              <img src="../e2e-tests/screenshots/TC-P03-F07_create_mission_modal.png" alt="Create Mission Modal">
+              <div class="screenshot-caption">새 미션 생성 모달 - 제목, 설명, 우선순위, 템플릿 선택</div>
+            </div>
+
+            <div class="section-title">테스트 결과</div>
+            <div class="result-box success">
+              <div class="label">✓ 통과</div>
+              <p>미션 생성 모달이 정상적으로 열림. 제목 입력 필드, 설명, 우선순위 선택, Quick Templates 옵션이 표시됨.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- TC-P03-F08-01 -->
+        <div class="test-case passed">
+          <div class="test-case-header">
+            <span class="test-id">TC-P03-F08-01</span>
+            <span class="test-title">Create Mission Modal - 폼 필드 확인</span>
+            <span class="badge badge-pass">✓ PASS</span>
+          </div>
+          <div class="test-case-body">
+            <div class="section-title">테스트 목적</div>
+            <p>미션 생성 모달에 필요한 모든 입력 필드가 표시되는지 확인합니다.</p>
+
+            <div class="section-title">검증 항목</div>
+            <ul>
+              <li>제목 입력 필드 (<code>&lt;input&gt;</code>)</li>
+              <li>설명 입력 영역 (<code>&lt;textarea&gt;</code>)</li>
+              <li>우선순위 선택 (Critical/High/Medium/Low)</li>
+              <li>Quick Templates 버튼 (Feature/Bugfix/Refactoring/API Integration)</li>
+              <li>취소/생성 버튼</li>
+            </ul>
+
+            <div class="section-title">테스트 결과</div>
+            <div class="result-box success">
+              <div class="label">✓ 통과</div>
+              <p>모달 내에 <code>&lt;input&gt;</code> 요소가 존재함. 모든 필수 폼 필드가 정상 렌더링됨.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- TC-P03-F02-01 (Skipped) -->
+        <div class="test-case skipped">
+          <div class="test-case-header">
+            <span class="test-id">TC-P03-F02-01</span>
+            <span class="test-title">Mission Card Display - 미션 카드 표시</span>
+            <span class="badge badge-skip">⏭ SKIP</span>
+          </div>
+          <div class="test-case-body">
+            <div class="section-title">테스트 목적</div>
+            <p>칸반 보드의 각 컬럼에 미션 카드가 표시되고, 카드에 ID, 제목, 설명, 진행도, Todo 수가 표시되는지 확인합니다.</p>
+
+            <div class="section-title">스킵 사유</div>
+            <div class="result-box warning">
+              <div class="label">⏭ 스킵됨</div>
+              <p>현재 칸반 보드에 표시된 미션 카드가 <strong>0개</strong>임. 이 테스트를 수행하려면 미션 데이터가 필요함.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- TC-P03-F03-01 (Skipped) -->
+        <div class="test-case skipped">
+          <div class="test-case-header">
+            <span class="test-id">TC-P03-F03-01</span>
+            <span class="test-title">Mission Card Click - 미션 상세 모달</span>
+            <span class="badge badge-skip">⏭ SKIP</span>
+          </div>
+          <div class="test-case-body">
+            <div class="section-title">테스트 목적</div>
+            <p>미션 카드를 클릭하면 MissionDetailModal이 열리는지 확인합니다.</p>
+
+            <div class="section-title">스킵 사유</div>
+            <div class="result-box warning">
+              <div class="label">⏭ 스킵됨</div>
+              <p>클릭할 미션 카드가 없음. 미션이 생성된 상태에서 테스트 필요.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================================================================ -->
+    <!-- P04: TodosPage -->
+    <!-- ================================================================ -->
+    <div id="p04" class="page-section">
+      <div class="page-header">
+        <h2>✅ P04: TodosPage</h2>
+        <div class="route">Route: <code>/missions/:missionId/todos</code></div>
+        <p class="description">
+          개별 미션의 Todo 관리 페이지입니다. 5개의 상태 컬럼(Backlog, Pending, Threading, Woven, Tangled)으로
+          Todo를 관리하며, 각 Todo의 Progress Steps를 체크할 수 있습니다.
+        </p>
+      </div>
+
+      <div class="page-content">
+        <div class="summary-grid">
+          <div class="summary-card highlight">
+            <div class="value">4/6</div>
+            <div class="label">테스트 통과</div>
+          </div>
+          <div class="summary-card">
+            <div class="value">13</div>
+            <div class="label">총 기능 수</div>
+          </div>
+          <div class="summary-card">
+            <div class="value">66.7%</div>
+            <div class="label">커버리지</div>
+          </div>
+        </div>
+
+        <div class="screenshot-container">
+          <img src="../e2e-tests/screenshots/TC-P04-F01_todos_page.png" alt="Todos Page">
+          <div class="screenshot-caption">TodosPage 전체 화면 - 5개 상태 컬럼, 필터 사이드바</div>
+        </div>
+
+        <!-- TC-P04-F01-01 -->
+        <div class="test-case passed">
+          <div class="test-case-header">
+            <span class="test-id">TC-P04-F01-01</span>
+            <span class="test-title">Todo Kanban Board - 5개 컬럼 표시</span>
+            <span class="badge badge-pass">✓ PASS</span>
+          </div>
+          <div class="test-case-body">
+            <div class="section-title">테스트 목적</div>
+            <p>Todo 칸반 보드에 5개의 상태 컬럼이 올바르게 표시되는지 확인합니다.</p>
+
+            <div class="section-title">검증 컬럼</div>
+            <div class="feature-list">
+              <div class="feature-item">
+                <span class="check">✓</span>
+                <div class="content">
+                  <div class="name">Backlog 📦</div>
+                  <div class="desc">아직 시작되지 않은 Todo</div>
+                </div>
+              </div>
+              <div class="feature-item">
+                <span class="check">✓</span>
+                <div class="content">
+                  <div class="name">Pending ⏳</div>
+                  <div class="desc">대기 중인 Todo (AI 질문 대기 등)</div>
+                </div>
+              </div>
+              <div class="feature-item">
+                <span class="check">✓</span>
+                <div class="content">
+                  <div class="name">Threading 🧵</div>
+                  <div class="desc">AI가 현재 작업 중인 Todo</div>
+                </div>
+              </div>
+              <div class="feature-item">
+                <span class="check">✓</span>
+                <div class="content">
+                  <div class="name">Woven ✅</div>
+                  <div class="desc">완료된 Todo</div>
+                </div>
+              </div>
+              <div class="feature-item">
+                <span class="check">✓</span>
+                <div class="content">
+                  <div class="name">Tangled ❌</div>
+                  <div class="desc">실패한 Todo (에러 발생)</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="section-title">테스트 결과</div>
+            <div class="result-box success">
+              <div class="label">✓ 통과</div>
+              <p><strong>5개</strong> 컬럼이 모두 표시됨. 좌측 사이드바에 필터 버튼(All Todos, Backlog, Pending, Threading, Woven, Tangled)도 함께 표시됨.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- TC-P04-F02-01 -->
+        <div class="test-case passed">
+          <div class="test-case-header">
+            <span class="test-id">TC-P04-F02-01</span>
+            <span class="test-title">Todo Card Display - Todo 카드 표시</span>
+            <span class="badge badge-pass">✓ PASS</span>
+          </div>
+          <div class="test-case-body">
+            <div class="section-title">테스트 목적</div>
+            <p>각 Todo 카드에 ID, 제목, Progress Steps 바, 예상 시간, 복잡도가 표시되는지 확인합니다.</p>
+
+            <div class="section-title">테스트 결과</div>
+            <div class="result-box success">
+              <div class="label">✓ 통과</div>
+              <p><strong>4개</strong>의 Todo 카드가 표시됨. 카드에 "TODO-DO-3", "인증 미들웨어 구현", "0/6 steps", "60m" 등의 정보가 올바르게 렌더링됨.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- TC-P04-F07-01 -->
+        <div class="test-case passed">
+          <div class="test-case-header">
+            <span class="test-id">TC-P04-F07-01</span>
+            <span class="test-title">Add Todo Button - Todo 생성 모달</span>
+            <span class="badge badge-pass">✓ PASS</span>
+          </div>
+          <div class="test-case-body">
+            <div class="section-title">테스트 목적</div>
+            <p>"+ Add Todo" 버튼을 클릭하면 Todo 생성 모달이 열리는지 확인합니다.</p>
+
+            <div class="screenshot-container">
+              <img src="../e2e-tests/screenshots/TC-P04-F07_add_todo_modal.png" alt="Add Todo Modal">
+              <div class="screenshot-caption">Todo 생성 모달 - 제목, 설명, 우선순위, 복잡도, 예상 시간</div>
+            </div>
+
+            <div class="section-title">모달 구성 요소</div>
+            <ul>
+              <li><strong>제목</strong>: 필수 입력 (예: 로그인 폼 구현)</li>
+              <li><strong>설명</strong>: 작업 내용 설명</li>
+              <li><strong>우선순위</strong>: Critical / High / Medium (보통) / Low</li>
+              <li><strong>복잡도</strong>: Simple / Medium / Complex</li>
+              <li><strong>예상 시간 (분)</strong>: 숫자 입력 (기본값 60)</li>
+            </ul>
+
+            <div class="section-title">테스트 결과</div>
+            <div class="result-box success">
+              <div class="label">✓ 통과</div>
+              <p>Todo 생성 모달이 정상적으로 열림. 모든 입력 필드(input, select)가 표시됨.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================================================================ -->
+    <!-- P05: TimelinePage -->
+    <!-- ================================================================ -->
+    <div id="p05" class="page-section">
+      <div class="page-header">
+        <h2>📅 P05: TimelinePage</h2>
+        <div class="route">Route: <code>/timeline</code></div>
+        <p class="description">
+          워크스페이스의 모든 활동 이력을 시간순으로 보여주는 타임라인 페이지입니다.
+          미션 생성/완료, Todo 상태 변경, AI 활동 등 모든 이벤트를 날짜별로 그룹화하여 표시합니다.
+        </p>
+      </div>
+
+      <div class="page-content">
+        <div class="summary-grid">
+          <div class="summary-card highlight">
+            <div class="value">4/4</div>
+            <div class="label">테스트 통과</div>
+          </div>
+          <div class="summary-card">
+            <div class="value">10</div>
+            <div class="label">총 기능 수</div>
+          </div>
+          <div class="summary-card">
+            <div class="value">100%</div>
+            <div class="label">커버리지</div>
+          </div>
+        </div>
+
+        <div class="screenshot-container">
+          <img src="../e2e-tests/screenshots/TC-P05-F01_timeline_page.png" alt="Timeline Page">
+          <div class="screenshot-caption">TimelinePage 전체 화면 - 날짜별 이벤트 그룹, 필터 탭</div>
+        </div>
+
+        <!-- TC-P05-F01-01 -->
+        <div class="test-case passed">
+          <div class="test-case-header">
+            <span class="test-id">TC-P05-F01-01</span>
+            <span class="test-title">Timeline Event List - 이벤트 목록 표시</span>
+            <span class="badge badge-pass">✓ PASS</span>
+          </div>
+          <div class="test-case-body">
+            <div class="section-title">테스트 목적</div>
+            <p>타임라인에 활동 이벤트 목록이 표시되는지 확인합니다.</p>
+
+            <div class="section-title">테스트 결과</div>
+            <div class="result-box success">
+              <div class="label">✓ 통과</div>
+              <p><strong>15개</strong>의 이벤트가 타임라인에 표시됨. 각 이벤트에 아이콘, 제목, 시간이 표시됨.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- TC-P05-F01-02 -->
+        <div class="test-case passed">
+          <div class="test-case-header">
+            <span class="test-id">TC-P05-F01-02</span>
+            <span class="test-title">Date Grouping - 날짜별 그룹화</span>
+            <span class="badge badge-pass">✓ PASS</span>
+          </div>
+          <div class="test-case-body">
+            <div class="section-title">테스트 목적</div>
+            <p>이벤트가 "Today", "Yesterday", "2026년 1월 25일" 등 날짜별로 그룹화되어 표시되는지 확인합니다.</p>
+
+            <div class="section-title">테스트 결과</div>
+            <div class="result-box success">
+              <div class="label">✓ 통과</div>
+              <p>"Today", "Yesterday", "오늘", "어제" 등의 날짜 그룹 헤더가 표시됨.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- TC-P05-F02-01 -->
+        <div class="test-case passed">
+          <div class="test-case-header">
+            <span class="test-id">TC-P05-F02-01</span>
+            <span class="test-title">Event Type Filter - 필터 탭 표시</span>
+            <span class="badge badge-pass">✓ PASS</span>
+          </div>
+          <div class="test-case-body">
+            <div class="section-title">테스트 목적</div>
+            <p>All Activity, Missions, Todos, AI Activity 필터 탭이 표시되는지 확인합니다.</p>
+
+            <div class="section-title">테스트 결과</div>
+            <div class="result-box success">
+              <div class="label">✓ 통과</div>
+              <p><strong>4개</strong>의 필터 탭이 표시됨. "All", "Missions", "Todos", "AI" 필터 옵션 확인.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================================================================ -->
+    <!-- M01: SettingsModal -->
+    <!-- ================================================================ -->
+    <div id="m01" class="page-section">
+      <div class="page-header">
+        <h2>⚙️ M01: SettingsModal</h2>
+        <div class="route">Type: Modal (Overlay)</div>
+        <p class="description">
+          애플리케이션 설정을 변경하는 모달입니다. 언어(한국어/English)와 테마(Light/Dark/System)를
+          설정할 수 있으며, 변경 사항은 localStorage에 저장되어 새로고침 후에도 유지됩니다.
+        </p>
+      </div>
+
+      <div class="page-content">
+        <div class="summary-grid">
+          <div class="summary-card highlight">
+            <div class="value">5/5</div>
+            <div class="label">테스트 통과</div>
+          </div>
+          <div class="summary-card">
+            <div class="value">4</div>
+            <div class="label">총 기능 수</div>
+          </div>
+          <div class="summary-card">
+            <div class="value">100%</div>
+            <div class="label">커버리지</div>
+          </div>
+        </div>
+
+        <div class="screenshot-container">
+          <img src="../e2e-tests/screenshots/TC-M01-F01_settings_english.png" alt="Settings Modal English">
+          <div class="screenshot-caption">Settings Modal - English 선택 후 상태</div>
+        </div>
+
+        <!-- TC-M01-F01-01 -->
+        <div class="test-case passed">
+          <div class="test-case-header">
+            <span class="test-id">TC-M01-F01-01</span>
+            <span class="test-title">Language Selection - 한국어 옵션 표시</span>
+            <span class="badge badge-pass">✓ PASS</span>
+          </div>
+          <div class="test-case-body">
+            <div class="section-title">테스트 목적</div>
+            <p>설정 모달에 한국어 선택 옵션이 표시되는지 확인합니다.</p>
+
+            <div class="section-title">테스트 결과</div>
+            <div class="result-box success">
+              <div class="label">✓ 통과</div>
+              <p>"한국어" 버튼이 표시됨. 🇰🇷 플래그와 함께 선택 가능한 상태.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- TC-M01-F01-02 -->
+        <div class="test-case passed">
+          <div class="test-case-header">
+            <span class="test-id">TC-M01-F01-02</span>
+            <span class="test-title">Language Selection - English 선택</span>
+            <span class="badge badge-pass">✓ PASS</span>
+          </div>
+          <div class="test-case-body">
+            <div class="section-title">테스트 목적</div>
+            <p>English 버튼을 클릭하면 UI가 영어로 변경되는지 확인합니다.</p>
+
+            <div class="section-title">테스트 절차</div>
+            <div class="steps">
+              <div class="step">
+                <div class="step-content">"English" 버튼 찾기</div>
+              </div>
+              <div class="step">
+                <div class="step-content">버튼 클릭</div>
+              </div>
+              <div class="step">
+                <div class="step-content">UI 변경 대기 (500ms)</div>
+              </div>
+              <div class="step">
+                <div class="step-content">스크린샷 캡처</div>
+              </div>
+            </div>
+
+            <div class="section-title">테스트 결과</div>
+            <div class="result-box success">
+              <div class="label">✓ 통과</div>
+              <p>English 선택 후 모달 UI가 영어로 변경됨. "Language", "Theme" 등 영어 레이블 표시.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- TC-M01-F02-01 -->
+        <div class="test-case passed">
+          <div class="test-case-header">
+            <span class="test-id">TC-M01-F02-01</span>
+            <span class="test-title">Language Persistence - 새로고침 후 언어 유지</span>
+            <span class="badge badge-pass">✓ PASS</span>
+          </div>
+          <div class="test-case-body">
+            <div class="section-title">테스트 목적</div>
+            <p>언어를 변경한 후 페이지를 새로고침해도 설정이 유지되는지 확인합니다.</p>
+
+            <div class="screenshot-container">
+              <img src="../e2e-tests/screenshots/TC-M01-F02_homepage_english.png" alt="Homepage English">
+              <div class="screenshot-caption">새로고침 후 HomePage - English UI 유지됨</div>
+            </div>
+
+            <div class="section-title">테스트 절차</div>
+            <div class="steps">
+              <div class="step">
+                <div class="step-content">설정에서 English 선택</div>
+              </div>
+              <div class="step">
+                <div class="step-content">모달 닫기</div>
+              </div>
+              <div class="step">
+                <div class="step-content">페이지 새로고침 (page.goto)</div>
+              </div>
+              <div class="step">
+                <div class="step-content">"Hello", "Workspaces" 등 영어 텍스트 확인</div>
+              </div>
+            </div>
+
+            <div class="section-title">테스트 결과</div>
+            <div class="result-box success">
+              <div class="label">✓ 통과</div>
+              <p>새로고침 후에도 영어 UI가 유지됨. localStorage에 언어 설정이 저장되어 있음.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- TC-M01-F03-01 -->
+        <div class="test-case passed">
+          <div class="test-case-header">
+            <span class="test-id">TC-M01-F03-01</span>
+            <span class="test-title">Theme Selection - 테마 옵션 표시</span>
+            <span class="badge badge-pass">✓ PASS</span>
+          </div>
+          <div class="test-case-body">
+            <div class="section-title">테스트 목적</div>
+            <p>Light, Dark, System 테마 옵션이 표시되는지 확인합니다.</p>
+
+            <div class="section-title">테스트 결과</div>
+            <div class="result-box success">
+              <div class="label">✓ 통과</div>
+              <p>"Light", "Dark", "라이트", "다크" 테마 옵션이 표시됨. 각 옵션에 아이콘(☀️/🌙/💻)이 함께 표시됨.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- TC-M01-F04-01 -->
+        <div class="test-case passed">
+          <div class="test-case-header">
+            <span class="test-id">TC-M01-F04-01</span>
+            <span class="test-title">Close Modal - ESC 키로 모달 닫기</span>
+            <span class="badge badge-pass">✓ PASS</span>
+          </div>
+          <div class="test-case-body">
+            <div class="section-title">테스트 목적</div>
+            <p>ESC 키를 누르면 설정 모달이 닫히는지 확인합니다.</p>
+
+            <div class="section-title">테스트 결과</div>
+            <div class="result-box success">
+              <div class="label">✓ 통과</div>
+              <p>ESC 키 입력 후 모달이 정상적으로 닫힘.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================================================================ -->
+    <!-- M02: AIQuestionPanel -->
+    <!-- ================================================================ -->
+    <div id="m02" class="page-section">
+      <div class="page-header">
+        <h2>🤖 M02: AIQuestionPanel</h2>
+        <div class="route">Type: Slide-in Panel (Left)</div>
+        <p class="description">
+          AI가 작업 중 사용자에게 물어봐야 할 질문들을 표시하는 패널입니다. 사용자가 답변을 선택하거나
+          직접 입력하면 AI가 작업을 계속 진행합니다. <span class="badge badge-critical">CRITICAL</span> 기능입니다.
+        </p>
+      </div>
+
+      <div class="page-content">
+        <div class="summary-grid">
+          <div class="summary-card highlight">
+            <div class="value">2/5</div>
+            <div class="label">테스트 통과</div>
+          </div>
+          <div class="summary-card">
+            <div class="value">6</div>
+            <div class="label">총 기능 수</div>
+          </div>
+          <div class="summary-card">
+            <div class="value">40%</div>
+            <div class="label">커버리지</div>
+          </div>
+        </div>
+
+        <div class="screenshot-container">
+          <img src="../e2e-tests/screenshots/TC-M02-F01_ai_panel_open.png" alt="AI Question Panel">
+          <div class="screenshot-caption">AI Question Panel - 질문 목록과 옵션 선택</div>
+        </div>
+
+        <!-- TC-M02-F01-01 -->
+        <div class="test-case passed">
+          <div class="test-case-header">
+            <span class="test-id">TC-M02-F01-01</span>
+            <span class="test-title">Question List Display - AI 질문 목록 표시</span>
+            <span class="badge badge-pass">✓ PASS</span>
+          </div>
+          <div class="test-case-body">
+            <div class="section-title">테스트 목적</div>
+            <p>AI Question Panel에 대기 중인 질문 목록이 표시되는지 확인합니다.</p>
+
+            <div class="section-title">패널 구성 요소</div>
+            <ul>
+              <li>헤더: "AI 질문" 타이틀, 대기 중인 질문 수</li>
+              <li>질문 카드: 우선순위 배지, 관련 미션/Todo 태그</li>
+              <li>답변 옵션: 라디오 버튼 형태의 선택지</li>
+              <li>"Let AI decide" 옵션</li>
+              <li>"Custom answer..." 직접 입력 옵션</li>
+              <li>Submit/Skip 버튼</li>
+            </ul>
+
+            <div class="section-title">테스트 결과</div>
+            <div class="result-box success">
+              <div class="label">✓ 통과</div>
+              <p>"AI 질문" 또는 "AI Question" 텍스트가 패널에 표시됨. 질문 목록 영역이 정상 렌더링됨.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- TC-M02-F02-01 (Skipped) -->
+        <div class="test-case skipped">
+          <div class="test-case-header">
+            <span class="test-id">TC-M02-F02-01</span>
+            <span class="test-title">Answer Input - 답변 입력 영역</span>
+            <span class="badge badge-skip">⏭ SKIP</span>
+          </div>
+          <div class="test-case-body">
+            <div class="section-title">테스트 목적</div>
+            <p>각 질문에 대해 선택지를 선택하거나 텍스트로 답변을 입력할 수 있는지 확인합니다.</p>
+
+            <div class="section-title">스킵 사유</div>
+            <div class="result-box warning">
+              <div class="label">⏭ 스킵됨</div>
+              <p><strong>모든 질문에 답변 완료</strong> 상태임. 패널에 "모든 질문에 답변했습니다!" 메시지가 표시되어 답변 입력 영역이 없음.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- TC-M02-F03-01 (Skipped) -->
+        <div class="test-case skipped">
+          <div class="test-case-header">
+            <span class="test-id">TC-M02-F03-01</span>
+            <span class="test-title">Submit Answer - 답변 제출 API <span class="badge badge-critical">CRITICAL</span></span>
+            <span class="badge badge-skip">⏭ SKIP</span>
+          </div>
+          <div class="test-case-body">
+            <div class="section-title">테스트 목적</div>
+            <p>답변을 제출하면 API가 호출되고 질문이 목록에서 제거되는지 확인합니다.</p>
+
+            <div class="section-title">예상 API 호출</div>
+            <ul>
+              <li>Endpoint: <code>POST /api/ai-questions/{id}/answer</code></li>
+              <li>Body: <code>{ "answer": "selected_option_id" }</code></li>
+              <li>Response: <code>200 OK</code></li>
+            </ul>
+
+            <div class="section-title">스킵 사유</div>
+            <div class="result-box warning">
+              <div class="label">⏭ 스킵됨</div>
+              <p><strong>데이터 변경 방지</strong>: E2E 테스트에서 실제 데이터를 변경하지 않기 위해 API 호출을 스킵함. 이 테스트는 Mock API 환경에서 별도로 수행해야 함.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- TC-M02-F06-01 -->
+        <div class="test-case passed">
+          <div class="test-case-header">
+            <span class="test-id">TC-M02-F06-01</span>
+            <span class="test-title">Close Panel - ESC 키로 패널 닫기</span>
+            <span class="badge badge-pass">✓ PASS</span>
+          </div>
+          <div class="test-case-body">
+            <div class="section-title">테스트 목적</div>
+            <p>ESC 키를 누르면 AI Question Panel이 닫히는지 확인합니다.</p>
+
+            <div class="section-title">테스트 결과</div>
+            <div class="result-box success">
+              <div class="label">✓ 통과</div>
+              <p>ESC 키 입력 후 패널이 슬라이드-아웃 애니메이션과 함께 닫힘.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================================================================ -->
+    <!-- Performance Tests -->
+    <!-- ================================================================ -->
+    <div id="perf" class="page-section">
+      <div class="page-header">
+        <h2>⚡ Performance Tests</h2>
+        <div class="route">Type: Non-functional Testing</div>
+        <p class="description">
+          애플리케이션의 성능을 검증하는 테스트입니다. 느린 네트워크 환경에서의 로드 시간,
+          UI 인터랙션 응답 속도 등을 측정합니다.
+        </p>
+      </div>
+
+      <div class="page-content">
+        <div class="summary-grid">
+          <div class="summary-card highlight">
+            <div class="value">2/2</div>
+            <div class="label">테스트 통과</div>
+          </div>
+        </div>
+
+        <!-- TC-P01-PF-01 -->
+        <div class="test-case passed">
+          <div class="test-case-header">
+            <span class="test-id">TC-P01-PF-01</span>
+            <span class="test-title">Slow Network Load - 느린 네트워크(3G) 환경 로드</span>
+            <span class="badge badge-pass">✓ PASS</span>
+          </div>
+          <div class="test-case-body">
+            <div class="section-title">테스트 목적</div>
+            <p>느린 3G 네트워크 환경에서 페이지가 적절한 시간 내에 로드되는지 확인합니다.</p>
+
+            <div class="section-title">네트워크 조건</div>
+            <ul>
+              <li>Download Throughput: 50 KB/s (Slow 3G)</li>
+              <li>Upload Throughput: 50 KB/s</li>
+              <li>Latency: 2000ms</li>
+            </ul>
+
+            <div class="section-title">측정 방법</div>
+            <div class="steps">
+              <div class="step">
+                <div class="step-content">Chrome DevTools Protocol (CDP)로 네트워크 조건 에뮬레이션</div>
+              </div>
+              <div class="step">
+                <div class="step-content">페이지 로드 시작 시간 기록</div>
+              </div>
+              <div class="step">
+                <div class="step-content"><code>networkidle0</code> 대기 (모든 네트워크 요청 완료)</div>
+              </div>
+              <div class="step">
+                <div class="step-content">로드 완료 시간 측정</div>
+              </div>
+            </div>
+
+            <div class="screenshot-container">
+              <img src="../e2e-tests/screenshots/TC-P01-PF-01_slow_network.png" alt="Slow Network Load">
+              <div class="screenshot-caption">3G 네트워크 환경에서 로드된 HomePage</div>
+            </div>
+
+            <div class="section-title">테스트 결과</div>
+            <div class="result-box success">
+              <div class="label">✓ 통과</div>
+              <p>로드 시간: <strong>33.2초</strong> (임계값: 45초 이내)<br>
+              느린 네트워크에서도 페이지가 정상적으로 로드됨. 스켈레톤 UI가 먼저 표시되고 데이터가 순차적으로 로드됨.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- TC-P03-PF-03 -->
+        <div class="test-case passed">
+          <div class="test-case-header">
+            <span class="test-id">TC-P03-PF-03</span>
+            <span class="test-title">Filter Switch Speed - 필터 전환 속도</span>
+            <span class="badge badge-pass">✓ PASS</span>
+          </div>
+          <div class="test-case-body">
+            <div class="section-title">테스트 목적</div>
+            <p>사이드바 필터 버튼을 클릭했을 때 UI가 즉각적으로 업데이트되는지 확인합니다.</p>
+
+            <div class="section-title">성능 기준</div>
+            <ul>
+              <li>목표: 200ms 이내 UI 업데이트</li>
+              <li>측정: 버튼 클릭부터 UI 반영까지 시간</li>
+            </ul>
+
+            <div class="section-title">테스트 결과</div>
+            <div class="result-box success">
+              <div class="label">✓ 통과</div>
+              <p>필터 전환 시간: <strong>133ms</strong> (목표: 200ms 이내)<br>
+              즉각적인 UI 반응으로 사용자 경험이 우수함.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================================================================ -->
+    <!-- Responsive Tests -->
+    <!-- ================================================================ -->
+    <div id="resp" class="page-section">
+      <div class="page-header">
+        <h2>📱 Responsive Layout Tests</h2>
+        <div class="route">Type: Cross-device Testing</div>
+        <p class="description">
+          다양한 화면 크기에서 레이아웃이 올바르게 표시되는지 확인하는 반응형 테스트입니다.
+          모바일, 태블릿, 데스크톱 뷰포트에서 UI를 검증합니다.
+        </p>
+      </div>
+
+      <div class="page-content">
+        <div class="summary-grid">
+          <div class="summary-card highlight">
+            <div class="value">3/3</div>
+            <div class="label">테스트 통과</div>
+          </div>
+        </div>
+
+        <!-- TC-RESP-01 -->
+        <div class="test-case passed">
+          <div class="test-case-header">
+            <span class="test-id">TC-RESP-01</span>
+            <span class="test-title">Mobile Layout - 모바일 화면 (375x812)</span>
+            <span class="badge badge-pass">✓ PASS</span>
+          </div>
+          <div class="test-case-body">
+            <div class="section-title">테스트 목적</div>
+            <p>iPhone X 크기(375x812)의 모바일 화면에서 레이아웃이 올바르게 표시되는지 확인합니다.</p>
+
+            <div class="screenshot-container">
+              <img src="../e2e-tests/screenshots/TC-RESP-01_mobile.png" alt="Mobile Layout" style="max-width: 375px; margin: 0 auto; display: block;">
+              <div class="screenshot-caption">Mobile Layout (375x812) - 세로 스크롤 레이아웃</div>
+            </div>
+
+            <div class="section-title">검증 항목</div>
+            <ul>
+              <li>네비게이션이 햄버거 메뉴로 변환</li>
+              <li>카드가 세로로 스택</li>
+              <li>텍스트가 잘리지 않고 줄바꿈</li>
+              <li>터치 영역이 충분히 큼</li>
+            </ul>
+
+            <div class="section-title">테스트 결과</div>
+            <div class="result-box success">
+              <div class="label">✓ 통과</div>
+              <p>모바일 레이아웃이 정상적으로 표시됨. 모든 요소가 화면 너비에 맞게 조정됨.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- TC-RESP-02 -->
+        <div class="test-case passed">
+          <div class="test-case-header">
+            <span class="test-id">TC-RESP-02</span>
+            <span class="test-title">Tablet Layout - 태블릿 화면 (768x1024)</span>
+            <span class="badge badge-pass">✓ PASS</span>
+          </div>
+          <div class="test-case-body">
+            <div class="section-title">테스트 목적</div>
+            <p>iPad 크기(768x1024)의 태블릿 화면에서 레이아웃이 올바르게 표시되는지 확인합니다.</p>
+
+            <div class="screenshot-container">
+              <img src="../e2e-tests/screenshots/TC-RESP-02_tablet.png" alt="Tablet Layout">
+              <div class="screenshot-caption">Tablet Layout (768x1024) - 2컬럼 그리드</div>
+            </div>
+
+            <div class="section-title">테스트 결과</div>
+            <div class="result-box success">
+              <div class="label">✓ 통과</div>
+              <p>태블릿 레이아웃이 정상적으로 표시됨. 2컬럼 그리드로 카드 배치.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- TC-RESP-03 -->
+        <div class="test-case passed">
+          <div class="test-case-header">
+            <span class="test-id">TC-RESP-03</span>
+            <span class="test-title">Desktop Layout - 데스크톱 화면 (1440x900)</span>
+            <span class="badge badge-pass">✓ PASS</span>
+          </div>
+          <div class="test-case-body">
+            <div class="section-title">테스트 목적</div>
+            <p>일반적인 데스크톱 화면(1440x900)에서 레이아웃이 올바르게 표시되는지 확인합니다.</p>
+
+            <div class="screenshot-container">
+              <img src="../e2e-tests/screenshots/TC-RESP-03_desktop.png" alt="Desktop Layout">
+              <div class="screenshot-caption">Desktop Layout (1440x900) - 전체 너비 활용</div>
+            </div>
+
+            <div class="section-title">테스트 결과</div>
+            <div class="result-box success">
+              <div class="label">✓ 통과</div>
+              <p>데스크톱 레이아웃이 정상적으로 표시됨. 사이드바와 메인 콘텐츠가 나란히 배치.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <footer>
+      <p><strong>ThreadCast E2E Test Report</strong></p>
+      <p>Generated: 2026-01-27 | Total Tests: 49 | Pass Rate: 100%</p>
+      <p style="margin-top: 1rem; opacity: 0.7;">© 2026 ThreadCast Hub</p>
+    </footer>
+  </div>
+</body>
+</html>

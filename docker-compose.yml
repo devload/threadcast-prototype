@@ -1,0 +1,48 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: threadcast-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: threadcast
+      POSTGRES_USER: threadcast
+      POSTGRES_PASSWORD: threadcast123
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "5432:5432"
+    volumes:
+      - threadcast-postgres-data:/var/lib/postgresql/data
+      - ./docker/init-db.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U threadcast -d threadcast"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # pgAdmin (optional - for database management UI)
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: threadcast-pgadmin
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@threadcast.io
+      PGADMIN_DEFAULT_PASSWORD: admin123
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+    ports:
+      - "5050:80"
+    volumes:
+      - threadcast-pgadmin-data:/var/lib/pgadmin
+    depends_on:
+      postgres:
+        condition: service_healthy
+    profiles:
+      - tools  # Only start with: docker-compose --profile tools up
+
+volumes:
+  threadcast-postgres-data:
+    name: threadcast-postgres-data
+  threadcast-pgadmin-data:
+    name: threadcast-pgadmin-data

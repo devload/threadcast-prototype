@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from '../../../hooks/useTranslation';
 
 interface AutonomySliderProps {
   value?: number;
@@ -19,6 +20,7 @@ export function AutonomySlider({
   onChange,
   showHint = true,
 }: AutonomySliderProps) {
+  const { t } = useTranslation();
   const [currentLevel, setCurrentLevel] = useState(value);
 
   useEffect(() => {
@@ -64,7 +66,7 @@ export function AutonomySlider({
 
       {showHint && (
         <div className="mt-2.5 px-2 py-1.5 bg-indigo-50/50 rounded-md text-[10px] text-slate-500 leading-relaxed">
-          💡 이 설정은 모든 Mission과 Todo의 기본값이 됩니다
+          💡 {t('autonomy.hint')}
         </div>
       )}
     </div>

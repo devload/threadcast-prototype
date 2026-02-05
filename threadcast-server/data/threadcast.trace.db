@@ -1,0 +1,15 @@
+2026-02-02 12:12:01.845547+09:00 jdbc[3]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Table "TODO" not found (this database is empty); SQL statement:
+UPDATE TODO SET STATUS = 'PENDING', STARTED_AT = NULL, COMPLETED_AT = NULL WHERE MISSION_ID = '64b9884e-dd91-413f-be76-a95b6c59cf6e' [42104-224]
+2026-02-02 12:12:01.846380+09:00 jdbc[3]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Table "TODO_STEP" not found (this database is empty); SQL statement:
+ UPDATE TODO_STEP SET STATUS = 'PENDING', STARTED_AT = NULL, COMPLETED_AT = NULL WHERE TODO_ID IN (SELECT ID FROM TODO WHERE MISSION_ID = '64b9884e-dd91-413f-be76-a95b6c59cf6e') [42104-224]
+2026-02-02 12:12:14.835887+09:00 jdbc[3]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Table "TODO" not found (this database is empty); SQL statement:
+UPDATE TODO SET STATUS = 'PENDING', STARTED_AT = NULL, COMPLETED_AT = NULL WHERE MISSION_ID = '64b9884e-dd91-413f-be76-a95b6c59cf6e' [42104-224]
+2026-02-02 12:12:14.837555+09:00 jdbc[3]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Table "TODO_STEP" not found (this database is empty); SQL statement:
+ UPDATE TODO_STEP SET STATUS = 'PENDING', STARTED_AT = NULL, COMPLETED_AT = NULL WHERE TODO_ID IN (SELECT ID FROM TODO WHERE MISSION_ID = '64b9884e-dd91-413f-be76-a95b6c59cf6e') [42104-224]
+2026-02-02 12:12:14.837737+09:00 jdbc[3]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Table "MISSION" not found (this database is empty); SQL statement:
+ UPDATE MISSION SET STATUS = 'THREADING' WHERE ID = '64b9884e-dd91-413f-be76-a95b6c59cf6e' [42104-224]

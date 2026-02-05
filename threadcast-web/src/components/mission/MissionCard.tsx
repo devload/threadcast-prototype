@@ -1,5 +1,5 @@
 import { clsx } from 'clsx';
-import { MoreHorizontal, CheckSquare } from 'lucide-react';
+import { MoreHorizontal, CheckSquare, ExternalLink } from 'lucide-react';
 import type { Mission, MissionStatus, Priority } from '../../types';
 
 // Strip markdown syntax for plain text preview
@@ -58,8 +58,9 @@ export function MissionCard({
   onDragEnd,
   aiQuestionCount = 0,
 }: MissionCardProps) {
-  const { id, title, description, status, priority, progress, todoStats, tags } = mission;
+  const { id, title, description, status, priority, progress, todoStats, tags, jiraIssueKey, jiraIssueUrl } = mission;
   const hasAIQuestion = aiQuestionCount > 0;
+  const hasJiraLink = !!jiraIssueKey;
 
   const completedTodos = todoStats.woven;
   const totalTodos = todoStats.total;
@@ -83,9 +84,30 @@ export function MissionCard({
     >
       {/* Header */}
       <div className="flex items-start justify-between mb-2">
-        <span className="text-xs font-semibold text-slate-400 dark:text-slate-500">
-          MISSION-{id.slice(-4).toUpperCase()}
-        </span>
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-semibold text-slate-400 dark:text-slate-500">
+            MISSION-{id.slice(-4).toUpperCase()}
+          </span>
+          {/* JIRA 배지 */}
+          {hasJiraLink && (
+            <a
+              href={jiraIssueUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-800/50 transition-colors"
+              title={`JIRA: ${jiraIssueKey}`}
+            >
+              <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M11.53 2c-.27 0-.48.22-.48.5v7.97c0 .28.21.5.48.5h.95c.27 0 .48-.22.48-.5V2.5c0-.28-.21-.5-.48-.5h-.95z"/>
+                <path d="M6.36 7.8c-.2-.2-.51-.2-.71 0L2.3 11.15c-.2.2-.2.52 0 .71l3.36 3.36c.2.2.51.2.71 0l.67-.67c.2-.2.2-.51 0-.71l-2.32-2.32 2.32-2.32c.2-.2.2-.51 0-.71l-.68-.69z"/>
+                <path d="M17.64 7.8c.2-.2.51-.2.71 0l3.35 3.35c.2.2.2.52 0 .71l-3.35 3.36c-.2.2-.51.2-.71 0l-.67-.67c-.2-.2-.2-.51 0-.71l2.32-2.32-2.32-2.32c-.2-.2-.2-.51 0-.71l.67-.69z"/>
+              </svg>
+              {jiraIssueKey}
+              <ExternalLink size={9} />
+            </a>
+          )}
+        </div>
         <div className="flex items-center gap-2">
           <div className={clsx('w-2 h-2 rounded-full', statusDotColors[status])} />
           {onMenuClick && (

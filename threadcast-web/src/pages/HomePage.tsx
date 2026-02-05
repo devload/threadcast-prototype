@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { LogOut, ChevronDown, HelpCircle } from 'lucide-react';
+import { LogOut, ChevronDown, HelpCircle, Settings } from 'lucide-react';
 import { useWorkspaceStore } from '../stores/workspaceStore';
 import { useAuthStore } from '../stores/authStore';
 import { useTranslation } from '../hooks/useTranslation';
@@ -218,9 +218,6 @@ export const HomePage = () => {
             <button className="px-4 py-2 rounded-lg text-sm font-medium text-gray-500 hover:bg-gray-100 transition-colors flex items-center gap-2">
               <span role="img" aria-label="analytics">📊</span> Analytics
             </button>
-            <button className="px-4 py-2 rounded-lg text-sm font-medium text-gray-500 hover:bg-gray-100 transition-colors flex items-center gap-2">
-              <span role="img" aria-label="settings">⚙️</span> Settings
-            </button>
             <button
               data-tour="new-workspace-btn"
               onClick={handleCreateWorkspace}
@@ -275,6 +272,15 @@ export const HomePage = () => {
                 </div>
               )}
             </div>
+
+            {/* Settings Button */}
+            <button
+              onClick={() => navigate('/settings')}
+              className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 transition-colors"
+              title="설정"
+            >
+              <Settings size={20} />
+            </button>
 
             {/* User Menu */}
             <div className="relative" ref={userMenuRef}>
@@ -526,6 +532,7 @@ export const HomePage = () => {
           />
         </div>
       </Modal>
+
     </div>
   );
 };

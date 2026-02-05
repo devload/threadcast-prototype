@@ -10,6 +10,7 @@ import {
   HomePage,
   ProjectDashboardPage,
   UserDashboardPage,
+  SettingsPage,
 } from './pages';
 import { WorkspaceDashboardPage } from './pages/WorkspaceDashboardPage';
 import { InteractiveTour } from './components/onboarding';
@@ -32,6 +33,9 @@ function App() {
           {/* Workspaces */}
           <Route path="/workspaces" element={<HomePage />} />
 
+          {/* Settings - 독립 페이지 (HomePage와 같은 레벨) */}
+          <Route path="/settings" element={<SettingsPage />} />
+
           {/* Protected routes with layout */}
           <Route element={<AppLayout />}>
             {/* Workspace routes */}
@@ -44,8 +48,7 @@ function App() {
             {/* Project routes */}
             <Route path="/projects/:projectId" element={<ProjectDashboardPage />} />
 
-            {/* Settings & Analytics */}
-            <Route path="/settings" element={<div className="p-6">Settings (Coming Soon)</div>} />
+            {/* Analytics & Help */}
             <Route path="/analytics" element={<div className="p-6">Analytics (Coming Soon)</div>} />
             <Route path="/help" element={<div className="p-6">Help (Coming Soon)</div>} />
           </Route>

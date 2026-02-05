@@ -90,6 +90,9 @@ export interface Mission {
   createdAt: string;
   startedAt?: string;
   completedAt?: string;
+  // JIRA 연동 정보
+  jiraIssueKey?: string;
+  jiraIssueUrl?: string;
 }
 
 export interface TodoStats {

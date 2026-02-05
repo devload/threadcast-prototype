@@ -7,3 +7,4 @@ export { TimelinePage } from './TimelinePage';
 export { HomePage } from './HomePage';
 export { ProjectDashboardPage } from './ProjectDashboardPage';
 export { UserDashboardPage } from './UserDashboardPage';
+export { SettingsPage } from './SettingsPage';

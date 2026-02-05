@@ -6,6 +6,9 @@ export interface CreateMissionRequest {
   title: string;
   description?: string;
   priority?: Priority;
+  // JIRA 연동 정보 (선택)
+  jiraIssueKey?: string;
+  jiraIssueUrl?: string;
 }
 
 export interface UpdateMissionRequest {

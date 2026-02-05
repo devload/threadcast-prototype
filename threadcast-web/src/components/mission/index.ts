@@ -9,3 +9,4 @@ export {
   type CreateMissionFormProps,
   type CreateMissionInlineProps,
 } from './CreateMissionForm';
+export { JiraTicketSelector } from './JiraTicketSelector';

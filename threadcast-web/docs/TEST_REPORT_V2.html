@@ -1,0 +1,804 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ThreadCast E2E Test Report V2 - Scenario Based</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      min-height: 100vh;
+      color: #e0e0e0;
+      padding: 20px;
+    }
+    .container { max-width: 1400px; margin: 0 auto; }
+
+    /* Header */
+    .header {
+      text-align: center;
+      padding: 40px 20px;
+      background: rgba(255,255,255,0.05);
+      border-radius: 20px;
+      margin-bottom: 30px;
+    }
+    .header h1 {
+      font-size: 2.5rem;
+      background: linear-gradient(90deg, #00d9ff, #00ff88);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 10px;
+    }
+    .header .version {
+      font-size: 1.2rem;
+      color: #00ff88;
+      font-weight: 600;
+    }
+    .header .subtitle {
+      color: #888;
+      margin-top: 10px;
+    }
+
+    /* V1 vs V2 Comparison */
+    .comparison {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      margin-bottom: 30px;
+    }
+    .comparison-card {
+      background: rgba(255,255,255,0.05);
+      border-radius: 16px;
+      padding: 25px;
+    }
+    .comparison-card.v1 {
+      border: 2px solid #ff6b6b;
+    }
+    .comparison-card.v2 {
+      border: 2px solid #00ff88;
+    }
+    .comparison-card h3 {
+      font-size: 1.3rem;
+      margin-bottom: 15px;
+    }
+    .comparison-card.v1 h3 { color: #ff6b6b; }
+    .comparison-card.v2 h3 { color: #00ff88; }
+    .comparison-card ul {
+      list-style: none;
+    }
+    .comparison-card li {
+      padding: 8px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .comparison-card li:last-child { border-bottom: none; }
+    .comparison-card.v1 li::before { content: "❌"; }
+    .comparison-card.v2 li::before { content: "✅"; }
+
+    /* Summary Stats */
+    .summary {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 20px;
+      margin-bottom: 30px;
+    }
+    .stat-card {
+      background: rgba(255,255,255,0.08);
+      border-radius: 16px;
+      padding: 25px;
+      text-align: center;
+    }
+    .stat-card .number {
+      font-size: 3rem;
+      font-weight: 700;
+      background: linear-gradient(90deg, #00d9ff, #00ff88);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .stat-card .label {
+      color: #888;
+      margin-top: 5px;
+    }
+    .stat-card.success .number { color: #00ff88; -webkit-text-fill-color: #00ff88; }
+    .stat-card.fail .number { color: #ff6b6b; -webkit-text-fill-color: #ff6b6b; }
+
+    /* Scenarios */
+    .scenarios { margin-bottom: 30px; }
+    .scenario {
+      background: rgba(255,255,255,0.05);
+      border-radius: 16px;
+      margin-bottom: 20px;
+      overflow: hidden;
+    }
+    .scenario-header {
+      padding: 20px 25px;
+      background: rgba(0,217,255,0.1);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      cursor: pointer;
+    }
+    .scenario-header:hover {
+      background: rgba(0,217,255,0.15);
+    }
+    .scenario-id {
+      font-weight: 700;
+      color: #00d9ff;
+      font-size: 1.1rem;
+    }
+    .scenario-name {
+      flex: 1;
+      margin-left: 20px;
+    }
+    .scenario-status {
+      padding: 6px 16px;
+      border-radius: 20px;
+      font-weight: 600;
+      font-size: 0.9rem;
+    }
+    .scenario-status.pass {
+      background: rgba(0,255,136,0.2);
+      color: #00ff88;
+    }
+    .scenario-steps {
+      padding: 20px 25px;
+    }
+    .step {
+      display: grid;
+      grid-template-columns: 40px 1fr 200px 80px;
+      gap: 15px;
+      padding: 12px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+      align-items: center;
+    }
+    .step:last-child { border-bottom: none; }
+    .step-num {
+      color: #00d9ff;
+      font-weight: 600;
+      font-size: 0.9rem;
+    }
+    .step-action {
+      color: #e0e0e0;
+    }
+    .step-verification {
+      color: #888;
+      font-size: 0.9rem;
+    }
+    .step-status {
+      text-align: right;
+      font-weight: 600;
+    }
+    .step-status.pass { color: #00ff88; }
+    .step-status.fail { color: #ff6b6b; }
+
+    /* Key Highlights */
+    .highlights {
+      background: rgba(0,255,136,0.1);
+      border: 1px solid rgba(0,255,136,0.3);
+      border-radius: 16px;
+      padding: 25px;
+      margin-bottom: 30px;
+    }
+    .highlights h3 {
+      color: #00ff88;
+      margin-bottom: 15px;
+      font-size: 1.2rem;
+    }
+    .highlight-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 15px;
+      padding: 15px 0;
+      border-bottom: 1px solid rgba(0,255,136,0.2);
+    }
+    .highlight-item:last-child { border-bottom: none; }
+    .highlight-icon {
+      font-size: 1.5rem;
+      min-width: 40px;
+      text-align: center;
+    }
+    .highlight-content h4 {
+      color: #00ff88;
+      margin-bottom: 5px;
+    }
+    .highlight-content p {
+      color: #888;
+      font-size: 0.95rem;
+    }
+
+    /* Test Philosophy */
+    .philosophy {
+      background: rgba(255,255,255,0.05);
+      border-radius: 16px;
+      padding: 30px;
+      margin-bottom: 30px;
+    }
+    .philosophy h3 {
+      color: #00d9ff;
+      margin-bottom: 20px;
+      font-size: 1.3rem;
+    }
+    .philosophy-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 20px;
+    }
+    .philosophy-item {
+      background: rgba(255,255,255,0.05);
+      border-radius: 12px;
+      padding: 20px;
+    }
+    .philosophy-item h4 {
+      color: #00ff88;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .philosophy-item p {
+      color: #888;
+      font-size: 0.95rem;
+      line-height: 1.5;
+    }
+
+    /* Screenshot Gallery */
+    .screenshots {
+      background: rgba(255,255,255,0.05);
+      border-radius: 16px;
+      padding: 25px;
+      margin-bottom: 30px;
+    }
+    .screenshots h3 {
+      color: #00d9ff;
+      margin-bottom: 20px;
+    }
+    .screenshot-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 15px;
+    }
+    .screenshot-item {
+      background: rgba(0,0,0,0.3);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .screenshot-item img {
+      width: 100%;
+      height: 150px;
+      object-fit: cover;
+    }
+    .screenshot-item .caption {
+      padding: 10px;
+      font-size: 0.8rem;
+      color: #888;
+      text-align: center;
+    }
+
+    /* Footer */
+    .footer {
+      text-align: center;
+      padding: 30px;
+      color: #666;
+      font-size: 0.9rem;
+    }
+
+    /* Responsive */
+    @media (max-width: 1024px) {
+      .comparison { grid-template-columns: 1fr; }
+      .summary { grid-template-columns: repeat(2, 1fr); }
+      .philosophy-grid { grid-template-columns: 1fr; }
+      .screenshot-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 640px) {
+      .summary { grid-template-columns: 1fr; }
+      .step { grid-template-columns: 30px 1fr; }
+      .step-verification, .step-status { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <header class="header">
+      <h1>ThreadCast E2E Test Report</h1>
+      <div class="version">V2 - Scenario Based Testing</div>
+      <p class="subtitle">전체 사용자 시나리오 기반 E2E 테스트</p>
+      <p class="subtitle" style="margin-top: 20px; color: #666;">
+        테스트 일시: 2026-01-27 | 총 소요 시간: 46초
+      </p>
+    </header>
+
+    <!-- V1 vs V2 Comparison -->
+    <section class="comparison">
+      <div class="comparison-card v1">
+        <h3>V1 - 기존 방식의 문제점</h3>
+        <ul>
+          <li>"모달이 열리는지"만 확인</li>
+          <li>실제 데이터 생성 여부 미검증</li>
+          <li>연관 데이터 업데이트 미확인</li>
+          <li>단편적 UI 요소 존재 확인</li>
+          <li>사용자 시나리오 미반영</li>
+          <li>에러 복구 테스트 부족</li>
+        </ul>
+      </div>
+      <div class="comparison-card v2">
+        <h3>V2 - 새로운 접근 방식</h3>
+        <ul>
+          <li>전체 CRUD 플로우 테스트</li>
+          <li>데이터 생성 → 목록 반영 확인</li>
+          <li>통계, 진행률 업데이트 검증</li>
+          <li>Step 완료 → 진행률 변경 확인</li>
+          <li>사용자 시나리오 기반 테스트</li>
+          <li>에러 상황 & 복구 테스트</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- Summary Stats -->
+    <section class="summary">
+      <div class="stat-card">
+        <div class="number">7</div>
+        <div class="label">시나리오</div>
+      </div>
+      <div class="stat-card">
+        <div class="number">52</div>
+        <div class="label">총 스텝</div>
+      </div>
+      <div class="stat-card success">
+        <div class="number">52</div>
+        <div class="label">통과</div>
+      </div>
+      <div class="stat-card">
+        <div class="number">100%</div>
+        <div class="label">성공률</div>
+      </div>
+    </section>
+
+    <!-- Test Philosophy -->
+    <section class="philosophy">
+      <h3>V2 테스트 철학</h3>
+      <div class="philosophy-grid">
+        <div class="philosophy-item">
+          <h4>🔄 전체 플로우 테스트</h4>
+          <p>
+            "버튼이 보이는지"가 아닌 "버튼을 클릭하면 → 모달이 열리고 →
+            데이터를 입력하고 → 생성하면 → 목록에 추가되는지"까지 전체 흐름을 테스트합니다.
+          </p>
+        </div>
+        <div class="philosophy-item">
+          <h4>📊 데이터 정합성 검증</h4>
+          <p>
+            Todo 완료 시 Mission 진행률이 업데이트되는지,
+            생성한 데이터가 여러 페이지에서 동일하게 표시되는지 확인합니다.
+          </p>
+        </div>
+        <div class="philosophy-item">
+          <h4>🔧 에러 복구 테스트</h4>
+          <p>
+            네트워크 오프라인 상태에서 생성 시도 시 입력값이 유지되는지,
+            복구 후 정상 동작하는지 검증합니다.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Key Highlights -->
+    <section class="highlights">
+      <h3>핵심 검증 항목 (V2에서 추가됨)</h3>
+
+      <div class="highlight-item">
+        <div class="highlight-icon">📝</div>
+        <div class="highlight-content">
+          <h4>SC-01 Step 7: Mission 생성 후 목록 반영</h4>
+          <p>
+            Mission을 생성한 후 Kanban 보드에서 실제로 카드가 추가되었는지 확인합니다.
+            <br><strong>결과:</strong> Mission 발견됨 (10 → 11)
+          </p>
+        </div>
+      </div>
+
+      <div class="highlight-item">
+        <div class="highlight-icon">✅</div>
+        <div class="highlight-content">
+          <h4>SC-02 Step 10-11: Step 완료 시 진행률 변경</h4>
+          <p>
+            Todo의 Step 체크박스를 클릭하면 진행률이 증가하는지,
+            Todo 카드의 진행률 바가 업데이트되는지 확인합니다.
+          </p>
+        </div>
+      </div>
+
+      <div class="highlight-item">
+        <div class="highlight-icon">🤖</div>
+        <div class="highlight-content">
+          <h4>SC-03 Step 8: AI 답변 후 질문 목록 업데이트</h4>
+          <p>
+            AI 질문에 답변을 제출하면 해당 질문이 목록에서 제거되는지 확인합니다.
+            <br><strong>결과:</strong> 질문 수: 1 → 0
+          </p>
+        </div>
+      </div>
+
+      <div class="highlight-item">
+        <div class="highlight-icon">🌐</div>
+        <div class="highlight-content">
+          <h4>SC-04 Step 5-7: 언어 변경 및 유지</h4>
+          <p>
+            언어 변경 시 모든 UI가 업데이트되고, 새로고침 후에도 설정이 유지되는지 확인합니다.
+            <br><strong>결과:</strong> 언어: ko → en, localStorage 저장 확인
+          </p>
+        </div>
+      </div>
+
+      <div class="highlight-item">
+        <div class="highlight-icon">🔌</div>
+        <div class="highlight-content">
+          <h4>SC-06 Step 4-5: 오프라인 에러 시 입력값 유지</h4>
+          <p>
+            네트워크 오프라인 상태에서 생성 실패해도 사용자 입력이 사라지지 않고 유지되는지 확인합니다.
+            <br><strong>결과:</strong> 입력값 유지됨
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Scenarios -->
+    <section class="scenarios">
+      <h2 style="color: #00d9ff; margin-bottom: 20px; font-size: 1.5rem;">시나리오별 상세 결과</h2>
+
+      <!-- SC-01 -->
+      <div class="scenario">
+        <div class="scenario-header">
+          <span class="scenario-id">SC-01</span>
+          <span class="scenario-name">Mission 생성부터 상태 변경까지</span>
+          <span class="scenario-status pass">PASS (12/12)</span>
+        </div>
+        <div class="scenario-steps">
+          <div class="step">
+            <span class="step-num">1</span>
+            <span class="step-action">MissionsPage 접속</span>
+            <span class="step-verification">Kanban 보드 로드</span>
+            <span class="step-status pass">PASS</span>
+          </div>
+          <div class="step">
+            <span class="step-num">2</span>
+            <span class="step-action">현재 Mission 개수 기록</span>
+            <span class="step-verification">기존 10개</span>
+            <span class="step-status pass">PASS</span>
+          </div>
+          <div class="step">
+            <span class="step-num">3</span>
+            <span class="step-action">"+ New Mission" 버튼 클릭</span>
+            <span class="step-verification">모달 열림</span>
+            <span class="step-status pass">PASS</span>
+          </div>
+          <div class="step">
+            <span class="step-num">4</span>
+            <span class="step-action">제목 입력</span>
+            <span class="step-verification">입력값 표시</span>
+            <span class="step-status pass">PASS</span>
+          </div>
+          <div class="step">
+            <span class="step-num">5</span>
+            <span class="step-action">설명 입력</span>
+            <span class="step-verification">입력 완료</span>
+            <span class="step-status pass">PASS</span>
+          </div>
+          <div class="step">
+            <span class="step-num">6</span>
+            <span class="step-action">"Create" 버튼 클릭</span>
+            <span class="step-verification">모달 닫힘 & 생성</span>
+            <span class="step-status pass">PASS</span>
+          </div>
+          <div class="step" style="background: rgba(0,255,136,0.1); margin: 5px -25px; padding: 12px 25px;">
+            <span class="step-num">7</span>
+            <span class="step-action"><strong>⭐ 목록에 생성된 Mission 확인</strong></span>
+            <span class="step-verification"><strong>10 → 11</strong></span>
+            <span class="step-status pass">PASS</span>
+          </div>
+          <div class="step">
+            <span class="step-num">8</span>
+            <span class="step-action">Overview 통계 확인</span>
+            <span class="step-verification">Total 수 표시</span>
+            <span class="step-status pass">PASS</span>
+          </div>
+          <div class="step">
+            <span class="step-num">9</span>
+            <span class="step-action">Mission 카드 클릭</span>
+            <span class="step-verification">Detail Modal 열림</span>
+            <span class="step-status pass">PASS</span>
+          </div>
+          <div class="step">
+            <span class="step-num">10</span>
+            <span class="step-action">Detail Modal 정보 확인</span>
+            <span class="step-verification">상세 정보 표시</span>
+            <span class="step-status pass">PASS</span>
+          </div>
+          <div class="step" style="background: rgba(0,255,136,0.1); margin: 5px -25px; padding: 12px 25px;">
+            <span class="step-num">11</span>
+            <span class="step-action"><strong>⭐ "Start Weaving" 클릭</strong></span>
+            <span class="step-verification"><strong>상태 변경</strong></span>
+            <span class="step-status pass">PASS</span>
+          </div>
+          <div class="step">
+            <span class="step-num">12</span>
+            <span class="step-action">Mission 상태 확인</span>
+            <span class="step-verification">상태 변경 반영</span>
+            <span class="step-status pass">PASS</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- SC-02 -->
+      <div class="scenario">
+        <div class="scenario-header">
+          <span class="scenario-id">SC-02</span>
+          <span class="scenario-name">Todo 생성부터 Step 완료까지</span>
+          <span class="scenario-status pass">PASS (11/11)</span>
+        </div>
+        <div class="scenario-steps">
+          <div class="step">
+            <span class="step-num">1</span>
+            <span class="step-action">Todos 페이지 접속</span>
+            <span class="step-verification">Todo 목록 로드</span>
+            <span class="step-status pass">PASS</span>
+          </div>
+          <div class="step">
+            <span class="step-num">2</span>
+            <span class="step-action">현재 Todo 개수 기록</span>
+            <span class="step-verification">기존 8개</span>
+            <span class="step-status pass">PASS</span>
+          </div>
+          <div class="step">
+            <span class="step-num">3</span>
+            <span class="step-action">"+ Add Todo" 버튼 클릭</span>
+            <span class="step-verification">모달 열림</span>
+            <span class="step-status pass">PASS</span>
+          </div>
+          <div class="step">
+            <span class="step-num">4-6</span>
+            <span class="step-action">폼 입력 및 생성</span>
+            <span class="step-verification">Todo 생성 완료</span>
+            <span class="step-status pass">PASS</span>
+          </div>
+          <div class="step" style="background: rgba(0,255,136,0.1); margin: 5px -25px; padding: 12px 25px;">
+            <span class="step-num">7</span>
+            <span class="step-action"><strong>⭐ Todo 목록 확인</strong></span>
+            <span class="step-verification"><strong>새 Todo 추가됨</strong></span>
+            <span class="step-status pass">PASS</span>
+          </div>
+          <div class="step">
+            <span class="step-num">8-9</span>
+            <span class="step-action">Todo 카드 클릭 & Steps 확인</span>
+            <span class="step-verification">Drawer & Steps 표시</span>
+            <span class="step-status pass">PASS</span>
+          </div>
+          <div class="step" style="background: rgba(0,255,136,0.1); margin: 5px -25px; padding: 12px 25px;">
+            <span class="step-num">10</span>
+            <span class="step-action"><strong>⭐ Step 체크박스 클릭</strong></span>
+            <span class="step-verification"><strong>진행률 변경</strong></span>
+            <span class="step-status pass">PASS</span>
+          </div>
+          <div class="step" style="background: rgba(0,255,136,0.1); margin: 5px -25px; padding: 12px 25px;">
+            <span class="step-num">11</span>
+            <span class="step-action"><strong>⭐ 진행률 업데이트 확인</strong></span>
+            <span class="step-verification"><strong>Todo 진행률 변경됨</strong></span>
+            <span class="step-status pass">PASS</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- SC-03 -->
+      <div class="scenario">
+        <div class="scenario-header">
+          <span class="scenario-id">SC-03</span>
+          <span class="scenario-name">AI 질문 답변부터 반영까지</span>
+          <span class="scenario-status pass">PASS (8/8)</span>
+        </div>
+        <div class="scenario-steps">
+          <div class="step">
+            <span class="step-num">1-5</span>
+            <span class="step-action">AI 배너 확인 & 패널 열기</span>
+            <span class="step-verification">질문 수: 1개</span>
+            <span class="step-status pass">PASS</span>
+          </div>
+          <div class="step">
+            <span class="step-num">6-7</span>
+            <span class="step-action">답변 선택 & Submit</span>
+            <span class="step-verification">제출 클릭됨</span>
+            <span class="step-status pass">PASS</span>
+          </div>
+          <div class="step" style="background: rgba(0,255,136,0.1); margin: 5px -25px; padding: 12px 25px;">
+            <span class="step-num">8</span>
+            <span class="step-action"><strong>⭐ 질문 목록 업데이트 확인</strong></span>
+            <span class="step-verification"><strong>1 → 0 (제거됨)</strong></span>
+            <span class="step-status pass">PASS</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- SC-04 -->
+      <div class="scenario">
+        <div class="scenario-header">
+          <span class="scenario-id">SC-04</span>
+          <span class="scenario-name">언어 변경 시 모든 UI 업데이트</span>
+          <span class="scenario-status pass">PASS (7/7)</span>
+        </div>
+        <div class="scenario-steps">
+          <div class="step">
+            <span class="step-num">1-4</span>
+            <span class="step-action">설정 열기 & 언어 변경</span>
+            <span class="step-verification">English 선택</span>
+            <span class="step-status pass">PASS</span>
+          </div>
+          <div class="step" style="background: rgba(0,255,136,0.1); margin: 5px -25px; padding: 12px 25px;">
+            <span class="step-num">5</span>
+            <span class="step-action"><strong>⭐ UI 텍스트 변경 확인</strong></span>
+            <span class="step-verification"><strong>ko → en</strong></span>
+            <span class="step-status pass">PASS</span>
+          </div>
+          <div class="step">
+            <span class="step-num">6</span>
+            <span class="step-action">다른 페이지에서 언어 유지</span>
+            <span class="step-verification">Missions 페이지</span>
+            <span class="step-status pass">PASS</span>
+          </div>
+          <div class="step" style="background: rgba(0,255,136,0.1); margin: 5px -25px; padding: 12px 25px;">
+            <span class="step-num">7</span>
+            <span class="step-action"><strong>⭐ 새로고침 후 언어 유지</strong></span>
+            <span class="step-verification"><strong>localStorage 저장</strong></span>
+            <span class="step-status pass">PASS</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- SC-05 -->
+      <div class="scenario">
+        <div class="scenario-header">
+          <span class="scenario-id">SC-05</span>
+          <span class="scenario-name">데이터 변경 시 모든 곳에 반영</span>
+          <span class="scenario-status pass">PASS (4/4)</span>
+        </div>
+        <div class="scenario-steps">
+          <div class="step">
+            <span class="step-num">1</span>
+            <span class="step-action">Dashboard 통계 기록</span>
+            <span class="step-verification">M:5 T:6</span>
+            <span class="step-status pass">PASS</span>
+          </div>
+          <div class="step">
+            <span class="step-num">2</span>
+            <span class="step-action">Missions 페이지 카드 수</span>
+            <span class="step-verification">10개</span>
+            <span class="step-status pass">PASS</span>
+          </div>
+          <div class="step">
+            <span class="step-num">3</span>
+            <span class="step-action">Overview 통계 비교</span>
+            <span class="step-verification">Total:5, Active:20</span>
+            <span class="step-status pass">PASS</span>
+          </div>
+          <div class="step">
+            <span class="step-num">4</span>
+            <span class="step-action">HomePage 전체 통계</span>
+            <span class="step-verification">WS:?, M:5</span>
+            <span class="step-status pass">PASS</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- SC-06 -->
+      <div class="scenario">
+        <div class="scenario-header">
+          <span class="scenario-id">SC-06</span>
+          <span class="scenario-name">API 실패 시 사용자 경험</span>
+          <span class="scenario-status pass">PASS (7/7)</span>
+        </div>
+        <div class="scenario-steps">
+          <div class="step">
+            <span class="step-num">1-2</span>
+            <span class="step-action">정상 로드 → 오프라인 설정</span>
+            <span class="step-verification">Offline 모드</span>
+            <span class="step-status pass">PASS</span>
+          </div>
+          <div class="step">
+            <span class="step-num">3-4</span>
+            <span class="step-action">Mission 생성 시도</span>
+            <span class="step-verification">에러 발생</span>
+            <span class="step-status pass">PASS</span>
+          </div>
+          <div class="step" style="background: rgba(0,255,136,0.1); margin: 5px -25px; padding: 12px 25px;">
+            <span class="step-num">5</span>
+            <span class="step-action"><strong>⭐ 입력값 유지 확인</strong></span>
+            <span class="step-verification"><strong>폼 데이터 보존</strong></span>
+            <span class="step-status pass">PASS</span>
+          </div>
+          <div class="step">
+            <span class="step-num">6-7</span>
+            <span class="step-action">네트워크 복구 & 재시도</span>
+            <span class="step-verification">복구 완료</span>
+            <span class="step-status pass">PASS</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- SC-07 -->
+      <div class="scenario">
+        <div class="scenario-header">
+          <span class="scenario-id">SC-07</span>
+          <span class="scenario-name">반응형 레이아웃 검증</span>
+          <span class="scenario-status pass">PASS (3/3)</span>
+        </div>
+        <div class="scenario-steps">
+          <div class="step">
+            <span class="step-num">1</span>
+            <span class="step-action">Mobile 뷰포트</span>
+            <span class="step-verification">375x812</span>
+            <span class="step-status pass">PASS</span>
+          </div>
+          <div class="step">
+            <span class="step-num">2</span>
+            <span class="step-action">Tablet 뷰포트</span>
+            <span class="step-verification">768x1024</span>
+            <span class="step-status pass">PASS</span>
+          </div>
+          <div class="step">
+            <span class="step-num">3</span>
+            <span class="step-action">Desktop 뷰포트</span>
+            <span class="step-verification">1440x900</span>
+            <span class="step-status pass">PASS</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Screenshot Gallery -->
+    <section class="screenshots">
+      <h3>테스트 스크린샷 (V2)</h3>
+      <div class="screenshot-grid">
+        <div class="screenshot-item">
+          <img src="../e2e-tests/screenshots-v2/SC01_01_missions_page_1769502678427.png" alt="Missions Page" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22300%22 height=%22150%22><rect fill=%22%23333%22 width=%22300%22 height=%22150%22/><text fill=%22%23666%22 x=%22150%22 y=%2275%22 text-anchor=%22middle%22>Screenshot</text></svg>'">
+          <div class="caption">SC-01: Missions Page</div>
+        </div>
+        <div class="screenshot-item">
+          <img src="../e2e-tests/screenshots-v2/SC01_03_modal_open_1769502679527.png" alt="Create Modal" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22300%22 height=%22150%22><rect fill=%22%23333%22 width=%22300%22 height=%22150%22/><text fill=%22%23666%22 x=%22150%22 y=%2275%22 text-anchor=%22middle%22>Screenshot</text></svg>'">
+          <div class="caption">SC-01: Create Modal</div>
+        </div>
+        <div class="screenshot-item">
+          <img src="../e2e-tests/screenshots-v2/SC01_07_mission_added_1769502682852.png" alt="Mission Added" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22300%22 height=%22150%22><rect fill=%22%23333%22 width=%22300%22 height=%22150%22/><text fill=%22%23666%22 x=%22150%22 y=%2275%22 text-anchor=%22middle%22>Screenshot</text></svg>'">
+          <div class="caption">SC-01: Mission Added</div>
+        </div>
+        <div class="screenshot-item">
+          <img src="../e2e-tests/screenshots-v2/SC02_01_todos_page_1769502687232.png" alt="Todos Page" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22300%22 height=%22150%22><rect fill=%22%23333%22 width=%22300%22 height=%22150%22/><text fill=%22%23666%22 x=%22150%22 y=%2275%22 text-anchor=%22middle%22>Screenshot</text></svg>'">
+          <div class="caption">SC-02: Todos Page</div>
+        </div>
+        <div class="screenshot-item">
+          <img src="../e2e-tests/screenshots-v2/SC03_01_homepage_1769502694474.png" alt="AI Banner" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22300%22 height=%22150%22><rect fill=%22%23333%22 width=%22300%22 height=%22150%22/><text fill=%22%23666%22 x=%22150%22 y=%2275%22 text-anchor=%22middle%22>Screenshot</text></svg>'">
+          <div class="caption">SC-03: AI Banner</div>
+        </div>
+        <div class="screenshot-item">
+          <img src="../e2e-tests/screenshots-v2/SC04_05_language_changed_1769502701540.png" alt="Language Changed" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22300%22 height=%22150%22><rect fill=%22%23333%22 width=%22300%22 height=%22150%22/><text fill=%22%23666%22 x=%22150%22 y=%2275%22 text-anchor=%22middle%22>Screenshot</text></svg>'">
+          <div class="caption">SC-04: Language Changed</div>
+        </div>
+        <div class="screenshot-item">
+          <img src="../e2e-tests/screenshots-v2/SC06_04_error_1769502715259.png" alt="Offline Error" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22300%22 height=%22150%22><rect fill=%22%23333%22 width=%22300%22 height=%22150%22/><text fill=%22%23666%22 x=%22150%22 y=%2275%22 text-anchor=%22middle%22>Screenshot</text></svg>'">
+          <div class="caption">SC-06: Offline Error</div>
+        </div>
+        <div class="screenshot-item">
+          <img src="../e2e-tests/screenshots-v2/SC07_mobile_1769502717716.png" alt="Mobile View" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22300%22 height=%22150%22><rect fill=%22%23333%22 width=%22300%22 height=%22150%22/><text fill=%22%23666%22 x=%22150%22 y=%2275%22 text-anchor=%22middle%22>Screenshot</text></svg>'">
+          <div class="caption">SC-07: Mobile View</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+      <p>ThreadCast E2E Test Report V2 - Scenario Based Testing</p>
+      <p style="margin-top: 10px;">Generated: 2026-01-27 | Puppeteer + Node.js</p>
+    </footer>
+  </div>
+</body>
+</html>

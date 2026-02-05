@@ -1,0 +1,293 @@
+{
+  "summary": {
+    "startTime": "2026-01-27T07:44:58.620Z",
+    "endTime": "2026-01-27T07:45:59.155Z",
+    "duration": 60.535,
+    "total": 39,
+    "passed": 27,
+    "failed": 2,
+    "skipped": 10,
+    "passRate": "93.1"
+  },
+  "results": {
+    "passed": [
+      {
+        "testId": "TC-P01-F01-01",
+        "description": "통계 카드 5개 표시",
+        "status": "PASS",
+        "detail": "5개 발견",
+        "timestamp": "2026-01-27T07:45:01.137Z"
+      },
+      {
+        "testId": "TC-P01-F02-01",
+        "description": "Workspace 카드 표시",
+        "status": "PASS",
+        "detail": "2개 Workspace",
+        "timestamp": "2026-01-27T07:45:01.234Z"
+      },
+      {
+        "testId": "TC-P01-F03-01",
+        "description": "카드 내 통계 표시",
+        "status": "PASS",
+        "detail": "",
+        "timestamp": "2026-01-27T07:45:01.235Z"
+      },
+      {
+        "testId": "TC-P01-F04-01",
+        "description": "Workspace 클릭 → Dashboard 이동",
+        "status": "PASS",
+        "detail": "http://localhost:21001/dashboard",
+        "timestamp": "2026-01-27T07:45:03.273Z"
+      },
+      {
+        "testId": "TC-P01-F05-01",
+        "description": "AI Alert 배너 표시",
+        "status": "PASS",
+        "detail": "",
+        "timestamp": "2026-01-27T07:45:04.933Z"
+      },
+      {
+        "testId": "TC-P01-F06-01",
+        "description": "AI 배너 클릭 → Panel 열기",
+        "status": "PASS",
+        "detail": "",
+        "timestamp": "2026-01-27T07:45:05.748Z"
+      },
+      {
+        "testId": "TC-P01-ED-03",
+        "description": "긴 이름 truncate 처리",
+        "status": "PASS",
+        "detail": "",
+        "timestamp": "2026-01-27T07:45:06.123Z"
+      },
+      {
+        "testId": "TC-P03-F01-01",
+        "description": "Kanban 4개 컬럼 표시",
+        "status": "PASS",
+        "detail": "4개 컬럼",
+        "timestamp": "2026-01-27T07:45:08.382Z"
+      },
+      {
+        "testId": "TC-P03-F04-01",
+        "description": "AI Question 배너",
+        "status": "PASS",
+        "detail": "표시됨",
+        "timestamp": "2026-01-27T07:45:08.388Z"
+      },
+      {
+        "testId": "TC-P03-F07-01",
+        "description": "New Mission 버튼 → 모달",
+        "status": "PASS",
+        "detail": "",
+        "timestamp": "2026-01-27T07:45:09.045Z"
+      },
+      {
+        "testId": "TC-P03-F08-01",
+        "description": "Mission 생성 폼 필드",
+        "status": "PASS",
+        "detail": "",
+        "timestamp": "2026-01-27T07:45:09.045Z"
+      },
+      {
+        "testId": "TC-P03-F11-01",
+        "description": "Overview 통계 표시",
+        "status": "PASS",
+        "detail": "",
+        "timestamp": "2026-01-27T07:45:09.349Z"
+      },
+      {
+        "testId": "TC-P03-F12-01",
+        "description": "Sidebar 필터 버튼",
+        "status": "PASS",
+        "detail": "",
+        "timestamp": "2026-01-27T07:45:09.354Z"
+      },
+      {
+        "testId": "TC-P04-F01-01",
+        "description": "Todo Kanban 5개 컬럼",
+        "status": "PASS",
+        "detail": "5개",
+        "timestamp": "2026-01-27T07:45:11.553Z"
+      },
+      {
+        "testId": "TC-P04-F02-01",
+        "description": "Todo 카드 표시",
+        "status": "PASS",
+        "detail": "4개",
+        "timestamp": "2026-01-27T07:45:11.560Z"
+      },
+      {
+        "testId": "TC-P04-F12-01",
+        "description": "Overview 통계",
+        "status": "PASS",
+        "detail": "",
+        "timestamp": "2026-01-27T07:45:12.969Z"
+      },
+      {
+        "testId": "TC-P05-F01-01",
+        "description": "Timeline 이벤트 목록",
+        "status": "PASS",
+        "detail": "15개",
+        "timestamp": "2026-01-27T07:45:15.230Z"
+      },
+      {
+        "testId": "TC-P05-F01-02",
+        "description": "날짜 그룹화",
+        "status": "PASS",
+        "detail": "",
+        "timestamp": "2026-01-27T07:45:15.230Z"
+      },
+      {
+        "testId": "TC-P05-F02-01",
+        "description": "필터 탭 표시",
+        "status": "PASS",
+        "detail": "4개",
+        "timestamp": "2026-01-27T07:45:15.233Z"
+      },
+      {
+        "testId": "TC-P05-F10-01",
+        "description": "Overview 통계",
+        "status": "PASS",
+        "detail": "",
+        "timestamp": "2026-01-27T07:45:15.234Z"
+      },
+      {
+        "testId": "TC-M02-F01-01",
+        "description": "AI 질문 목록 표시",
+        "status": "PASS",
+        "detail": "",
+        "timestamp": "2026-01-27T07:45:19.042Z"
+      },
+      {
+        "testId": "TC-M02-F06-01",
+        "description": "ESC로 Panel 닫기",
+        "status": "PASS",
+        "detail": "",
+        "timestamp": "2026-01-27T07:45:19.345Z"
+      },
+      {
+        "testId": "TC-P01-PF-01",
+        "description": "느린 네트워크 (3G) 로드",
+        "status": "PASS",
+        "detail": "33.2초 (임계값: 45초)",
+        "timestamp": "2026-01-27T07:45:54.157Z"
+      },
+      {
+        "testId": "TC-P03-PF-03",
+        "description": "필터 전환 속도",
+        "status": "PASS",
+        "detail": "131ms",
+        "timestamp": "2026-01-27T07:45:55.495Z"
+      },
+      {
+        "testId": "TC-RESP-01",
+        "description": "Mobile Layout (375x812)",
+        "status": "PASS",
+        "detail": "",
+        "timestamp": "2026-01-27T07:45:56.674Z"
+      },
+      {
+        "testId": "TC-RESP-02",
+        "description": "Tablet Layout (768x1024)",
+        "status": "PASS",
+        "detail": "",
+        "timestamp": "2026-01-27T07:45:57.851Z"
+      },
+      {
+        "testId": "TC-RESP-03",
+        "description": "Desktop Layout (1440x900)",
+        "status": "PASS",
+        "detail": "",
+        "timestamp": "2026-01-27T07:45:59.025Z"
+      }
+    ],
+    "failed": [
+      {
+        "testId": "TC-P04-F07-01",
+        "description": "Add Todo 버튼 → 모달",
+        "status": "FAIL",
+        "detail": "",
+        "timestamp": "2026-01-27T07:45:12.578Z"
+      },
+      {
+        "testId": "TC-M02-F02-01",
+        "description": "답변 입력 영역",
+        "status": "FAIL",
+        "detail": "No question options found",
+        "timestamp": "2026-01-27T07:45:19.043Z"
+      }
+    ],
+    "skipped": [
+      {
+        "testId": "TC-P01-F11-01",
+        "description": "설정 버튼 → Settings Modal",
+        "status": "SKIP",
+        "detail": "버튼 못찾음",
+        "timestamp": "2026-01-27T07:45:06.122Z"
+      },
+      {
+        "testId": "TC-P01-ED-01",
+        "description": "Empty state UI",
+        "status": "SKIP",
+        "detail": "데이터 있음",
+        "timestamp": "2026-01-27T07:45:06.122Z"
+      },
+      {
+        "testId": "TC-P03-F02-01",
+        "description": "Mission 카드 표시",
+        "status": "SKIP",
+        "detail": "0개",
+        "timestamp": "2026-01-27T07:45:08.386Z"
+      },
+      {
+        "testId": "TC-P03-F03-01",
+        "description": "Mission 클릭 → Detail Modal",
+        "status": "SKIP",
+        "detail": "No mission card",
+        "timestamp": "2026-01-27T07:45:08.387Z"
+      },
+      {
+        "testId": "TC-P04-F03-01",
+        "description": "Todo 클릭 → 상세 드로어",
+        "status": "SKIP",
+        "detail": "No todo card",
+        "timestamp": "2026-01-27T07:45:11.561Z"
+      },
+      {
+        "testId": "TC-P04-F05-01",
+        "description": "Status 필터 표시",
+        "status": "SKIP",
+        "detail": "",
+        "timestamp": "2026-01-27T07:45:11.561Z"
+      },
+      {
+        "testId": "TC-M01-F01",
+        "description": "Settings Modal 열기",
+        "status": "SKIP",
+        "detail": "버튼 못찾음",
+        "timestamp": "2026-01-27T07:45:16.324Z"
+      },
+      {
+        "testId": "TC-M02-F03-01",
+        "description": "답변 제출 API",
+        "status": "SKIP",
+        "detail": "데이터 변경 방지",
+        "timestamp": "2026-01-27T07:45:19.043Z"
+      },
+      {
+        "testId": "TC-M02-F03-02",
+        "description": "답변 API 호출 확인",
+        "status": "SKIP",
+        "detail": "데이터 변경 방지",
+        "timestamp": "2026-01-27T07:45:19.043Z"
+      },
+      {
+        "testId": "TC-M03-F01-01",
+        "description": "Mission Detail Modal",
+        "status": "SKIP",
+        "detail": "No mission card",
+        "timestamp": "2026-01-27T07:45:20.978Z"
+      }
+    ]
+  }
+}

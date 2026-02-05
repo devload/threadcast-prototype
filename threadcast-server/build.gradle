@@ -47,6 +47,9 @@ dependencies {
     // SessionCast - Terminal streaming
     implementation 'io.sessioncast:sessioncast-spring-boot-starter:1.0.0-SNAPSHOT'
 
+    // Sentry - Error tracking
+    implementation 'io.sentry:sentry-spring-boot-starter-jakarta:7.3.0'
+
     // Dev Tools
     developmentOnly 'org.springframework.boot:spring-boot-devtools'
 

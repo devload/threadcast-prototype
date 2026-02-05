@@ -5,3 +5,5 @@ export { useTimelineStore } from './timelineStore';
 export { useUIStore, useToast } from './uiStore';
 export { useAIQuestionStore } from './aiQuestionStore';
 export { useWorkspaceStore } from './workspaceStore';
+export { useJiraStore } from './jiraStore';
+export { usePmAgentStore } from './pmAgentStore';

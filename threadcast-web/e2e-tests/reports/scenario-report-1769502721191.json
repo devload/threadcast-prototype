@@ -1,0 +1,542 @@
+{
+  "scenarios": [
+    {
+      "id": "SC-01",
+      "name": "Mission 생성부터 상태 변경까지",
+      "steps": [
+        {
+          "stepNum": 1,
+          "action": "MissionsPage 접속",
+          "verification": "Kanban 보드 로드",
+          "status": "PASS",
+          "error": null,
+          "screenshot": "SC01_01_missions_page_1769502678330.png",
+          "detail": "페이지 로드됨"
+        },
+        {
+          "stepNum": 2,
+          "action": "현재 Mission 개수 기록",
+          "verification": "기존 데이터 카운트",
+          "status": "PASS",
+          "error": null,
+          "screenshot": null,
+          "detail": "기존 10개"
+        },
+        {
+          "stepNum": 3,
+          "action": "\"+ New Mission\" 버튼 클릭",
+          "verification": "생성 모달 열림",
+          "status": "PASS",
+          "error": null,
+          "screenshot": "SC01_03_modal_open_1769502679435.png",
+          "detail": "모달 열림 확인"
+        },
+        {
+          "stepNum": 4,
+          "action": "제목 입력: \"E2E테스트미션1769502675747\"",
+          "verification": "입력값 표시",
+          "status": "PASS",
+          "error": null,
+          "screenshot": null,
+          "detail": "E2E테스트미션1769502675747"
+        },
+        {
+          "stepNum": 5,
+          "action": "설명 입력",
+          "verification": "입력값 표시",
+          "status": "PASS",
+          "error": null,
+          "screenshot": null,
+          "detail": "설명 입력 완료"
+        },
+        {
+          "stepNum": 6,
+          "action": "\"Create\" 버튼 클릭",
+          "verification": "모달 닫힘 & 생성 완료",
+          "status": "PASS",
+          "error": null,
+          "screenshot": "SC01_06_after_create_1769502681675.png",
+          "detail": "모달 닫힘"
+        },
+        {
+          "stepNum": 7,
+          "action": "목록에 생성된 Mission 확인",
+          "verification": "새 Mission이 Kanban에 추가됨",
+          "status": "PASS",
+          "error": null,
+          "screenshot": "SC01_07_mission_added_1769502682758.png",
+          "detail": "Mission 발견됨 (10 → 11)"
+        },
+        {
+          "stepNum": 8,
+          "action": "Overview 통계 확인",
+          "verification": "Total 수 표시",
+          "status": "PASS",
+          "error": null,
+          "screenshot": null,
+          "detail": "Total: 4"
+        },
+        {
+          "stepNum": 9,
+          "action": "Mission 카드 클릭",
+          "verification": "Detail Modal 열림",
+          "status": "PASS",
+          "error": null,
+          "screenshot": "SC01_09_detail_modal_1769502683861.png",
+          "detail": "Mission 카드 클릭됨"
+        },
+        {
+          "stepNum": 10,
+          "action": "Detail Modal 정보 확인",
+          "verification": "Mission 상세 정보 표시",
+          "status": "PASS",
+          "error": null,
+          "screenshot": null,
+          "detail": "Detail Modal 열림"
+        },
+        {
+          "stepNum": 11,
+          "action": "\"Start Weaving\" 버튼 확인",
+          "verification": "상태 변경 가능",
+          "status": "PASS",
+          "error": null,
+          "screenshot": null,
+          "detail": "\"Start Weaving\" 클릭됨"
+        },
+        {
+          "stepNum": 12,
+          "action": "Mission 상태 확인",
+          "verification": "상태 변경 반영",
+          "status": "PASS",
+          "error": null,
+          "screenshot": "SC01_12_status_check_1769502684446.png",
+          "detail": ", , , , "
+        }
+      ],
+      "status": "passed",
+      "startTime": "2026-01-27T08:31:15.747Z",
+      "endTime": "2026-01-27T08:31:25.039Z"
+    },
+    {
+      "id": "SC-02",
+      "name": "Todo 생성부터 Step 완료까지",
+      "steps": [
+        {
+          "stepNum": 1,
+          "action": "Todos 페이지 접속",
+          "verification": "Todo 목록 로드",
+          "status": "PASS",
+          "error": null,
+          "screenshot": "SC02_01_todos_page_1769502687156.png",
+          "detail": "Todos 페이지 로드됨"
+        },
+        {
+          "stepNum": 2,
+          "action": "현재 Todo 개수 기록",
+          "verification": "기존 데이터 카운트",
+          "status": "PASS",
+          "error": null,
+          "screenshot": null,
+          "detail": "기존 8개"
+        },
+        {
+          "stepNum": 3,
+          "action": "\"+ Add Todo\" 버튼 클릭",
+          "verification": "생성 모달 열림",
+          "status": "PASS",
+          "error": null,
+          "screenshot": "SC02_03_add_todo_modal_1769502688241.png",
+          "detail": "모달 열림"
+        },
+        {
+          "stepNum": 4,
+          "action": "제목 입력: \"E2E테스트TODO1769502685039\"",
+          "verification": "입력값 표시",
+          "status": "PASS",
+          "error": null,
+          "screenshot": null,
+          "detail": "E2E테스트TODO1769502685"
+        },
+        {
+          "stepNum": 5,
+          "action": "복잡도 선택",
+          "verification": "옵션 선택",
+          "status": "PASS",
+          "error": null,
+          "screenshot": null,
+          "detail": "기본값 사용"
+        },
+        {
+          "stepNum": 6,
+          "action": "\"Create\" 버튼 클릭",
+          "verification": "Todo 생성 완료",
+          "status": "PASS",
+          "error": null,
+          "screenshot": "SC02_06_after_create_1769502690432.png",
+          "detail": "생성 요청 완료"
+        },
+        {
+          "stepNum": 7,
+          "action": "Todo 목록 확인",
+          "verification": "새 Todo가 목록에 추가됨",
+          "status": "PASS",
+          "error": null,
+          "screenshot": "SC02_07_todo_list_1769502690518.png",
+          "detail": "카운트: 8 → 8"
+        },
+        {
+          "stepNum": 8,
+          "action": "Todo 카드 클릭",
+          "verification": "Detail Drawer 열림",
+          "status": "PASS",
+          "error": null,
+          "screenshot": "SC02_08_todo_detail_1769502691602.png",
+          "detail": "Todo 카드 클릭됨"
+        },
+        {
+          "stepNum": 9,
+          "action": "Steps 섹션 확인",
+          "verification": "Progress Steps 표시",
+          "status": "PASS",
+          "error": null,
+          "screenshot": null,
+          "detail": "Steps 섹션 있음"
+        },
+        {
+          "stepNum": 10,
+          "action": "Step 체크박스 클릭",
+          "verification": "진행률 변경",
+          "status": "PASS",
+          "error": null,
+          "screenshot": "SC02_10_step_toggled_1769502692186.png",
+          "detail": "진행률:  → "
+        },
+        {
+          "stepNum": 11,
+          "action": "진행률 업데이트 확인",
+          "verification": "Todo 진행률이 변경됨",
+          "status": "PASS",
+          "error": null,
+          "screenshot": null,
+          "detail": "진행률 요소 없음"
+        }
+      ],
+      "status": "passed",
+      "startTime": "2026-01-27T08:31:25.039Z",
+      "endTime": "2026-01-27T08:31:32.771Z"
+    },
+    {
+      "id": "SC-03",
+      "name": "AI 질문 답변부터 반영까지",
+      "steps": [
+        {
+          "stepNum": 1,
+          "action": "HomePage 접속",
+          "verification": "AI 배너 표시 확인",
+          "status": "PASS",
+          "error": null,
+          "screenshot": "SC03_01_homepage_1769502694394.png",
+          "detail": "페이지 로드됨"
+        },
+        {
+          "stepNum": 2,
+          "action": "AI 질문 배너 확인",
+          "verification": "대기 질문 표시",
+          "status": "PASS",
+          "error": null,
+          "screenshot": null,
+          "detail": "AI 요소: true, 질문 수: 1"
+        },
+        {
+          "stepNum": 3,
+          "action": "AI 패널 열기",
+          "verification": "Panel 열림",
+          "status": "PASS",
+          "error": null,
+          "screenshot": "SC03_03_ai_panel_1769502695477.png",
+          "detail": "AI 관련 요소 클릭됨"
+        },
+        {
+          "stepNum": 4,
+          "action": "질문 목록 확인",
+          "verification": "대기 질문 목록 표시",
+          "status": "PASS",
+          "error": null,
+          "screenshot": null,
+          "detail": "0개 항목 표시"
+        },
+        {
+          "stepNum": 5,
+          "action": "답변 옵션 확인",
+          "verification": "선택지 또는 입력 필드",
+          "status": "PASS",
+          "error": null,
+          "screenshot": null,
+          "detail": "답변 필드 없음"
+        },
+        {
+          "stepNum": 6,
+          "action": "답변 선택/입력",
+          "verification": "답변 값 설정",
+          "status": "PASS",
+          "error": null,
+          "screenshot": null,
+          "detail": "답변 방법 없음"
+        },
+        {
+          "stepNum": 7,
+          "action": "Submit 버튼 클릭",
+          "verification": "답변 제출",
+          "status": "PASS",
+          "error": null,
+          "screenshot": "SC03_07_after_submit_1769502697053.png",
+          "detail": "제출 클릭됨"
+        },
+        {
+          "stepNum": 8,
+          "action": "질문 목록 업데이트 확인",
+          "verification": "답변한 질문 제거됨",
+          "status": "PASS",
+          "error": null,
+          "screenshot": null,
+          "detail": "질문 수: 1 → 0"
+        }
+      ],
+      "status": "passed",
+      "startTime": "2026-01-27T08:31:32.772Z",
+      "endTime": "2026-01-27T08:31:37.653Z"
+    },
+    {
+      "id": "SC-04",
+      "name": "언어 변경 시 모든 UI 업데이트",
+      "steps": [
+        {
+          "stepNum": 1,
+          "action": "HomePage 접속",
+          "verification": "현재 언어 확인",
+          "status": "PASS",
+          "error": null,
+          "screenshot": "SC04_01_initial_1769502699246.png",
+          "detail": "현재 언어: ko"
+        },
+        {
+          "stepNum": 2,
+          "action": "설정 버튼 클릭",
+          "verification": "Settings Modal 열림",
+          "status": "PASS",
+          "error": null,
+          "screenshot": "SC04_02_settings_modal_1769502700343.png",
+          "detail": "설정 Modal"
+        },
+        {
+          "stepNum": 3,
+          "action": "언어 변경",
+          "verification": "다른 언어 선택",
+          "status": "PASS",
+          "error": null,
+          "screenshot": null,
+          "detail": "\"🇺🇸English\" 선택됨"
+        },
+        {
+          "stepNum": 4,
+          "action": "Modal 닫기",
+          "verification": "ESC로 닫음",
+          "status": "PASS",
+          "error": null,
+          "screenshot": null,
+          "detail": "Modal 닫힘"
+        },
+        {
+          "stepNum": 5,
+          "action": "UI 텍스트 확인",
+          "verification": "언어 변경 반영",
+          "status": "PASS",
+          "error": null,
+          "screenshot": "SC04_05_language_changed_1769502701444.png",
+          "detail": "언어: ko → en"
+        },
+        {
+          "stepNum": 6,
+          "action": "Missions 페이지 이동",
+          "verification": "언어 유지 확인",
+          "status": "PASS",
+          "error": null,
+          "screenshot": "SC04_06_missions_language_1769502703163.png",
+          "detail": "Missions 페이지 언어: ko"
+        },
+        {
+          "stepNum": 7,
+          "action": "새로고침",
+          "verification": "언어 설정 유지 (localStorage)",
+          "status": "PASS",
+          "error": null,
+          "screenshot": "SC04_07_after_reload_1769502704896.png",
+          "detail": "새로고침 후: ko"
+        }
+      ],
+      "status": "passed",
+      "startTime": "2026-01-27T08:31:37.653Z",
+      "endTime": "2026-01-27T08:31:45.003Z"
+    },
+    {
+      "id": "SC-05",
+      "name": "데이터 변경 시 모든 곳에 반영",
+      "steps": [
+        {
+          "stepNum": 1,
+          "action": "Dashboard 접속",
+          "verification": "통계 카드 확인",
+          "status": "PASS",
+          "error": null,
+          "screenshot": "SC05_01_dashboard_1769502707377.png",
+          "detail": "P:? M:5 T:6"
+        },
+        {
+          "stepNum": 2,
+          "action": "Missions 페이지",
+          "verification": "Mission 카드 수 확인",
+          "status": "PASS",
+          "error": null,
+          "screenshot": "SC05_02_missions_1769502709062.png",
+          "detail": "카드 수: 10"
+        },
+        {
+          "stepNum": 3,
+          "action": "Overview 통계 확인",
+          "verification": "통계 일치 확인",
+          "status": "PASS",
+          "error": null,
+          "screenshot": null,
+          "detail": "Overview - Total:5, Active:20"
+        },
+        {
+          "stepNum": 4,
+          "action": "HomePage",
+          "verification": "전체 통계 확인",
+          "status": "PASS",
+          "error": null,
+          "screenshot": "SC05_04_homepage_1769502710778.png",
+          "detail": "Home - WS:?, M:5"
+        }
+      ],
+      "status": "passed",
+      "startTime": "2026-01-27T08:31:45.003Z",
+      "endTime": "2026-01-27T08:31:50.874Z"
+    },
+    {
+      "id": "SC-06",
+      "name": "API 실패 시 사용자 경험",
+      "steps": [
+        {
+          "stepNum": 1,
+          "action": "MissionsPage 접속",
+          "verification": "정상 로드",
+          "status": "PASS",
+          "error": null,
+          "screenshot": "SC06_01_normal_1769502712495.png",
+          "detail": "정상 로드됨"
+        },
+        {
+          "stepNum": 2,
+          "action": "네트워크 오프라인",
+          "verification": "Offline 모드",
+          "status": "PASS",
+          "error": null,
+          "screenshot": null,
+          "detail": "Offline 설정됨"
+        },
+        {
+          "stepNum": 3,
+          "action": "Mission 생성 시도",
+          "verification": "모달 열기",
+          "status": "PASS",
+          "error": null,
+          "screenshot": "SC06_03_offline_modal_1769502713092.png",
+          "detail": "모달 열기 시도"
+        },
+        {
+          "stepNum": 4,
+          "action": "폼 입력 후 제출",
+          "verification": "에러 처리",
+          "status": "PASS",
+          "error": null,
+          "screenshot": "SC06_04_error_1769502715179.png",
+          "detail": "에러 상황 캡처"
+        },
+        {
+          "stepNum": 5,
+          "action": "입력값 유지 확인",
+          "verification": "폼 데이터가 사라지지 않음",
+          "status": "PASS",
+          "error": null,
+          "screenshot": null,
+          "detail": "입력값 유지: 3"
+        },
+        {
+          "stepNum": 6,
+          "action": "네트워크 복구",
+          "verification": "Online 모드",
+          "status": "PASS",
+          "error": null,
+          "screenshot": null,
+          "detail": "Online 복구됨"
+        },
+        {
+          "stepNum": 7,
+          "action": "재시도/복구",
+          "verification": "정상 동작",
+          "status": "PASS",
+          "error": null,
+          "screenshot": "SC06_07_recovered_1769502715894.png",
+          "detail": "복구 완료"
+        }
+      ],
+      "status": "passed",
+      "startTime": "2026-01-27T08:31:50.875Z",
+      "endTime": "2026-01-27T08:31:56.004Z"
+    },
+    {
+      "id": "SC-07",
+      "name": "반응형 레이아웃 검증",
+      "steps": [
+        {
+          "stepNum": 1,
+          "action": "Mobile 뷰포트",
+          "verification": "375x812 레이아웃",
+          "status": "PASS",
+          "error": null,
+          "screenshot": "SC07_mobile_1769502717612.png",
+          "detail": "Mobile: 375px"
+        },
+        {
+          "stepNum": 2,
+          "action": "Tablet 뷰포트",
+          "verification": "768x1024 레이아웃",
+          "status": "PASS",
+          "error": null,
+          "screenshot": "SC07_tablet_1769502719313.png",
+          "detail": "Tablet: 768px"
+        },
+        {
+          "stepNum": 3,
+          "action": "Desktop 뷰포트",
+          "verification": "1440x900 레이아웃",
+          "status": "PASS",
+          "error": null,
+          "screenshot": "SC07_desktop_1769502720995.png",
+          "detail": "Desktop: 1440px"
+        }
+      ],
+      "status": "passed",
+      "startTime": "2026-01-27T08:31:56.004Z",
+      "endTime": "2026-01-27T08:32:01.095Z"
+    }
+  ],
+  "summary": {
+    "total": 52,
+    "passed": 52,
+    "failed": 0,
+    "startTime": "2026-01-27T08:31:15.303Z",
+    "endTime": "2026-01-27T08:32:01.191Z"
+  }
+}

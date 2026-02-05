@@ -100,11 +100,25 @@ export const ProjectDashboardPage = () => {
     );
   }
 
-  const stats = dashboard.stats || defaultStats;
-  const todos = dashboard.todos || [];
-  const missions = dashboard.linkedMissions || [];
-  const worktrees = dashboard.activeWorktrees || [];
-  const gitStatus = dashboard.gitStatus;
+  // Safely extract and normalize all dashboard data
+  const rawStats = dashboard.stats || defaultStats;
+  const stats = {
+    totalTodos: Number(rawStats.totalTodos) || 0,
+    threadingTodos: Number(rawStats.threadingTodos) || 0,
+    wovenTodos: Number(rawStats.wovenTodos) || 0,
+    tangledTodos: Number(rawStats.tangledTodos) || 0,
+    pendingTodos: Number(rawStats.pendingTodos) || 0,
+    linkedMissions: Number(rawStats.linkedMissions) || 0,
+    commits: Number(rawStats.commits) || 0,
+    aiActions: Number(rawStats.aiActions) || 0,
+    progress: Number(rawStats.progress) || 0,
+    linesAdded: Number(rawStats.linesAdded) || 0,
+    linesRemoved: Number(rawStats.linesRemoved) || 0,
+  };
+  const todos = Array.isArray(dashboard.todos) ? dashboard.todos : [];
+  const missions = Array.isArray(dashboard.linkedMissions) ? dashboard.linkedMissions : [];
+  const worktrees = Array.isArray(dashboard.activeWorktrees) ? dashboard.activeWorktrees : [];
+  const gitStatus = dashboard.gitStatus && typeof dashboard.gitStatus === 'object' ? dashboard.gitStatus : null;
 
   // Filter recent activities for this project
   const projectActivities = events.slice(0, 5);
@@ -179,20 +193,20 @@ export const ProjectDashboardPage = () => {
       <div className="bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-200 rounded-xl p-4 mb-4">
         <div className="flex items-center gap-3 mb-3">
           <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-lg flex items-center justify-center text-xl">
-            {getLanguageIcon(dashboard.language)}
+            {getLanguageIcon(String(dashboard.language || ''))}
           </div>
           <div>
-            <div className="font-semibold text-gray-900">{dashboard.name}</div>
-            <div className="text-xs font-mono text-gray-400">{dashboard.path}</div>
+            <div className="font-semibold text-gray-900">{String(dashboard.name || 'Unknown Project')}</div>
+            <div className="text-xs font-mono text-gray-400">{String(dashboard.path || '')}</div>
           </div>
         </div>
         <div className="flex gap-2">
-          {dashboard.language && (
+          {dashboard.language && typeof dashboard.language === 'string' && (
             <span className="px-2 py-0.5 bg-indigo-100 text-indigo-600 rounded-full text-xs font-semibold">
               {dashboard.language}
             </span>
           )}
-          {dashboard.buildTool && (
+          {dashboard.buildTool && typeof dashboard.buildTool === 'string' && (
             <span className="px-2 py-0.5 bg-green-100 text-green-600 rounded-full text-xs font-semibold">
               {dashboard.buildTool}
             </span>
@@ -396,15 +410,15 @@ export const ProjectDashboardPage = () => {
               <div className="p-3">
                 <div className="grid grid-cols-2 gap-2 mb-2">
                   <div className="p-2.5 bg-gray-50 rounded-lg text-center">
-                    <div className="text-lg font-bold text-indigo-600">{gitStatus.commitCount}</div>
+                    <div className="text-lg font-bold text-indigo-600">{Number(gitStatus.commitCount) || 0}</div>
                     <div className="text-[9px] text-gray-400">Commits</div>
                   </div>
                   <div className="p-2.5 bg-gray-50 rounded-lg text-center">
-                    <div className="text-lg font-bold text-indigo-600">{gitStatus.branchCount}</div>
+                    <div className="text-lg font-bold text-indigo-600">{Number(gitStatus.branchCount) || 0}</div>
                     <div className="text-[9px] text-gray-400">Branches</div>
                   </div>
                 </div>
-                {gitStatus.currentBranch && (
+                {gitStatus.currentBranch && typeof gitStatus.currentBranch === 'string' && (
                   <div className="flex items-center gap-2 p-2.5 bg-gray-50 rounded-lg">
                     <span>🌿</span>
                     <div>
@@ -458,9 +472,9 @@ export const ProjectDashboardPage = () => {
 const StatCard = ({ icon, value, label, subValue }: { icon: string; value: number; label: string; subValue?: string }) => (
   <div className="bg-white border border-gray-200 rounded-xl p-4 text-center">
     <div className="text-xl mb-1">{icon}</div>
-    <div className="text-2xl font-bold text-indigo-600">{value}</div>
-    <div className="text-xs text-gray-500">{label}</div>
-    {subValue && <div className="text-[10px] text-amber-600 font-medium mt-0.5">{subValue}</div>}
+    <div className="text-2xl font-bold text-indigo-600">{Number(value) || 0}</div>
+    <div className="text-xs text-gray-500">{String(label)}</div>
+    {subValue && typeof subValue === 'string' && <div className="text-[10px] text-amber-600 font-medium mt-0.5">{subValue}</div>}
   </div>
 );
 

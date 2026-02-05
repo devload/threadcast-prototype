@@ -59,6 +59,23 @@ threadcast:
   hub:
     auto-start: true
 
+# JIRA Integration Configuration
+jira:
+  cloud:
+    client-id: ${JIRA_CLOUD_CLIENT_ID:}
+    client-secret: ${JIRA_CLOUD_CLIENT_SECRET:}
+    redirect-uri: ${JIRA_REDIRECT_URI:http://localhost:21002/integrations/jira/callback}
+    scopes: read:jira-work read:jira-user write:jira-work offline_access
+  encryption:
+    key: ${JIRA_ENCRYPTION_KEY:threadcast-jira-key-32-bytes!!}
+
+# Sentry Configuration
+sentry:
+  dsn: ${SENTRY_DSN:https://17d7e7431fa6cf55fc85f21148be7d7a@o4510832077701120.ingest.us.sentry.io/4510832153067520}
+  traces-sample-rate: 1.0
+  environment: ${SENTRY_ENV:local}
+  send-default-pii: false
+
 # Default Logging
 logging:
   level:

@@ -6,3 +6,12 @@ export { todoService, type CreateTodoRequest, type UpdateTodoRequest } from './t
 export { timelineService, type TimelineParams } from './timelineService';
 export { aiAnalysisService } from './aiAnalysisService';
 export { metaService, type MetaData, type UpdateMetaRequest } from './metaService';
+export { jiraService } from './jiraService';
+export type {
+  JiraIntegration,
+  JiraProject,
+  JiraIssue,
+  JiraIssueMapping,
+  JiraImportResult,
+  JiraConnectRequest,
+} from './jiraService';
