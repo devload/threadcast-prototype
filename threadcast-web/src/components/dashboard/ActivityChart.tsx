@@ -1,4 +1,3 @@
-import { useMemo } from 'react';
 import {
   AreaChart,
   Area,
@@ -36,14 +35,17 @@ export const ActivityChart = ({
   showLegend = true,
   title,
 }: ActivityChartProps) => {
-  const formattedData = useMemo(() => {
-    return data.map((item) => ({
-      ...item,
-      displayDate: formatDate(item.date),
-    }));
-  }, [data]);
+  // Safely process data - no useMemo needed for simple mapping
+  const safeData = Array.isArray(data) ? data : [];
+  const formattedData = safeData.map((item) => ({
+    date: String(item?.date || ''),
+    commits: Number(item?.commits) || 0,
+    aiActions: Number(item?.aiActions) || 0,
+    todosCompleted: Number(item?.todosCompleted) || 0,
+    displayDate: formatDate(String(item?.date || '')),
+  }));
 
-  if (data.length === 0) {
+  if (safeData.length === 0) {
     return (
       <div className="flex items-center justify-center h-full text-gray-400 text-sm">
         No activity data available

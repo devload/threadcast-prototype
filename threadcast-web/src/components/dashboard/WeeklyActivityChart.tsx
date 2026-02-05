@@ -1,4 +1,3 @@
-import { useMemo } from 'react';
 import {
   BarChart,
   Bar,
@@ -34,14 +33,16 @@ export const WeeklyActivityChart = ({
   showLegend = true,
   title,
 }: WeeklyActivityChartProps) => {
-  const formattedData = useMemo(() => {
-    return data.map((item) => ({
-      ...item,
-      displayDay: item.day.slice(0, 3), // Mon, Tue, etc.
-    }));
-  }, [data]);
+  // Safely process data - no useMemo needed for simple mapping
+  const safeData = Array.isArray(data) ? data : [];
+  const formattedData = safeData.map((item) => ({
+    day: String(item?.day || ''),
+    ai: Number(item?.ai) || 0,
+    user: Number(item?.user) || 0,
+    displayDay: String(item?.day || '').slice(0, 3),
+  }));
 
-  if (data.length === 0) {
+  if (safeData.length === 0) {
     return (
       <div className="flex items-center justify-center h-full text-gray-400 text-sm">
         No activity data
