@@ -24,6 +24,21 @@ export const ProjectDashboardPage = () => {
 
   const dashboard = currentProjectDashboard;
 
+  // Default stats to prevent undefined errors in useMemo
+  const defaultStats = {
+    totalTodos: 0,
+    threadingTodos: 0,
+    wovenTodos: 0,
+    tangledTodos: 0,
+    pendingTodos: 0,
+    linkedMissions: 0,
+    commits: 0,
+    aiActions: 0,
+    progress: 0,
+    linesAdded: 0,
+    linesRemoved: 0,
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'THREADING': return 'bg-amber-500';
@@ -85,7 +100,7 @@ export const ProjectDashboardPage = () => {
     );
   }
 
-  const stats = dashboard.stats;
+  const stats = dashboard.stats || defaultStats;
   const todos = dashboard.todos || [];
   const missions = dashboard.linkedMissions || [];
   const worktrees = dashboard.activeWorktrees || [];
