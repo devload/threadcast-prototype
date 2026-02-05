@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useWorkspaceStore } from '../stores/workspaceStore';
 import { useTimelineStore } from '../stores/timelineStore';
@@ -123,23 +123,16 @@ export const ProjectDashboardPage = () => {
   // Filter recent activities for this project
   const projectActivities = events.slice(0, 5);
 
-  // Generate chart data based on dashboard stats - using stable primitive values
-  const commits = stats.commits;
-  const aiActions = stats.aiActions;
-  const wovenTodos = stats.wovenTodos;
-  const pendingTodos = stats.pendingTodos;
-  const threadingTodos = stats.threadingTodos;
-  const tangledTodos = stats.tangledTodos;
-
-  const dailyActivityData: ActivityDataPoint[] = useMemo(() => {
+  // Generate chart data directly (no useMemo to avoid dependency issues)
+  const dailyActivityData: ActivityDataPoint[] = (() => {
     const data: ActivityDataPoint[] = [];
     const today = new Date();
     for (let i = 6; i >= 0; i--) {
       const date = new Date(today);
       date.setDate(date.getDate() - i);
-      const baseCommits = Math.max(1, Math.floor(commits / 7));
-      const baseAiActions = Math.max(1, Math.floor(aiActions / 7));
-      const baseTodos = Math.max(0, Math.floor(wovenTodos / 7));
+      const baseCommits = Math.max(1, Math.floor(stats.commits / 7));
+      const baseAiActions = Math.max(1, Math.floor(stats.aiActions / 7));
+      const baseTodos = Math.max(0, Math.floor(stats.wovenTodos / 7));
       data.push({
         date: date.toISOString().split('T')[0],
         commits: Math.floor(baseCommits * (0.5 + Math.random())),
@@ -148,25 +141,25 @@ export const ProjectDashboardPage = () => {
       });
     }
     return data;
-  }, [commits, aiActions, wovenTodos]);
+  })();
 
-  const todoStatusData: TodoStatusData = useMemo(() => ({
-    pending: pendingTodos,
-    threading: threadingTodos,
-    woven: wovenTodos,
-    tangled: tangledTodos,
-  }), [pendingTodos, threadingTodos, wovenTodos, tangledTodos]);
+  const todoStatusData: TodoStatusData = {
+    pending: stats.pendingTodos,
+    threading: stats.threadingTodos,
+    woven: stats.wovenTodos,
+    tangled: stats.tangledTodos,
+  };
 
-  const weeklyActivityData: WeeklyActivityData[] = useMemo(() => {
+  const weeklyActivityData: WeeklyActivityData[] = (() => {
     const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-    const baseAi = Math.max(2, Math.floor(aiActions / 7));
-    const baseUser = Math.max(1, Math.floor(commits / 7));
+    const baseAi = Math.max(2, Math.floor(stats.aiActions / 7));
+    const baseUser = Math.max(1, Math.floor(stats.commits / 7));
     return days.map((day) => ({
       day,
       ai: Math.floor(baseAi * (0.3 + Math.random() * 1.4)),
       user: Math.floor(baseUser * (0.2 + Math.random() * 1.2)),
     }));
-  }, [aiActions, commits]);
+  })();
 
   return (
     <div className="p-5 max-w-full overflow-auto">

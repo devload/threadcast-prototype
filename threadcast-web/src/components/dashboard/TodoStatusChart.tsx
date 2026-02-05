@@ -1,4 +1,3 @@
-import { useMemo } from 'react';
 import {
   PieChart,
   Pie,
@@ -37,31 +36,28 @@ export const TodoStatusChart = ({
   title,
   variant = 'donut',
 }: TodoStatusChartProps) => {
-  // Safely extract values to prevent object comparison issues
+  // Safely extract values to prevent rendering issues
   const pending = Number(data?.pending) || 0;
   const threading = Number(data?.threading) || 0;
   const woven = Number(data?.woven) || 0;
   const tangled = Number(data?.tangled) || 0;
 
-  const chartData = useMemo(() => {
-    const items = [
-      { key: 'pending', value: pending },
-      { key: 'threading', value: threading },
-      { key: 'woven', value: woven },
-      { key: 'tangled', value: tangled },
-    ];
-    return items
-      .filter((item) => item.value > 0)
-      .map((item) => ({
-        name: STATUS_CONFIG[item.key as keyof TodoStatusData]?.label || item.key,
-        value: item.value,
-        color: STATUS_CONFIG[item.key as keyof TodoStatusData]?.color || '#6b7280',
-      }));
-  }, [pending, threading, woven, tangled]);
+  const items = [
+    { key: 'pending', value: pending },
+    { key: 'threading', value: threading },
+    { key: 'woven', value: woven },
+    { key: 'tangled', value: tangled },
+  ];
 
-  const total = useMemo(() => {
-    return pending + threading + woven + tangled;
-  }, [pending, threading, woven, tangled]);
+  const chartData = items
+    .filter((item) => item.value > 0)
+    .map((item) => ({
+      name: STATUS_CONFIG[item.key as keyof TodoStatusData]?.label || item.key,
+      value: item.value,
+      color: STATUS_CONFIG[item.key as keyof TodoStatusData]?.color || '#6b7280',
+    }));
+
+  const total = pending + threading + woven + tangled;
 
   if (total === 0) {
     return (
