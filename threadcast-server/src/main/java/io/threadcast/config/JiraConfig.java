@@ -62,12 +62,4 @@ public class JiraConfig {
     public RestTemplate jiraRestTemplate() {
         return new RestTemplate();
     }
-
-    /**
-     * 범용 RestTemplate
-     */
-    @Bean
-    public RestTemplate restTemplate() {
-        return new RestTemplate();
-    }
 }
