@@ -1000,6 +1000,11 @@ class ThreadCastClient {
     return res.data.data;
   }
 
+  async deleteWorkspace(id: string) {
+    const res = await this.client.delete(`/workspaces/${id}`);
+    return res.data.data;
+  }
+
   // Missions
   async listMissions(workspaceId: string, status?: string) {
     const params: Record<string, string> = { workspaceId };
@@ -1030,6 +1035,11 @@ class ThreadCastClient {
 
   async updateMission(id: string, updates: { title?: string; description?: string; priority?: string }) {
     const res = await this.client.patch(`/missions/${id}`, updates);
+    return res.data.data;
+  }
+
+  async deleteMission(id: string) {
+    const res = await this.client.delete(`/missions/${id}`);
     return res.data.data;
   }
 
@@ -1070,6 +1080,11 @@ class ThreadCastClient {
       complexity,
       estimatedTime,
     });
+    return res.data.data;
+  }
+
+  async deleteTodo(id: string) {
+    const res = await this.client.delete(`/todos/${id}`);
     return res.data.data;
   }
 
@@ -1405,6 +1420,191 @@ class ThreadCastClient {
     }
 
     return { mission: createdMission, todos: createdTodos, questions: createdQuestions };
+  }
+
+  // ==================== JIRA Integration ====================
+
+  /**
+   * Get JIRA connection status for a workspace
+   */
+  async getJiraStatus(workspaceId: string) {
+    const res = await this.client.get(`/jira/status`, { params: { workspaceId } });
+    return res.data.data;
+  }
+
+  /**
+   * Connect to JIRA with API Token or PAT
+   */
+  async connectJira(
+    workspaceId: string,
+    instanceType: string,
+    baseUrl: string,
+    authType: string,
+    apiToken?: string,
+    email?: string,
+    defaultProjectKey?: string
+  ) {
+    const res = await this.client.post("/jira/connect", {
+      workspaceId,
+      instanceType,
+      baseUrl,
+      authType,
+      apiToken,
+      email,
+      defaultProjectKey,
+    });
+    return res.data.data;
+  }
+
+  /**
+   * Disconnect JIRA integration
+   */
+  async disconnectJira(workspaceId: string) {
+    const res = await this.client.delete("/jira/disconnect", { params: { workspaceId } });
+    return res.data.data;
+  }
+
+  /**
+   * Get JIRA projects
+   */
+  async getJiraProjects(workspaceId: string) {
+    const res = await this.client.get("/jira/projects", { params: { workspaceId } });
+    return res.data.data;
+  }
+
+  /**
+   * Search JIRA issues with JQL
+   */
+  async searchJiraIssues(workspaceId: string, jql: string, maxResults: number = 50) {
+    const res = await this.client.get("/jira/issues/search", {
+      params: { workspaceId, jql, maxResults },
+    });
+    return res.data.data;
+  }
+
+  /**
+   * Get single JIRA issue
+   */
+  async getJiraIssue(workspaceId: string, issueKey: string) {
+    const res = await this.client.get(`/jira/issues/${issueKey}`, { params: { workspaceId } });
+    return res.data.data;
+  }
+
+  /**
+   * Import a single JIRA issue as Mission or Todo
+   */
+  async importJiraIssue(
+    workspaceId: string,
+    issueKey: string,
+    targetType: "MISSION" | "TODO",
+    missionId?: string,
+    orderIndex?: number
+  ) {
+    const res = await this.client.post("/jira/import/issue", {
+      workspaceId,
+      issueKey,
+      targetType,
+      missionId,
+      orderIndex,
+    });
+    return res.data.data;
+  }
+
+  /**
+   * Import a JIRA Epic as Mission with child issues as Todos
+   */
+  async importJiraEpic(
+    workspaceId: string,
+    epicKey: string,
+    includeChildren: boolean = true,
+    issueTypes?: string[],
+    includeCompleted: boolean = false
+  ) {
+    const res = await this.client.post("/jira/import/epic", {
+      workspaceId,
+      epicKey,
+      includeChildren,
+      issueTypes,
+      includeCompleted,
+    });
+    return res.data.data;
+  }
+
+  /**
+   * Get JIRA issue mappings for a workspace
+   */
+  async getJiraMappings(workspaceId: string) {
+    const res = await this.client.get("/jira/mappings", { params: { workspaceId } });
+    return res.data.data;
+  }
+
+  /**
+   * Unlink a JIRA mapping (remove without deleting the Mission/Todo)
+   */
+  async unlinkJiraMapping(mappingId: string) {
+    const res = await this.client.delete(`/jira/mappings/${mappingId}`);
+    return res.data.data;
+  }
+
+  // ==================== PM Agent ====================
+
+  /**
+   * Register PM Agent with workspace
+   */
+  async registerPmAgent(
+    workspaceId: string,
+    machineId: string,
+    label?: string,
+    agentVersion?: string
+  ) {
+    const res = await this.client.post("/pm-agent/register", {
+      workspaceId,
+      machineId,
+      label,
+      agentVersion,
+    });
+    return res.data.data;
+  }
+
+  /**
+   * Disconnect PM Agent from workspace
+   */
+  async disconnectPmAgent(workspaceId: string) {
+    const res = await this.client.post("/pm-agent/disconnect", null, {
+      params: { workspaceId },
+    });
+    return res.data.data;
+  }
+
+  /**
+   * Send PM Agent heartbeat
+   */
+  async pmAgentHeartbeat(
+    workspaceId: string,
+    currentTodoId?: string,
+    currentTodoTitle?: string,
+    activeTodoCount?: number
+  ) {
+    const res = await this.client.post(
+      "/pm-agent/heartbeat",
+      {
+        currentTodoId,
+        currentTodoTitle,
+        activeTodoCount,
+      },
+      { params: { workspaceId } }
+    );
+    return res.data.data;
+  }
+
+  /**
+   * Get PM Agent status for workspace
+   */
+  async getPmAgentStatus(workspaceId: string) {
+    const res = await this.client.get("/pm-agent/status", {
+      params: { workspaceId },
+    });
+    return res.data.data;
   }
 }
 
@@ -1859,6 +2059,17 @@ const tools = [
       required: ["name", "path"],
     },
   },
+  {
+    name: "threadcast_delete_workspace",
+    description: "Delete a workspace and all its missions/todos",
+    inputSchema: {
+      type: "object",
+      properties: {
+        id: { type: "string", description: "Workspace ID to delete" },
+      },
+      required: ["id"],
+    },
+  },
   // Mission
   {
     name: "threadcast_list_missions",
@@ -1923,6 +2134,17 @@ const tools = [
     },
   },
   {
+    name: "threadcast_delete_mission",
+    description: "Delete a mission and all its todos",
+    inputSchema: {
+      type: "object",
+      properties: {
+        id: { type: "string", description: "Mission ID to delete" },
+      },
+      required: ["id"],
+    },
+  },
+  {
     name: "threadcast_start_weaving",
     description: "Start weaving a mission (begin AI work)",
     inputSchema: {
@@ -1979,6 +2201,17 @@ const tools = [
         estimatedTime: { type: "number", description: "Estimated time in minutes" },
       },
       required: ["missionId", "title"],
+    },
+  },
+  {
+    name: "threadcast_delete_todo",
+    description: "Delete a todo",
+    inputSchema: {
+      type: "object",
+      properties: {
+        id: { type: "string", description: "Todo ID to delete" },
+      },
+      required: ["id"],
     },
   },
   {
@@ -2783,6 +3016,235 @@ const tools = [
       required: ["topic"],
     },
   },
+
+  // ==================== JIRA Integration ====================
+  {
+    name: "threadcast_jira_status",
+    description:
+      "Get JIRA connection status for a workspace. " +
+      "Returns connection info if connected, or indicates not connected.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        workspaceId: { type: "string", description: "Workspace ID" },
+      },
+      required: ["workspaceId"],
+    },
+  },
+  {
+    name: "threadcast_jira_connect",
+    description:
+      "Connect to JIRA using API Token or Personal Access Token (PAT). " +
+      "For Cloud: use API_TOKEN auth with email. " +
+      "For Server/Data Center: use API_TOKEN with email or PAT without email.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        workspaceId: { type: "string", description: "Workspace ID" },
+        instanceType: {
+          type: "string",
+          enum: ["CLOUD", "SERVER", "DATA_CENTER"],
+          description: "JIRA instance type",
+        },
+        baseUrl: { type: "string", description: "JIRA base URL (e.g., https://your-domain.atlassian.net)" },
+        authType: {
+          type: "string",
+          enum: ["API_TOKEN", "PAT"],
+          description: "Authentication type",
+        },
+        apiToken: { type: "string", description: "API Token or PAT" },
+        email: { type: "string", description: "Email (required for API_TOKEN auth)" },
+        defaultProjectKey: { type: "string", description: "Default project key for imports" },
+      },
+      required: ["workspaceId", "instanceType", "baseUrl", "authType", "apiToken"],
+    },
+  },
+  {
+    name: "threadcast_jira_disconnect",
+    description: "Disconnect JIRA integration from a workspace.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        workspaceId: { type: "string", description: "Workspace ID" },
+      },
+      required: ["workspaceId"],
+    },
+  },
+  {
+    name: "threadcast_jira_list_projects",
+    description: "List all accessible JIRA projects.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        workspaceId: { type: "string", description: "Workspace ID" },
+      },
+      required: ["workspaceId"],
+    },
+  },
+  {
+    name: "threadcast_jira_search_issues",
+    description:
+      "Search JIRA issues using JQL (JIRA Query Language). " +
+      "Examples: 'project = PROJ AND status = Open', 'assignee = currentUser()', " +
+      "'issuetype = Epic AND status != Done'",
+    inputSchema: {
+      type: "object",
+      properties: {
+        workspaceId: { type: "string", description: "Workspace ID" },
+        jql: { type: "string", description: "JQL query string" },
+        maxResults: { type: "number", description: "Maximum results to return (default: 50)" },
+      },
+      required: ["workspaceId", "jql"],
+    },
+  },
+  {
+    name: "threadcast_jira_get_issue",
+    description: "Get detailed information about a specific JIRA issue.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        workspaceId: { type: "string", description: "Workspace ID" },
+        issueKey: { type: "string", description: "JIRA issue key (e.g., PROJ-123)" },
+      },
+      required: ["workspaceId", "issueKey"],
+    },
+  },
+  {
+    name: "threadcast_jira_import_issue",
+    description:
+      "Import a single JIRA issue as a ThreadCast Mission or Todo. " +
+      "Use targetType=MISSION for standalone issues or Epics. " +
+      "Use targetType=TODO for importing into an existing Mission.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        workspaceId: { type: "string", description: "Workspace ID" },
+        issueKey: { type: "string", description: "JIRA issue key to import" },
+        targetType: {
+          type: "string",
+          enum: ["MISSION", "TODO"],
+          description: "Import as Mission or Todo",
+        },
+        missionId: { type: "string", description: "Mission ID (required when targetType=TODO)" },
+        orderIndex: { type: "number", description: "Todo order index (optional, defaults to last)" },
+      },
+      required: ["workspaceId", "issueKey", "targetType"],
+    },
+  },
+  {
+    name: "threadcast_jira_import_epic",
+    description:
+      "Import a JIRA Epic as a Mission with all child issues as Todos. " +
+      "Automatically creates the Mission from the Epic and Todos from Stories/Tasks/Bugs.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        workspaceId: { type: "string", description: "Workspace ID" },
+        epicKey: { type: "string", description: "JIRA Epic key to import" },
+        includeChildren: {
+          type: "boolean",
+          description: "Include child issues as Todos (default: true)",
+        },
+        issueTypes: {
+          type: "array",
+          items: { type: "string" },
+          description: "Filter by issue types (e.g., ['Story', 'Task', 'Bug'])",
+        },
+        includeCompleted: {
+          type: "boolean",
+          description: "Include completed issues (default: false)",
+        },
+      },
+      required: ["workspaceId", "epicKey"],
+    },
+  },
+  {
+    name: "threadcast_jira_list_mappings",
+    description:
+      "List all JIRA issue mappings for a workspace. " +
+      "Shows which JIRA issues are linked to which Missions/Todos.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        workspaceId: { type: "string", description: "Workspace ID" },
+      },
+      required: ["workspaceId"],
+    },
+  },
+  {
+    name: "threadcast_jira_unlink",
+    description:
+      "Unlink a JIRA issue mapping. " +
+      "Removes the link between JIRA and ThreadCast without deleting the Mission/Todo.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        mappingId: { type: "string", description: "Mapping ID to unlink" },
+      },
+      required: ["mappingId"],
+    },
+  },
+  // ==================== PM Agent ====================
+  {
+    name: "threadcast_pm_agent_register",
+    description:
+      "Register this PM Agent with a workspace. " +
+      "Call this when the agent starts to establish connection with ThreadCast. " +
+      "This enables the workspace to track agent status and enables full functionality.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        workspaceId: { type: "string", description: "Workspace ID to register with" },
+        machineId: { type: "string", description: "Unique machine identifier (e.g., hostname or UUID)" },
+        label: { type: "string", description: "Human-readable label for this agent (e.g., 'PM Agent - MacBook')" },
+        agentVersion: { type: "string", description: "Agent version string" },
+      },
+      required: ["workspaceId", "machineId"],
+    },
+  },
+  {
+    name: "threadcast_pm_agent_disconnect",
+    description:
+      "Disconnect this PM Agent from a workspace. " +
+      "Call this when the agent is shutting down gracefully.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        workspaceId: { type: "string", description: "Workspace ID" },
+      },
+      required: ["workspaceId"],
+    },
+  },
+  {
+    name: "threadcast_pm_agent_heartbeat",
+    description:
+      "Send a heartbeat to keep the agent connection alive. " +
+      "Should be called periodically (every 30 seconds recommended). " +
+      "Also updates current work status.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        workspaceId: { type: "string", description: "Workspace ID" },
+        currentTodoId: { type: "string", description: "Currently working Todo ID (optional)" },
+        currentTodoTitle: { type: "string", description: "Currently working Todo title (optional)" },
+        activeTodoCount: { type: "number", description: "Number of active Todos (optional)" },
+      },
+      required: ["workspaceId"],
+    },
+  },
+  {
+    name: "threadcast_pm_agent_status",
+    description:
+      "Get PM Agent status for a workspace. " +
+      "Returns connection status, current work, and agent info.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        workspaceId: { type: "string", description: "Workspace ID" },
+      },
+      required: ["workspaceId"],
+    },
+  },
 ];
 
 // List Tools Handler
@@ -2809,6 +3271,9 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         break;
       case "threadcast_create_workspace":
         result = await client.createWorkspace(args?.name as string, args?.path as string, args?.description as string);
+        break;
+      case "threadcast_delete_workspace":
+        result = await client.deleteWorkspace(args?.id as string);
         break;
 
       // Mission
@@ -2839,6 +3304,9 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           priority: args?.priority as string | undefined,
         });
         break;
+      case "threadcast_delete_mission":
+        result = await client.deleteMission(args?.id as string);
+        break;
       case "threadcast_start_weaving":
         result = await client.startWeaving(args?.id as string);
         break;
@@ -2861,6 +3329,9 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           (args?.complexity as string) || "MEDIUM",
           args?.estimatedTime as number
         );
+        break;
+      case "threadcast_delete_todo":
+        result = await client.deleteTodo(args?.id as string);
         break;
       case "threadcast_update_todo_status":
         result = await client.updateTodoStatus(args?.id as string, args?.status as string);
@@ -3664,6 +4135,195 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             deleted: true,
           };
         }
+        break;
+      }
+
+      // ==================== JIRA Integration ====================
+      case "threadcast_jira_status": {
+        const workspaceId = args?.workspaceId as string;
+        if (!workspaceId) {
+          throw new Error("workspaceId is required");
+        }
+        result = await client.getJiraStatus(workspaceId);
+        break;
+      }
+
+      case "threadcast_jira_connect": {
+        const workspaceId = args?.workspaceId as string;
+        if (!workspaceId) {
+          throw new Error("workspaceId is required");
+        }
+        result = await client.connectJira(
+          workspaceId,
+          args?.instanceType as string,
+          args?.baseUrl as string,
+          args?.authType as string,
+          args?.apiToken as string,
+          args?.email as string,
+          args?.defaultProjectKey as string
+        );
+        break;
+      }
+
+      case "threadcast_jira_disconnect": {
+        const workspaceId = args?.workspaceId as string;
+        if (!workspaceId) {
+          throw new Error("workspaceId is required");
+        }
+        result = await client.disconnectJira(workspaceId);
+        break;
+      }
+
+      case "threadcast_jira_list_projects": {
+        const workspaceId = args?.workspaceId as string;
+        if (!workspaceId) {
+          throw new Error("workspaceId is required");
+        }
+        result = await client.getJiraProjects(workspaceId);
+        break;
+      }
+
+      case "threadcast_jira_search_issues": {
+        const workspaceId = args?.workspaceId as string;
+        const jql = args?.jql as string;
+        if (!workspaceId) {
+          throw new Error("workspaceId is required");
+        }
+        if (!jql) {
+          throw new Error("jql is required");
+        }
+        result = await client.searchJiraIssues(
+          workspaceId,
+          jql,
+          (args?.maxResults as number) || 50
+        );
+        break;
+      }
+
+      case "threadcast_jira_get_issue": {
+        const workspaceId = args?.workspaceId as string;
+        const issueKey = args?.issueKey as string;
+        if (!workspaceId) {
+          throw new Error("workspaceId is required");
+        }
+        if (!issueKey) {
+          throw new Error("issueKey is required");
+        }
+        result = await client.getJiraIssue(workspaceId, issueKey);
+        break;
+      }
+
+      case "threadcast_jira_import_issue": {
+        const workspaceId = args?.workspaceId as string;
+        const issueKey = args?.issueKey as string;
+        const targetType = args?.targetType as "MISSION" | "TODO";
+        if (!workspaceId) {
+          throw new Error("workspaceId is required");
+        }
+        if (!issueKey) {
+          throw new Error("issueKey is required");
+        }
+        if (!targetType) {
+          throw new Error("targetType is required (MISSION or TODO)");
+        }
+        if (targetType === "TODO" && !args?.missionId) {
+          throw new Error("missionId is required when targetType is TODO");
+        }
+        result = await client.importJiraIssue(
+          workspaceId,
+          issueKey,
+          targetType,
+          args?.missionId as string,
+          args?.orderIndex as number
+        );
+        break;
+      }
+
+      case "threadcast_jira_import_epic": {
+        const workspaceId = args?.workspaceId as string;
+        const epicKey = args?.epicKey as string;
+        if (!workspaceId) {
+          throw new Error("workspaceId is required");
+        }
+        if (!epicKey) {
+          throw new Error("epicKey is required");
+        }
+        result = await client.importJiraEpic(
+          workspaceId,
+          epicKey,
+          args?.includeChildren !== false,
+          args?.issueTypes as string[],
+          args?.includeCompleted === true
+        );
+        break;
+      }
+
+      case "threadcast_jira_list_mappings": {
+        const workspaceId = args?.workspaceId as string;
+        if (!workspaceId) {
+          throw new Error("workspaceId is required");
+        }
+        result = await client.getJiraMappings(workspaceId);
+        break;
+      }
+
+      case "threadcast_jira_unlink": {
+        const mappingId = args?.mappingId as string;
+        if (!mappingId) {
+          throw new Error("mappingId is required");
+        }
+        result = await client.unlinkJiraMapping(mappingId);
+        break;
+      }
+
+      // ==================== PM Agent ====================
+      case "threadcast_pm_agent_register": {
+        const workspaceId = args?.workspaceId as string;
+        const machineId = args?.machineId as string;
+        if (!workspaceId) {
+          throw new Error("workspaceId is required");
+        }
+        if (!machineId) {
+          throw new Error("machineId is required");
+        }
+        result = await client.registerPmAgent(
+          workspaceId,
+          machineId,
+          args?.label as string,
+          args?.agentVersion as string
+        );
+        break;
+      }
+
+      case "threadcast_pm_agent_disconnect": {
+        const workspaceId = args?.workspaceId as string;
+        if (!workspaceId) {
+          throw new Error("workspaceId is required");
+        }
+        result = await client.disconnectPmAgent(workspaceId);
+        break;
+      }
+
+      case "threadcast_pm_agent_heartbeat": {
+        const workspaceId = args?.workspaceId as string;
+        if (!workspaceId) {
+          throw new Error("workspaceId is required");
+        }
+        result = await client.pmAgentHeartbeat(
+          workspaceId,
+          args?.currentTodoId as string,
+          args?.currentTodoTitle as string,
+          args?.activeTodoCount as number
+        );
+        break;
+      }
+
+      case "threadcast_pm_agent_status": {
+        const workspaceId = args?.workspaceId as string;
+        if (!workspaceId) {
+          throw new Error("workspaceId is required");
+        }
+        result = await client.getPmAgentStatus(workspaceId);
         break;
       }
 

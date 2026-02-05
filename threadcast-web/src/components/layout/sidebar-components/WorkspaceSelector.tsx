@@ -1,6 +1,8 @@
 import { clsx } from 'clsx';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, Trash2 } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
+import { ConfirmDialog } from '../../feedback/Modal';
+import { workspaceService } from '../../../services';
 
 export interface Workspace {
   id: string;
@@ -11,14 +13,19 @@ interface WorkspaceSelectorProps {
   current: Workspace;
   workspaces?: Workspace[];
   onChange?: (workspaceId: string) => void;
+  onDelete?: () => void;
 }
 
 export function WorkspaceSelector({
   current,
   workspaces = [],
   onChange,
+  onDelete,
 }: WorkspaceSelectorProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [workspaceToDelete, setWorkspaceToDelete] = useState<Workspace | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Close dropdown when clicking outside
@@ -36,6 +43,28 @@ export function WorkspaceSelector({
   const handleSelect = (workspaceId: string) => {
     onChange?.(workspaceId);
     setIsOpen(false);
+  };
+
+  const handleDeleteClick = (e: React.MouseEvent, ws: Workspace) => {
+    e.stopPropagation();
+    setWorkspaceToDelete(ws);
+    setShowDeleteConfirm(true);
+    setIsOpen(false);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!workspaceToDelete) return;
+    setIsDeleting(true);
+    try {
+      await workspaceService.delete(workspaceToDelete.id);
+      setShowDeleteConfirm(false);
+      setWorkspaceToDelete(null);
+      onDelete?.();
+    } catch (error) {
+      console.error('Failed to delete workspace:', error);
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   return (
@@ -62,21 +91,50 @@ export function WorkspaceSelector({
           role="listbox"
         >
           {workspaces.map((ws) => (
-            <button
+            <div
               key={ws.id}
-              onClick={() => handleSelect(ws.id)}
               className={clsx(
-                'w-full text-left px-3 py-2 text-sm hover:bg-slate-50 transition-colors',
+                'flex items-center justify-between px-3 py-2 text-sm hover:bg-slate-50 transition-colors group',
                 ws.id === current.id && 'bg-indigo-50 text-indigo-600'
               )}
-              role="option"
-              aria-selected={ws.id === current.id}
             >
-              {ws.name}
-            </button>
+              <button
+                onClick={() => handleSelect(ws.id)}
+                className="flex-1 text-left"
+                role="option"
+                aria-selected={ws.id === current.id}
+              >
+                {ws.name}
+              </button>
+              {workspaces.length > 1 && (
+                <button
+                  onClick={(e) => handleDeleteClick(e, ws)}
+                  className="p-1 opacity-0 group-hover:opacity-100 hover:bg-red-100 rounded transition-all"
+                  title="Delete workspace"
+                >
+                  <Trash2 size={14} className="text-red-500" />
+                </button>
+              )}
+            </div>
           ))}
         </div>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={showDeleteConfirm}
+        onClose={() => {
+          setShowDeleteConfirm(false);
+          setWorkspaceToDelete(null);
+        }}
+        onConfirm={handleConfirmDelete}
+        title="Delete Workspace"
+        message={`Are you sure you want to delete "${workspaceToDelete?.name}"? All missions, todos, and data will be permanently deleted.`}
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        variant="danger"
+        isLoading={isDeleting}
+      />
     </div>
   );
 }

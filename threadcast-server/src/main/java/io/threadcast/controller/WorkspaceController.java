@@ -3,6 +3,7 @@ package io.threadcast.controller;
 import io.threadcast.domain.Mission;
 import io.threadcast.domain.Todo;
 import io.threadcast.domain.TimelineEvent;
+import io.threadcast.domain.User;
 import io.threadcast.domain.Workspace;
 import io.threadcast.domain.enums.MissionStatus;
 import io.threadcast.domain.enums.TodoStatus;
@@ -11,6 +12,7 @@ import io.threadcast.dto.response.WorkspaceResponse;
 import io.threadcast.exception.NotFoundException;
 import io.threadcast.repository.MissionRepository;
 import io.threadcast.repository.TimelineEventRepository;
+import io.threadcast.repository.UserRepository;
 import io.threadcast.repository.WorkspaceRepository;
 import io.threadcast.security.JwtTokenProvider;
 import lombok.RequiredArgsConstructor;
@@ -34,6 +36,7 @@ public class WorkspaceController {
     private final WorkspaceRepository workspaceRepository;
     private final MissionRepository missionRepository;
     private final TimelineEventRepository timelineEventRepository;
+    private final UserRepository userRepository;
     private final JwtTokenProvider jwtTokenProvider;
 
     @GetMapping
@@ -79,10 +82,8 @@ public class WorkspaceController {
             @RequestHeader("Authorization") String authHeader,
             @RequestBody CreateWorkspaceRequest request) {
         UUID userId = getUserIdFromToken(authHeader);
-        var user = workspaceRepository.findByOwnerId(userId).stream()
-                .findFirst()
-                .map(Workspace::getOwner)
-                .orElseThrow(() -> new NotFoundException("User not found"));
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new NotFoundException("User not found: " + userId));
 
         Workspace workspace = Workspace.create(
                 request.name(),
@@ -428,4 +429,22 @@ public class WorkspaceController {
             String description,
             String path
     ) {}
+
+    @DeleteMapping("/{id}")
+    @Transactional
+    public ResponseEntity<ApiResponse<Map<String, Boolean>>> deleteWorkspace(
+            @PathVariable UUID id,
+            @RequestHeader("Authorization") String authHeader) {
+        UUID userId = getUserIdFromToken(authHeader);
+        Workspace workspace = workspaceRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Workspace not found: " + id));
+
+        // Verify ownership
+        if (!workspace.getOwner().getId().equals(userId)) {
+            throw new io.threadcast.exception.UnauthorizedException("You don't have permission to delete this workspace");
+        }
+
+        workspaceRepository.delete(workspace);
+        return ResponseEntity.ok(ApiResponse.success(Map.of("deleted", true)));
+    }
 }

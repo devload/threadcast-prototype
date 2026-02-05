@@ -1,12 +1,12 @@
 import { clsx } from 'clsx';
-import { Clock, History, ChevronRight, MessageCircleQuestion, Settings2, Terminal, Play, Square, Loader2 } from 'lucide-react';
+import { Clock, History, ChevronRight, MessageCircleQuestion, Settings2, Terminal, Play, Square, Loader2, Trash2 } from 'lucide-react';
 import { useState, useEffect, useCallback } from 'react';
 import type { Todo, StepType, TimelineEvent } from '../../types';
-import { Drawer } from '../feedback/Modal';
+import { Drawer, ConfirmDialog } from '../feedback/Modal';
 import { Button } from '../common/Button';
 import { useAIQuestionStore } from '../../stores/aiQuestionStore';
 import { MetaEditor } from '../meta/MetaEditor';
-import { metaService, api, timelineService, type MetaData } from '../../services';
+import { metaService, api, timelineService, todoService, type MetaData } from '../../services';
 import { TerminalViewer } from '../terminal';
 
 interface TodoDetailDrawerProps {
@@ -18,6 +18,7 @@ interface TodoDetailDrawerProps {
   onViewTimeline?: () => void;
   onStartWeaving?: () => void;
   onRefresh?: () => void;
+  onDelete?: () => void;
 }
 
 const stepLabels: Record<StepType, string> = {
@@ -42,6 +43,7 @@ export function TodoDetailDrawer({
   onViewTimeline,
   onStartWeaving,
   onRefresh,
+  onDelete,
 }: TodoDetailDrawerProps) {
   void _recentEvents; // suppress unused warning
   const [activeTab, setActiveTab] = useState<TabType>('details');
@@ -53,6 +55,8 @@ export function TodoDetailDrawer({
   const [isStopping, setIsStopping] = useState(false);
   const [timelineEvents, setTimelineEvents] = useState<TimelineEvent[]>([]);
   const [isLoadingTimeline, setIsLoadingTimeline] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const handleStartWeaving = async () => {
     if (!todo) return;
@@ -81,6 +85,21 @@ export function TodoDetailDrawer({
       console.error('Failed to stop weaving:', error);
     } finally {
       setIsStopping(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!todo) return;
+    setIsDeleting(true);
+    try {
+      await todoService.delete(todo.id);
+      setShowDeleteConfirm(false);
+      onClose();
+      onDelete?.();
+    } catch (error) {
+      console.error('Failed to delete todo:', error);
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -471,6 +490,13 @@ export function TodoDetailDrawer({
             <Button variant="secondary" className="flex-1" onClick={onViewTimeline}>
               View Full Timeline
             </Button>
+            <Button
+              variant="secondary"
+              className="text-red-600 hover:bg-red-50 border-red-200"
+              onClick={() => setShowDeleteConfirm(true)}
+            >
+              <Trash2 size={14} />
+            </Button>
           </div>
         </div>
       ) : (
@@ -532,6 +558,19 @@ export function TodoDetailDrawer({
           )}
         </div>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={showDeleteConfirm}
+        onClose={() => setShowDeleteConfirm(false)}
+        onConfirm={handleDelete}
+        title="Delete Todo"
+        message={`Are you sure you want to delete "${title}"? This action cannot be undone.`}
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        variant="danger"
+        isLoading={isDeleting}
+      />
     </Drawer>
   );
 }

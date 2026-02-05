@@ -1,15 +1,15 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { clsx } from 'clsx';
-import { Play, Pause, Sparkles, List, GitBranch, Lock } from 'lucide-react';
+import { Play, Pause, Sparkles, List, GitBranch, Lock, ExternalLink, Trash2 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import type { Mission, Todo, MissionStatus } from '../../types';
-import { Modal } from '../feedback/Modal';
+import { Modal, ConfirmDialog } from '../feedback/Modal';
 import { Button } from '../common/Button';
 import { useTranslation } from '../../hooks/useTranslation';
 import { useAIAnalysisStore } from '../../stores/aiAnalysisStore';
 import { AIAnalysisModal } from '../ai/AIAnalysisModal';
 import { TodoGraph } from '../todo/TodoGraph';
-import { todoService } from '../../services/todoService';
+import { todoService, missionService } from '../../services';
 import { useOnboardingStore } from '../onboarding/OnboardingStore';
 
 type ViewMode = 'list' | 'graph';
@@ -25,6 +25,7 @@ interface MissionDetailModalProps {
   aiQuestionsByTodo?: Record<string, number>;
   onTodosCreated?: () => void;  // Called when todos are created via AI analysis
   onTodosRefresh?: () => void;  // Called when todos need to be refreshed
+  onDelete?: () => void;        // Called after mission is deleted
 }
 
 const statusBadgeStyles: Record<MissionStatus, { label: string; className: string }> = {
@@ -60,6 +61,7 @@ export function MissionDetailModal({
   aiQuestionsByTodo = {},
   onTodosCreated,
   onTodosRefresh,
+  onDelete,
 }: MissionDetailModalProps) {
   const { t } = useTranslation();
   const { startAnalysis, isModalOpen } = useAIAnalysisStore();
@@ -67,6 +69,8 @@ export function MissionDetailModal({
   const { setTourContext, isTourActive } = useOnboardingStore();
   const hasRegisteredTourContext = useRef(false);
   const onStartWeavingRef = useRef(onStartWeaving);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Keep ref updated
   onStartWeavingRef.current = onStartWeaving;
@@ -130,7 +134,7 @@ export function MissionDetailModal({
   // Early return after all hooks
   if (!mission) return null;
 
-  const { id, title, description, status, progress, todoStats, tags } = mission;
+  const { id, title, description, status, progress, todoStats, tags, jiraIssueKey, jiraIssueUrl } = mission;
   const isThreading = status === 'THREADING' || status === 'IN_PROGRESS';
   const isWoven = status === 'WOVEN' || status === 'COMPLETED';
 
@@ -138,11 +142,36 @@ export function MissionDetailModal({
     startAnalysis(mission);
   };
 
+  const handleDelete = async () => {
+    if (!mission) return;
+    setIsDeleting(true);
+    try {
+      await missionService.delete(mission.id);
+      setShowDeleteConfirm(false);
+      onClose();
+      onDelete?.();
+    } catch (error) {
+      console.error('Failed to delete mission:', error);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   const footer = (
     <>
-      <span className="text-xs text-slate-400">
-        {t('common.pressEscToClose')}
-      </span>
+      <div className="flex items-center gap-2">
+        <Button
+          variant="secondary"
+          leftIcon={<Trash2 size={16} />}
+          onClick={() => setShowDeleteConfirm(true)}
+          className="text-red-600 hover:bg-red-50 border-red-200"
+        >
+          {t('common.delete')}
+        </Button>
+        <span className="text-xs text-slate-400">
+          {t('common.pressEscToClose')}
+        </span>
+      </div>
       <div className="flex gap-2">
         {/* AI로 Todo 자동 생성 버튼 */}
         {!isWoven && todos.length === 0 && (
@@ -186,14 +215,31 @@ export function MissionDetailModal({
       footer={footer}
       size="xl"
     >
-      {/* Status Badge */}
-      <div className="flex items-center gap-3 mb-4">
+      {/* Status Badge & JIRA Link */}
+      <div className="flex items-center gap-3 mb-4 flex-wrap">
         <span className={clsx(
           'px-3 py-1.5 rounded-full text-xs font-semibold inline-flex items-center gap-1.5',
           statusBadgeStyles[status].className
         )}>
           {statusBadgeStyles[status].label}
         </span>
+        {/* JIRA Badge */}
+        {jiraIssueKey && (
+          <a
+            href={jiraIssueUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-800/50 transition-colors"
+          >
+            <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M11.53 2c-.27 0-.48.22-.48.5v7.97c0 .28.21.5.48.5h.95c.27 0 .48-.22.48-.5V2.5c0-.28-.21-.5-.48-.5h-.95z"/>
+              <path d="M6.36 7.8c-.2-.2-.51-.2-.71 0L2.3 11.15c-.2.2-.2.52 0 .71l3.36 3.36c.2.2.51.2.71 0l.67-.67c.2-.2.2-.51 0-.71l-2.32-2.32 2.32-2.32c.2-.2.2-.51 0-.71l-.68-.69z"/>
+              <path d="M17.64 7.8c.2-.2.51-.2.71 0l3.35 3.35c.2.2.2.52 0 .71l-3.35 3.36c-.2.2-.51.2-.71 0l-.67-.67c-.2-.2-.2-.51 0-.71l2.32-2.32-2.32-2.32c-.2-.2-.2-.51 0-.71l.67-.69z"/>
+            </svg>
+            {jiraIssueKey}
+            <ExternalLink size={12} />
+          </a>
+        )}
         {tags && tags.length > 0 && tags.map((tag) => (
           <span
             key={tag}
@@ -405,6 +451,19 @@ export function MissionDetailModal({
           }}
         />
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={showDeleteConfirm}
+        onClose={() => setShowDeleteConfirm(false)}
+        onConfirm={handleDelete}
+        title={t('mission.deleteConfirmTitle')}
+        message={t('mission.deleteConfirmMessage', { title })}
+        confirmLabel={t('common.delete')}
+        cancelLabel={t('common.cancel')}
+        variant="danger"
+        isLoading={isDeleting}
+      />
     </Modal>
   );
 }

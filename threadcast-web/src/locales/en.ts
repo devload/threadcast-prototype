@@ -101,6 +101,8 @@ export const en: TranslationKeys = {
     noTodosHint: 'Start weaving to generate todo threads',
     todoThreads: 'Todo Threads',
     steps: 'steps',
+    deleteConfirmTitle: 'Delete Mission',
+    deleteConfirmMessage: 'Are you sure you want to delete "{{title}}"? All todos will be permanently deleted.',
   },
 
   // Todo related
@@ -227,11 +229,24 @@ export const en: TranslationKeys = {
     logout: 'Logout',
     logoutConfirm: 'Are you sure you want to logout?',
     loggingOut: 'Logging out...',
+    welcome: 'Welcome to ThreadCast',
+    signInDesc: 'Sign in with your SessionCast account to continue',
+    signInWithSessionCast: 'Sign in with SessionCast',
+    termsAgreement: 'By signing in, you agree to our Terms of Service and Privacy Policy',
+    tagline: 'AI-Powered Kanban for Development Teams',
+    footer: 'Weave your development workflow with AI',
+    loginFailed: 'Login failed.',
+    loginError: 'An error occurred during login.',
+    cannotStartLogin: 'Cannot start login.',
   },
 
   // Settings
   settings: {
     title: 'Settings',
+    general: 'General',
+    integrations: 'Integrations',
+    generalDesc: 'Change language and theme settings.',
+    integrationsDesc: 'Manage external service integrations.',
     language: 'Language',
     languageKo: '한국어',
     languageEn: 'English',
@@ -239,6 +254,16 @@ export const en: TranslationKeys = {
     themeLight: 'Light',
     themeDark: 'Dark',
     themeSystem: 'System',
+    apiToken: 'API Token',
+    apiTokenDesc: 'Use this token with Claude Code MCP to create missions in ThreadCast.',
+    accessToken: 'Access Token',
+    mcpConfig: 'Claude Code MCP Config',
+    mcpConfigHint: 'Add this to ~/.claude/claude_desktop_config.json or your project\'s .mcp.json file.',
+    copy: 'Copy',
+    copied: 'Copied!',
+    copyConfig: 'Copy Config',
+    show: 'Show',
+    hide: 'Hide',
   },
 
   // Toast messages
@@ -286,6 +311,85 @@ export const en: TranslationKeys = {
     createTodos: 'Create {{count}} Todos',
     todosCreated: 'Todos Created',
     todosCreatedDesc: '{{count}} todos have been created',
+  },
+
+  // PM Agent
+  pmAgent: {
+    checking: 'Checking AI...',
+    needsConnection: 'AI Needs Connection',
+    working: 'AI Working',
+    workingOn: 'Working: {{title}}...',
+    ready: 'AI Ready',
+    statusChecking: 'Checking AI status...',
+    notConnected: 'AI Not Connected',
+    connected: 'AI Connected',
+  },
+
+  // Sidebar
+  sidebar: {
+    logout: 'Logout',
+    help: 'Help',
+    uiTour: 'UI Tour Again',
+    welcomeScreen: 'Welcome Screen Again',
+    resetGuide: 'Reset All Guides',
+    aiQuestions: 'AI Questions',
+  },
+
+  // Autonomy
+  autonomy: {
+    hint: 'This setting becomes the default for all Missions and Todos',
+  },
+
+  // Meta Editor
+  meta: {
+    title: 'Metadata',
+    jsonError: 'JSON Error',
+    noMetadata: 'No metadata',
+    addItem: 'Add Item',
+    modified: 'Modified',
+    treeView: 'Tree',
+    mergedView: 'Merged',
+    mergedViewHint: 'Final result merged from parent levels (Workspace→Mission→Todo)',
+    copy: 'Copy',
+    revert: 'Revert',
+    save: 'Save',
+    saving: 'Saving...',
+    addNewItem: 'Add New Item',
+    path: 'Path',
+    key: 'Key',
+    keyPlaceholder: 'e.g. repo, branch, url',
+    value: 'Value',
+    valuePlaceholder: 'e.g. "value", 123, true, {}, []',
+    valueHint: 'Enter object {}, array [], string/number/boolean',
+    cancel: 'Cancel',
+    add: 'Add',
+  },
+
+  // Priority descriptions
+  priority: {
+    criticalDesc: 'Needs immediate attention',
+    highDesc: 'Should be processed quickly',
+    mediumDesc: 'Normal priority',
+    lowDesc: 'Can be done later',
+  },
+
+  // API errors
+  apiError: {
+    unauthorized: 'Invalid email or password.',
+    forbidden: 'Access denied.',
+    notFound: 'Requested information not found.',
+    conflict: 'Information already exists.',
+    serverError: 'Server error occurred. Please try again later.',
+    networkError: 'Please check your network connection.',
+    genericError: 'An error occurred. Please try again.',
+    loginRequired: 'Login required.',
+    sessionExpired: 'Session expired. Please log in again.',
+    dataNotFound: 'Requested data not found. Please refresh the page.',
+  },
+
+  // Count suffix
+  count: {
+    items: '{{count}}',
   },
 
   // Graph view

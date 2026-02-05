@@ -99,6 +99,8 @@ export const ko = {
     noTodosHint: 'Start weaving to generate todo threads',
     todoThreads: 'Todo Threads',
     steps: 'steps',
+    deleteConfirmTitle: 'Mission 삭제',
+    deleteConfirmMessage: '"{{title}}"을(를) 삭제하시겠습니까? 모든 Todo가 영구적으로 삭제됩니다.',
   },
 
   // Todo related
@@ -225,11 +227,24 @@ export const ko = {
     logout: '로그아웃',
     logoutConfirm: '정말 로그아웃 하시겠습니까?',
     loggingOut: '로그아웃 중...',
+    welcome: 'ThreadCast에 오신 것을 환영합니다',
+    signInDesc: 'SessionCast 계정으로 로그인하세요',
+    signInWithSessionCast: 'SessionCast로 로그인',
+    termsAgreement: '로그인하면 서비스 이용약관 및 개인정보처리방침에 동의하게 됩니다',
+    tagline: 'AI 기반 개발팀 칸반 보드',
+    footer: 'AI와 함께 개발 워크플로우를 엮어보세요',
+    loginFailed: '로그인에 실패했습니다.',
+    loginError: '로그인 처리 중 오류가 발생했습니다.',
+    cannotStartLogin: '로그인을 시작할 수 없습니다.',
   },
 
   // Settings
   settings: {
     title: '설정',
+    general: '일반',
+    integrations: '연동',
+    generalDesc: '언어 및 테마 설정을 변경합니다.',
+    integrationsDesc: '외부 서비스 연동을 관리합니다.',
     language: '언어',
     languageKo: '한국어',
     languageEn: 'English',
@@ -237,6 +252,16 @@ export const ko = {
     themeLight: '라이트',
     themeDark: '다크',
     themeSystem: '시스템',
+    apiToken: 'API 토큰',
+    apiTokenDesc: 'Claude Code에서 MCP를 통해 ThreadCast에 미션을 생성할 수 있습니다.',
+    accessToken: 'Access Token',
+    mcpConfig: 'Claude Code MCP 설정',
+    mcpConfigHint: '위 설정을 ~/.claude/claude_desktop_config.json 또는 프로젝트의 .mcp.json에 추가하세요.',
+    copy: '복사',
+    copied: '복사됨!',
+    copyConfig: '설정 복사',
+    show: '보기',
+    hide: '숨기기',
   },
 
   // Toast messages
@@ -284,6 +309,85 @@ export const ko = {
     createTodos: 'Todo {{count}}개 생성',
     todosCreated: 'Todo 생성 완료',
     todosCreatedDesc: '{{count}}개의 Todo가 생성되었습니다',
+  },
+
+  // PM Agent
+  pmAgent: {
+    checking: 'AI 확인 중...',
+    needsConnection: 'AI 연결 필요',
+    working: 'AI 작업 중',
+    workingOn: '작업 중: {{title}}...',
+    ready: 'AI Ready',
+    statusChecking: 'AI 상태 확인 중...',
+    notConnected: 'AI 연결 안됨',
+    connected: 'AI 연결됨',
+  },
+
+  // Sidebar
+  sidebar: {
+    logout: '로그아웃',
+    help: '도움말',
+    uiTour: 'UI 투어 다시 보기',
+    welcomeScreen: '환영 화면 다시 보기',
+    resetGuide: '전체 가이드 초기화',
+    aiQuestions: 'AI 질문',
+  },
+
+  // Autonomy
+  autonomy: {
+    hint: '이 설정은 모든 Mission과 Todo의 기본값이 됩니다',
+  },
+
+  // Meta Editor
+  meta: {
+    title: '메타데이터',
+    jsonError: 'JSON 오류',
+    noMetadata: '메타데이터 없음',
+    addItem: '항목 추가',
+    modified: '수정됨',
+    treeView: '트리',
+    mergedView: '병합',
+    mergedViewHint: '상위 레벨(Workspace→Mission→Todo)에서 상속받은 메타와 현재 메타가 합쳐진 최종 결과',
+    copy: '복사',
+    revert: '되돌리기',
+    save: '저장',
+    saving: '저장 중...',
+    addNewItem: '새 항목 추가',
+    path: '경로',
+    key: '키 (Key)',
+    keyPlaceholder: '예: repo, branch, url',
+    value: '값 (Value)',
+    valuePlaceholder: '예: "value", 123, true, {}, []',
+    valueHint: '객체는 {}, 배열은 [], 문자열/숫자/boolean 입력 가능',
+    cancel: '취소',
+    add: '추가',
+  },
+
+  // Priority descriptions
+  priority: {
+    criticalDesc: '즉시 처리 필요',
+    highDesc: '빠른 처리 권장',
+    mediumDesc: '보통 우선순위',
+    lowDesc: '나중에 처리 가능',
+  },
+
+  // API errors
+  apiError: {
+    unauthorized: '이메일 또는 비밀번호가 올바르지 않습니다.',
+    forbidden: '접근 권한이 없습니다.',
+    notFound: '요청한 정보를 찾을 수 없습니다.',
+    conflict: '이미 존재하는 정보입니다.',
+    serverError: '서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.',
+    networkError: '네트워크 연결을 확인해주세요.',
+    genericError: '오류가 발생했습니다. 다시 시도해주세요.',
+    loginRequired: '로그인이 필요합니다.',
+    sessionExpired: '세션이 만료되었습니다. 다시 로그인해주세요.',
+    dataNotFound: '요청한 데이터를 찾을 수 없습니다. 페이지를 새로고침해주세요.',
+  },
+
+  // Count suffix
+  count: {
+    items: '{{count}}개',
   },
 
   // Graph view
