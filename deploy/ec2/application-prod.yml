@@ -71,6 +71,16 @@ logging:
   pattern:
     file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
 
+# Sentry Error Tracking
+sentry:
+  dsn: https://17d7e7431fa6cf55fc85f21148be7d7a@o4510832077701120.ingest.us.sentry.io/4510832153067520
+  traces-sample-rate: 0.2
+  environment: prod
+  send-default-pii: false
+  logging:
+    minimum-event-level: WARN
+    minimum-breadcrumb-level: INFO
+
 # Actuator (health checks)
 management:
   endpoints:
