@@ -1546,6 +1546,83 @@ class ThreadCastClient {
     return res.data.data;
   }
 
+  // ==================== Sentry Integration ====================
+
+  /**
+   * Get Sentry connection status for a workspace
+   */
+  async getSentryStatus(workspaceId: string) {
+    const res = await this.client.get(`/sentry/status`, { params: { workspaceId } });
+    return res.data.data;
+  }
+
+  /**
+   * Connect to Sentry with Auth Token
+   */
+  async connectSentry(
+    workspaceId: string,
+    authToken: string,
+    organizationSlug: string,
+    projectSlug?: string
+  ) {
+    const res = await this.client.post("/sentry/connect", {
+      workspaceId,
+      authToken,
+      organizationSlug,
+      projectSlug,
+    });
+    return res.data.data;
+  }
+
+  /**
+   * Test Sentry connection
+   */
+  async testSentry(authToken: string, organizationSlug: string) {
+    const res = await this.client.post("/sentry/test", {
+      authToken,
+      organizationSlug,
+    });
+    return res.data.data;
+  }
+
+  /**
+   * Disconnect Sentry integration
+   */
+  async disconnectSentry(workspaceId: string) {
+    const res = await this.client.delete("/sentry/disconnect", { params: { workspaceId } });
+    return res.data.data;
+  }
+
+  /**
+   * Get Sentry issues
+   */
+  async getSentryIssues(workspaceId: string, query?: string, limit: number = 25) {
+    const res = await this.client.get("/sentry/issues", {
+      params: { workspaceId, query, limit },
+    });
+    return res.data.data;
+  }
+
+  /**
+   * Get single Sentry issue details
+   */
+  async getSentryIssue(workspaceId: string, issueId: string) {
+    const res = await this.client.get(`/sentry/issues/${issueId}`, { params: { workspaceId } });
+    return res.data.data;
+  }
+
+  /**
+   * Import Sentry issue as Mission or Todo
+   */
+  async importSentryIssue(workspaceId: string, issueId: string, missionId?: string) {
+    const res = await this.client.post("/sentry/import", {
+      workspaceId,
+      issueId,
+      missionId,
+    });
+    return res.data.data;
+  }
+
   // ==================== PM Agent ====================
 
   /**
@@ -1604,6 +1681,138 @@ class ThreadCastClient {
     const res = await this.client.get("/pm-agent/status", {
       params: { workspaceId },
     });
+    return res.data.data;
+  }
+
+  // ==================== Workspace Agent ====================
+
+  /**
+   * Spawn a Workspace Agent for context-aware analysis
+   */
+  async spawnWorkspaceAgent(workspaceId: string, projectPath?: string) {
+    const res = await this.client.post("/workspace-agent/spawn", {
+      workspaceId,
+      projectPath,
+    });
+    return res.data.data;
+  }
+
+  /**
+   * Request analysis from Workspace Agent
+   */
+  async analyzeWithWorkspaceAgent(
+    workspaceId: string,
+    missionId: string,
+    analysisType: "MISSION_TODOS" | "TODO_CONTEXT" | "PROJECT_SCAN" = "MISSION_TODOS",
+    missionTitle?: string,
+    missionDescription?: string
+  ) {
+    const res = await this.client.post("/workspace-agent/analyze", {
+      workspaceId,
+      missionId,
+      analysisType,
+      missionTitle,
+      missionDescription,
+    });
+    return res.data.data;
+  }
+
+  /**
+   * Get Workspace Agent status
+   */
+  async getWorkspaceAgentStatus(workspaceId: string) {
+    const res = await this.client.get("/workspace-agent/status", {
+      params: { workspaceId },
+    });
+    return res.data.data;
+  }
+
+  /**
+   * Stop Workspace Agent
+   */
+  async stopWorkspaceAgent(workspaceId: string) {
+    const res = await this.client.post("/workspace-agent/stop", null, {
+      params: { workspaceId },
+    });
+    return res.data.data;
+  }
+
+  /**
+   * Check if Workspace Agent is alive
+   */
+  async isWorkspaceAgentAlive(workspaceId: string): Promise<boolean> {
+    const res = await this.client.get("/workspace-agent/alive", {
+      params: { workspaceId },
+    });
+    return res.data.data;
+  }
+
+  // ==================== Analysis API (New HTTP Callback Architecture) ====================
+
+  /**
+   * Create an analysis request (queued for PM Agent processing)
+   */
+  async createAnalysisRequest(
+    workspaceId: string,
+    missionId: string | null,
+    missionTitle: string | null,
+    missionDescription: string | null,
+    analysisType: string = "MISSION_TODOS"
+  ) {
+    const res = await this.client.post("/analysis/request", {
+      workspaceId,
+      missionId,
+      missionTitle,
+      missionDescription,
+      analysisType,
+    });
+    return res.data.data;
+  }
+
+  /**
+   * Get analysis request status
+   */
+  async getAnalysisRequest(requestId: string) {
+    const res = await this.client.get(`/analysis/request/${requestId}`);
+    return res.data.data;
+  }
+
+  /**
+   * Get recent analysis requests for a workspace
+   */
+  async getRecentAnalysisRequests(workspaceId: string, limit: number = 10) {
+    const res = await this.client.get("/analysis/requests", {
+      params: { workspaceId, limit },
+    });
+    return res.data.data;
+  }
+
+  /**
+   * Poll commands for PM Agent
+   */
+  async pollPmAgentCommands(workspaceId: string) {
+    const res = await this.client.get("/pm-agent/command", {
+      params: { workspaceId },
+    });
+    return res.data.data;
+  }
+
+  /**
+   * Acknowledge a PM Agent command
+   */
+  async acknowledgePmAgentCommand(commandId: string, status: "PROCESSING" | "COMPLETED") {
+    const res = await this.client.post("/pm-agent/command/ack", {
+      commandId,
+      status,
+    });
+    return res.data.data;
+  }
+
+  /**
+   * Get callback URL for Workspace Agent analysis results
+   */
+  async getWorkspaceAgentCallbackUrl() {
+    const res = await this.client.get("/workspace-agent/callback-url");
     return res.data.data;
   }
 }
@@ -3184,6 +3393,102 @@ const tools = [
       required: ["mappingId"],
     },
   },
+  // ==================== Sentry Integration ====================
+  {
+    name: "threadcast_sentry_status",
+    description:
+      "Get Sentry connection status for a workspace. " +
+      "Returns connection info if connected, or indicates not connected.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        workspaceId: { type: "string", description: "Workspace ID" },
+      },
+      required: ["workspaceId"],
+    },
+  },
+  {
+    name: "threadcast_sentry_connect",
+    description:
+      "Connect to Sentry using Auth Token. " +
+      "Requires org:read and project:read permissions.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        workspaceId: { type: "string", description: "Workspace ID" },
+        authToken: { type: "string", description: "Sentry Auth Token (starts with sntrys_)" },
+        organizationSlug: { type: "string", description: "Sentry organization slug" },
+        projectSlug: { type: "string", description: "Optional: specific project to filter issues" },
+      },
+      required: ["workspaceId", "authToken", "organizationSlug"],
+    },
+  },
+  {
+    name: "threadcast_sentry_test",
+    description: "Test Sentry connection with provided credentials.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        authToken: { type: "string", description: "Sentry Auth Token" },
+        organizationSlug: { type: "string", description: "Sentry organization slug" },
+      },
+      required: ["authToken", "organizationSlug"],
+    },
+  },
+  {
+    name: "threadcast_sentry_disconnect",
+    description: "Disconnect Sentry integration from a workspace.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        workspaceId: { type: "string", description: "Workspace ID" },
+      },
+      required: ["workspaceId"],
+    },
+  },
+  {
+    name: "threadcast_sentry_list_issues",
+    description:
+      "List Sentry issues. Supports Sentry search syntax. " +
+      "Examples: 'is:unresolved', 'is:unresolved level:error', 'is:unresolved firstSeen:-24h'",
+    inputSchema: {
+      type: "object",
+      properties: {
+        workspaceId: { type: "string", description: "Workspace ID" },
+        query: { type: "string", description: "Sentry search query (default: is:unresolved)" },
+        limit: { type: "number", description: "Maximum results (default: 25)" },
+      },
+      required: ["workspaceId"],
+    },
+  },
+  {
+    name: "threadcast_sentry_get_issue",
+    description: "Get detailed information about a specific Sentry issue.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        workspaceId: { type: "string", description: "Workspace ID" },
+        issueId: { type: "string", description: "Sentry issue ID" },
+      },
+      required: ["workspaceId", "issueId"],
+    },
+  },
+  {
+    name: "threadcast_sentry_import_issue",
+    description:
+      "Import a Sentry issue as a ThreadCast Mission or Todo. " +
+      "If missionId is not provided, creates a new Mission. " +
+      "If missionId is provided, creates a Todo under that Mission.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        workspaceId: { type: "string", description: "Workspace ID" },
+        issueId: { type: "string", description: "Sentry issue ID to import" },
+        missionId: { type: "string", description: "Optional: Mission ID to add as Todo" },
+      },
+      required: ["workspaceId", "issueId"],
+    },
+  },
   // ==================== PM Agent ====================
   {
     name: "threadcast_pm_agent_register",
@@ -3243,6 +3548,165 @@ const tools = [
         workspaceId: { type: "string", description: "Workspace ID" },
       },
       required: ["workspaceId"],
+    },
+  },
+
+  // ==================== Workspace Agent ====================
+  {
+    name: "threadcast_workspace_agent_spawn",
+    description:
+      "Spawn a Workspace Agent for a workspace. " +
+      "The agent runs Claude Code in a tmux session to analyze project code. " +
+      "Use this before requesting context-aware analysis.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        workspaceId: { type: "string", description: "Workspace ID" },
+        projectPath: {
+          type: "string",
+          description: "Project path (optional, uses workspace path if not provided)",
+        },
+      },
+      required: ["workspaceId"],
+    },
+  },
+  {
+    name: "threadcast_workspace_agent_analyze",
+    description:
+      "Request analysis from the Workspace Agent. " +
+      "The agent analyzes the actual project codebase and generates context-aware Todo suggestions. " +
+      "Returns suggested todos with related files, project insights, and uncertain items that need clarification.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        workspaceId: { type: "string", description: "Workspace ID" },
+        missionId: { type: "string", description: "Mission ID to analyze" },
+        analysisType: {
+          type: "string",
+          enum: ["MISSION_TODOS", "TODO_CONTEXT", "PROJECT_SCAN"],
+          description: "Type of analysis: MISSION_TODOS (generate todos), TODO_CONTEXT (analyze context for todo), PROJECT_SCAN (scan project structure)",
+        },
+        missionTitle: { type: "string", description: "Mission title (optional if missionId provided)" },
+        missionDescription: { type: "string", description: "Mission description (optional if missionId provided)" },
+      },
+      required: ["workspaceId", "missionId"],
+    },
+  },
+  {
+    name: "threadcast_workspace_agent_status",
+    description:
+      "Get the status of a Workspace Agent. " +
+      "Returns whether the agent is running, idle, analyzing, or has errors.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        workspaceId: { type: "string", description: "Workspace ID" },
+      },
+      required: ["workspaceId"],
+    },
+  },
+  {
+    name: "threadcast_workspace_agent_stop",
+    description:
+      "Stop a running Workspace Agent. " +
+      "Terminates the tmux session and cleans up resources.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        workspaceId: { type: "string", description: "Workspace ID" },
+      },
+      required: ["workspaceId"],
+    },
+  },
+
+  // ==================== Analysis API (New HTTP Callback Architecture) ====================
+  {
+    name: "threadcast_create_analysis_request",
+    description:
+      "Create an analysis request for a mission. " +
+      "The request is queued for PM Agent processing. " +
+      "PM Agent will spawn a Workspace Agent to analyze the codebase and generate context-aware Todo suggestions. " +
+      "Results are delivered via WebSocket after analysis completes.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        workspaceId: { type: "string", description: "Workspace ID" },
+        missionId: { type: "string", description: "Mission ID (optional if providing title/description)" },
+        missionTitle: { type: "string", description: "Mission title (optional if missionId provided)" },
+        missionDescription: { type: "string", description: "Mission description (optional if missionId provided)" },
+        analysisType: {
+          type: "string",
+          enum: ["MISSION_TODOS", "TODO_CONTEXT", "PROJECT_SCAN"],
+          description: "Type of analysis: MISSION_TODOS (generate todos), TODO_CONTEXT (analyze context), PROJECT_SCAN (scan project)",
+        },
+      },
+      required: ["workspaceId"],
+    },
+  },
+  {
+    name: "threadcast_get_analysis_request",
+    description:
+      "Get the status and result of an analysis request.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        requestId: { type: "string", description: "Analysis request ID" },
+      },
+      required: ["requestId"],
+    },
+  },
+  {
+    name: "threadcast_get_recent_analysis_requests",
+    description:
+      "Get recent analysis requests for a workspace.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        workspaceId: { type: "string", description: "Workspace ID" },
+        limit: { type: "number", description: "Maximum number of requests to return (default: 10)" },
+      },
+      required: ["workspaceId"],
+    },
+  },
+  {
+    name: "threadcast_poll_pm_agent_commands",
+    description:
+      "Poll commands for PM Agent to process. " +
+      "Returns pending commands that the PM Agent should handle, such as ANALYZE_MISSION requests.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        workspaceId: { type: "string", description: "Workspace ID" },
+      },
+      required: ["workspaceId"],
+    },
+  },
+  {
+    name: "threadcast_ack_pm_agent_command",
+    description:
+      "Acknowledge a PM Agent command. " +
+      "Call this when starting to process a command (status=PROCESSING) or when done (status=COMPLETED).",
+    inputSchema: {
+      type: "object",
+      properties: {
+        commandId: { type: "string", description: "Command ID to acknowledge" },
+        status: {
+          type: "string",
+          enum: ["PROCESSING", "COMPLETED"],
+          description: "PROCESSING when starting, COMPLETED when done",
+        },
+      },
+      required: ["commandId", "status"],
+    },
+  },
+  {
+    name: "threadcast_get_callback_url",
+    description:
+      "Get the callback URL for Workspace Agent analysis results. " +
+      "PM Agent should pass this URL to Workspace Agent for sending analysis results via HTTP POST.",
+    inputSchema: {
+      type: "object",
+      properties: {},
     },
   },
 ];
@@ -4276,6 +4740,103 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         break;
       }
 
+      // ==================== Sentry Integration ====================
+      case "threadcast_sentry_status": {
+        const workspaceId = args?.workspaceId as string;
+        if (!workspaceId) {
+          throw new Error("workspaceId is required");
+        }
+        result = await client.getSentryStatus(workspaceId);
+        break;
+      }
+
+      case "threadcast_sentry_connect": {
+        const workspaceId = args?.workspaceId as string;
+        const authToken = args?.authToken as string;
+        const organizationSlug = args?.organizationSlug as string;
+        if (!workspaceId) {
+          throw new Error("workspaceId is required");
+        }
+        if (!authToken) {
+          throw new Error("authToken is required");
+        }
+        if (!organizationSlug) {
+          throw new Error("organizationSlug is required");
+        }
+        result = await client.connectSentry(
+          workspaceId,
+          authToken,
+          organizationSlug,
+          args?.projectSlug as string
+        );
+        break;
+      }
+
+      case "threadcast_sentry_test": {
+        const authToken = args?.authToken as string;
+        const organizationSlug = args?.organizationSlug as string;
+        if (!authToken) {
+          throw new Error("authToken is required");
+        }
+        if (!organizationSlug) {
+          throw new Error("organizationSlug is required");
+        }
+        result = await client.testSentry(authToken, organizationSlug);
+        break;
+      }
+
+      case "threadcast_sentry_disconnect": {
+        const workspaceId = args?.workspaceId as string;
+        if (!workspaceId) {
+          throw new Error("workspaceId is required");
+        }
+        result = await client.disconnectSentry(workspaceId);
+        break;
+      }
+
+      case "threadcast_sentry_list_issues": {
+        const workspaceId = args?.workspaceId as string;
+        if (!workspaceId) {
+          throw new Error("workspaceId is required");
+        }
+        result = await client.getSentryIssues(
+          workspaceId,
+          args?.query as string,
+          (args?.limit as number) || 25
+        );
+        break;
+      }
+
+      case "threadcast_sentry_get_issue": {
+        const workspaceId = args?.workspaceId as string;
+        const issueId = args?.issueId as string;
+        if (!workspaceId) {
+          throw new Error("workspaceId is required");
+        }
+        if (!issueId) {
+          throw new Error("issueId is required");
+        }
+        result = await client.getSentryIssue(workspaceId, issueId);
+        break;
+      }
+
+      case "threadcast_sentry_import_issue": {
+        const workspaceId = args?.workspaceId as string;
+        const issueId = args?.issueId as string;
+        if (!workspaceId) {
+          throw new Error("workspaceId is required");
+        }
+        if (!issueId) {
+          throw new Error("issueId is required");
+        }
+        result = await client.importSentryIssue(
+          workspaceId,
+          issueId,
+          args?.missionId as string
+        );
+        break;
+      }
+
       // ==================== PM Agent ====================
       case "threadcast_pm_agent_register": {
         const workspaceId = args?.workspaceId as string;
@@ -4324,6 +4885,123 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           throw new Error("workspaceId is required");
         }
         result = await client.getPmAgentStatus(workspaceId);
+        break;
+      }
+
+      // ==================== Workspace Agent ====================
+      case "threadcast_workspace_agent_spawn": {
+        const workspaceId = args?.workspaceId as string;
+        if (!workspaceId) {
+          throw new Error("workspaceId is required");
+        }
+        result = await client.spawnWorkspaceAgent(
+          workspaceId,
+          args?.projectPath as string | undefined
+        );
+        break;
+      }
+
+      case "threadcast_workspace_agent_analyze": {
+        // DEPRECATED: This tool now creates an analysis request instead of direct analysis
+        // Results are delivered via WebSocket after PM Agent processes the request
+        const workspaceId = args?.workspaceId as string;
+        const missionId = args?.missionId as string;
+        if (!workspaceId) {
+          throw new Error("workspaceId is required");
+        }
+        if (!missionId) {
+          throw new Error("missionId is required");
+        }
+        // Create analysis request using new API
+        result = await client.createAnalysisRequest(
+          workspaceId,
+          missionId,
+          args?.missionTitle as string | null,
+          args?.missionDescription as string | null,
+          (args?.analysisType as string) || "MISSION_TODOS"
+        );
+        break;
+      }
+
+      case "threadcast_workspace_agent_status": {
+        const workspaceId = args?.workspaceId as string;
+        if (!workspaceId) {
+          throw new Error("workspaceId is required");
+        }
+        result = await client.getWorkspaceAgentStatus(workspaceId);
+        break;
+      }
+
+      case "threadcast_workspace_agent_stop": {
+        const workspaceId = args?.workspaceId as string;
+        if (!workspaceId) {
+          throw new Error("workspaceId is required");
+        }
+        result = await client.stopWorkspaceAgent(workspaceId);
+        break;
+      }
+
+      // ==================== Analysis API (New HTTP Callback Architecture) ====================
+      case "threadcast_create_analysis_request": {
+        const workspaceId = args?.workspaceId as string;
+        if (!workspaceId) {
+          throw new Error("workspaceId is required");
+        }
+        result = await client.createAnalysisRequest(
+          workspaceId,
+          args?.missionId as string | null,
+          args?.missionTitle as string | null,
+          args?.missionDescription as string | null,
+          (args?.analysisType as string) || "MISSION_TODOS"
+        );
+        break;
+      }
+
+      case "threadcast_get_analysis_request": {
+        const requestId = args?.requestId as string;
+        if (!requestId) {
+          throw new Error("requestId is required");
+        }
+        result = await client.getAnalysisRequest(requestId);
+        break;
+      }
+
+      case "threadcast_get_recent_analysis_requests": {
+        const workspaceId = args?.workspaceId as string;
+        if (!workspaceId) {
+          throw new Error("workspaceId is required");
+        }
+        result = await client.getRecentAnalysisRequests(
+          workspaceId,
+          args?.limit as number | undefined
+        );
+        break;
+      }
+
+      case "threadcast_poll_pm_agent_commands": {
+        const workspaceId = args?.workspaceId as string;
+        if (!workspaceId) {
+          throw new Error("workspaceId is required");
+        }
+        result = await client.pollPmAgentCommands(workspaceId);
+        break;
+      }
+
+      case "threadcast_ack_pm_agent_command": {
+        const commandId = args?.commandId as string;
+        const status = args?.status as "PROCESSING" | "COMPLETED";
+        if (!commandId) {
+          throw new Error("commandId is required");
+        }
+        if (!status) {
+          throw new Error("status is required");
+        }
+        result = await client.acknowledgePmAgentCommand(commandId, status);
+        break;
+      }
+
+      case "threadcast_get_callback_url": {
+        result = await client.getWorkspaceAgentCallbackUrl();
         break;
       }
 

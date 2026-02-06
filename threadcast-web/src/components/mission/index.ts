@@ -10,3 +10,4 @@ export {
   type CreateMissionInlineProps,
 } from './CreateMissionForm';
 export { JiraTicketSelector } from './JiraTicketSelector';
+export { SentryIssueSelector } from './SentryIssueSelector';

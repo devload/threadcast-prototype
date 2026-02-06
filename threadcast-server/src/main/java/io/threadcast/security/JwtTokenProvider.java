@@ -85,7 +85,10 @@ public class JwtTokenProvider {
         } catch (MalformedJwtException ex) {
             log.error("Invalid JWT token");
         } catch (ExpiredJwtException ex) {
-            log.error("Expired JWT token");
+            Date expiration = ex.getClaims().getExpiration();
+            Date now = new Date();
+            log.error("Expired JWT token - exp: {}, now: {}, diff: {}ms",
+                    expiration, now, now.getTime() - expiration.getTime());
         } catch (UnsupportedJwtException ex) {
             log.error("Unsupported JWT token");
         } catch (IllegalArgumentException ex) {

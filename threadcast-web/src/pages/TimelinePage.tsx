@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useNavigate, useLocation, useParams } from 'react-router-dom';
-import { Settings } from 'lucide-react';
 import { useTimelineStore, useUIStore, useAuthStore } from '../stores';
+import { TopBar } from '../components/layout';
 import { Spinner } from '../components/common/Loading';
 import { SettingsModal } from '../components/settings/SettingsModal';
 import { useTranslation } from '../hooks/useTranslation';
@@ -161,18 +161,6 @@ export function TimelinePage() {
     }
   }, [workspaceId, fetchEvents]);
 
-  const handleViewChange = (view: string) => {
-    if (!workspaceId) return;
-    switch (view) {
-      case 'missions':
-        navigate(`/workspaces/${workspaceId}/missions`);
-        break;
-      case 'timeline':
-        navigate(`/workspaces/${workspaceId}/timeline`);
-        break;
-    }
-  };
-
   const handleLoadMore = () => {
     if (workspaceId && hasMore && !isLoading) {
       fetchMore({ workspaceId, size: 20 });
@@ -299,40 +287,19 @@ export function TimelinePage() {
       {/* Main Content */}
       <main className="flex-1 flex flex-col overflow-hidden">
         {/* Top Bar */}
-        <div className="h-14 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 flex items-center px-6 justify-between flex-shrink-0">
-          <div className="flex items-center gap-4">
-            <h1 className="text-lg font-semibold text-slate-900 dark:text-slate-100">{t('timeline.activityTimeline')}</h1>
-            <div className="view-switcher">
-              <button
-                className={`view-btn ${activeView === 'missions' ? 'active' : ''}`}
-                onClick={() => handleViewChange('missions')}
-              >
-                🎯 {t('nav.missions')}
-              </button>
-              <button
-                className={`view-btn ${activeView === 'timeline' ? 'active' : ''}`}
-                onClick={() => handleViewChange('timeline')}
-              >
-                📊 {t('nav.timeline')}
-              </button>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setIsSettingsOpen(true)}
-              className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-md transition-colors"
-              title={t('settings.title')}
-            >
-              <Settings size={20} className="text-slate-500 dark:text-slate-400" />
-            </button>
-            <button className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-md transition-colors" title={t('common.export')}>
-              <span className="text-slate-500 dark:text-slate-400">📥</span>
-            </button>
-            <button className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-md transition-colors" title={t('common.refresh')}>
-              <span className="text-slate-500 dark:text-slate-400">🔄</span>
-            </button>
-          </div>
-        </div>
+        <TopBar
+          navigation="home"
+          homeLink="/workspaces"
+          title={t('timeline.activityTimeline')}
+          tabs={[
+            { id: 'missions', label: t('nav.missions'), icon: '🎯', path: workspaceId ? `/workspaces/${workspaceId}/missions` : '/workspaces' },
+            { id: 'timeline', label: t('nav.timeline'), icon: '📊', path: workspaceId ? `/workspaces/${workspaceId}/timeline` : '/workspaces' },
+          ]}
+          activeTab={activeView}
+          onRefresh={() => workspaceId && fetchEvents({ workspaceId, size: 50 })}
+          isRefreshing={isLoading}
+          onSettingsClick={() => setIsSettingsOpen(true)}
+        />
 
         {/* Timeline Content */}
         <div className="flex-1 overflow-y-auto p-6" data-tour="timeline-list">

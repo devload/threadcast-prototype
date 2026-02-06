@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Settings } from 'lucide-react';
 import { useTodoStore, useMissionStore, useUIStore, useAuthStore, useToast, useAIQuestionStore } from '../stores';
+import { TopBar } from '../components/layout';
 import { Logo } from '../components/common/Logo';
 import { AIQuestionPanel } from '../components/ai/AIQuestionPanel';
 import { TodoBoard } from '../components/todo/TodoBoard';
@@ -267,38 +267,20 @@ export function TodosPage() {
       {/* Main Content */}
       <main className="flex-1 flex flex-col overflow-hidden">
         {/* Top Bar */}
-        <div className="h-14 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 flex items-center px-6 justify-between flex-shrink-0">
-          <div className="flex items-center gap-4">
-            <button
-              onClick={() => navigate(workspaceId ? `/workspaces/${workspaceId}/missions` : '/workspaces')}
-              className="flex items-center gap-2 text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
-            >
-              <ArrowLeft size={20} />
-              <span className="text-sm font-medium">{t('nav.missions')}</span>
-            </button>
-            <div className="h-6 w-px bg-slate-200 dark:bg-slate-600" />
-            <h1 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
-              {t('todo.todoBoard')}
-            </h1>
-            {activeFilter !== 'all' && (
-              <span className="px-2 py-1 bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 text-xs font-medium rounded-full">
-                {statusFilters.find(f => f.id === activeFilter)?.label}
-              </span>
-            )}
-          </div>
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => setIsSettingsOpen(true)}
-              className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
-              title={t('settings.title')}
-            >
-              <Settings size={20} className="text-slate-500 dark:text-slate-400" />
-            </button>
-            <Button size="sm" onClick={() => setIsCreateModalOpen(true)}>
-              {t('todo.addTodo')}
-            </Button>
-          </div>
-        </div>
+        <TopBar
+          navigation="back"
+          backLink={workspaceId ? `/workspaces/${workspaceId}/missions` : '/workspaces'}
+          backLabel={t('nav.missions')}
+          title={t('todo.todoBoard')}
+          onSettingsClick={() => setIsSettingsOpen(true)}
+          actionLabel={t('todo.addTodo')}
+          onActionClick={() => setIsCreateModalOpen(true)}
+          extraActions={activeFilter !== 'all' ? (
+            <span className="px-2 py-1 bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 text-xs font-medium rounded-full">
+              {statusFilters.find(f => f.id === activeFilter)?.label}
+            </span>
+          ) : undefined}
+        />
 
         {/* Board Area */}
         <div className="flex-1 overflow-x-auto overflow-y-hidden p-6">

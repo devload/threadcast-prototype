@@ -1,25 +1,37 @@
-import { useState, useEffect, useRef } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
-import { ChevronDown, LogOut, Copy, Check, Eye, EyeOff } from 'lucide-react';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { ChevronDown, LogOut, Copy, Check, Eye, EyeOff, ChevronRight } from 'lucide-react';
 import { clsx } from 'clsx';
 import { useTranslation } from '../hooks/useTranslation';
 import { useUIStore, type Language } from '../stores/uiStore';
 import { useAuthStore } from '../stores/authStore';
 import { JiraSettingsPanel } from '../components/jira';
+import { SentrySettingsPanel } from '../components/settings/SentrySettingsPanel';
 import { Logo } from '../components/common/Logo';
 
 type SettingsTab = 'general' | 'integrations';
+type IntegrationView = null | 'jira' | 'sentry';
 
 export function SettingsPage() {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
   const { t, language, setLanguage } = useTranslation();
   const { theme, setTheme } = useUIStore();
   const { isAuthenticated, isLoading: authLoading, fetchUser, user, logout } = useAuthStore();
 
-  // URL 쿼리 파라미터에서 탭 읽기 (예: /settings?tab=integrations)
-  const initialTab = (searchParams.get('tab') as SettingsTab) || 'general';
-  const [activeTab, setActiveTab] = useState<SettingsTab>(initialTab);
+  // Parse hash from URL (예: #integrations, #integrations/jira)
+  const parseHash = useCallback((): { tab: SettingsTab; integration: IntegrationView } => {
+    const hash = window.location.hash.slice(1); // Remove '#'
+    if (!hash) return { tab: 'general', integration: null };
+
+    const parts = hash.split('/');
+    const tab = (parts[0] === 'integrations' ? 'integrations' : 'general') as SettingsTab;
+    const integration = parts[1] as IntegrationView || null;
+
+    return { tab, integration };
+  }, []);
+
+  const [activeTab, setActiveTab] = useState<SettingsTab>(() => parseHash().tab);
+  const [selectedIntegration, setSelectedIntegration] = useState<IntegrationView>(() => parseHash().integration);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showToken, setShowToken] = useState(false);
   const [tokenCopied, setTokenCopied] = useState(false);
@@ -56,13 +68,43 @@ export function SettingsPage() {
     setTimeout(() => setConfigCopied(false), 2000);
   };
 
-  // URL 파라미터 변경 시 탭 동기화
-  useEffect(() => {
-    const tabParam = searchParams.get('tab') as SettingsTab;
-    if (tabParam && (tabParam === 'general' || tabParam === 'integrations')) {
-      setActiveTab(tabParam);
+  // Hash 변경 함수
+  const updateHash = useCallback((tab: SettingsTab, integration?: IntegrationView) => {
+    let hash: string = tab;
+    if (tab === 'integrations' && integration) {
+      hash = `${tab}/${integration}`;
     }
-  }, [searchParams]);
+    window.history.replaceState(null, '', `#${hash}`);
+  }, []);
+
+  // 탭 변경 핸들러
+  const handleTabChange = useCallback((tab: SettingsTab) => {
+    setActiveTab(tab);
+    setSelectedIntegration(null);
+    updateHash(tab);
+  }, [updateHash]);
+
+  // Integration 선택 핸들러
+  const handleIntegrationSelect = useCallback((integration: IntegrationView) => {
+    setSelectedIntegration(integration);
+    if (integration) {
+      updateHash('integrations', integration);
+    } else {
+      updateHash('integrations');
+    }
+  }, [updateHash]);
+
+  // Hash 변경 감지 (브라우저 뒤로가기/앞으로가기)
+  useEffect(() => {
+    const handleHashChange = () => {
+      const { tab, integration } = parseHash();
+      setActiveTab(tab);
+      setSelectedIntegration(integration);
+    };
+
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, [parseHash]);
 
   // Check auth on mount
   useEffect(() => {
@@ -179,7 +221,7 @@ export function SettingsPage() {
               {tabs.map((tab) => (
                 <button
                   key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
+                  onClick={() => handleTabChange(tab.id)}
                   className={clsx(
                     'w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors',
                     activeTab === tab.id
@@ -344,7 +386,67 @@ export function SettingsPage() {
                     </p>
                   </div>
 
-                  <JiraSettingsPanel />
+                  {!selectedIntegration ? (
+                    // Integration List
+                    <div className="space-y-3">
+                      {/* JIRA */}
+                      <button
+                        onClick={() => handleIntegrationSelect('jira')}
+                        className="w-full p-4 rounded-lg border border-slate-200 dark:border-slate-700 hover:border-blue-300 dark:hover:border-blue-600 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all group flex items-center gap-4"
+                      >
+                        <div className="w-12 h-12 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0">
+                          <svg className="w-7 h-7 text-blue-600 dark:text-blue-400" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M11.571 11.513H0a5.218 5.218 0 0 0 5.232 5.215h2.13v2.057A5.215 5.215 0 0 0 12.575 24V12.518a1.005 1.005 0 0 0-1.005-1.005zm5.723-5.756H5.736a5.215 5.215 0 0 0 5.215 5.214h2.129v2.058a5.218 5.218 0 0 0 5.215 5.214V6.758a1.001 1.001 0 0 0-1.001-1.001zM23.013 0H11.455a5.215 5.215 0 0 0 5.215 5.215h2.129v2.057A5.215 5.215 0 0 0 24 12.483V1.005A1.005 1.005 0 0 0 23.013 0z"/>
+                          </svg>
+                        </div>
+                        <div className="flex-1 text-left">
+                          <h3 className="font-semibold text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                            JIRA
+                          </h3>
+                          <p className="text-sm text-slate-500 dark:text-slate-400">
+                            이슈 트래킹 시스템 연동
+                          </p>
+                        </div>
+                        <ChevronRight size={20} className="text-slate-400 group-hover:text-blue-500 transition-colors" />
+                      </button>
+
+                      {/* Sentry */}
+                      <button
+                        onClick={() => handleIntegrationSelect('sentry')}
+                        className="w-full p-4 rounded-lg border border-slate-200 dark:border-slate-700 hover:border-purple-300 dark:hover:border-purple-600 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all group flex items-center gap-4"
+                      >
+                        <div className="w-12 h-12 rounded-lg bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center flex-shrink-0">
+                          <svg className="w-7 h-7 text-purple-600 dark:text-purple-400" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M13.91 2.505c-.873-1.448-2.972-1.448-3.844 0L6.53 8.893a2.182 2.182 0 0 1 1.882 1.09l.58.985a6.55 6.55 0 0 1 5.996 5.94h1.635A8.223 8.223 0 0 0 8.88 9.12l-.39-.663 3.093-5.28 3.496 5.97a12.36 12.36 0 0 1 6.098 10.762h1.635A13.972 13.972 0 0 0 15.906 8.88zm-9.842 10.68a4.248 4.248 0 0 1 3.09 3.725H3.57a2.182 2.182 0 0 1-1.93-3.275z"/>
+                          </svg>
+                        </div>
+                        <div className="flex-1 text-left">
+                          <h3 className="font-semibold text-slate-900 dark:text-white group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors">
+                            Sentry
+                          </h3>
+                          <p className="text-sm text-slate-500 dark:text-slate-400">
+                            에러 모니터링 시스템 연동
+                          </p>
+                        </div>
+                        <ChevronRight size={20} className="text-slate-400 group-hover:text-purple-500 transition-colors" />
+                      </button>
+                    </div>
+                  ) : selectedIntegration === 'jira' ? (
+                    // JIRA Settings
+                    <div className="space-y-4">
+                      <button
+                        onClick={() => handleIntegrationSelect(null)}
+                        className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"
+                      >
+                        <ChevronRight size={16} className="rotate-180" />
+                        연동 목록으로 돌아가기
+                      </button>
+                      <JiraSettingsPanel />
+                    </div>
+                  ) : (
+                    // Sentry Settings
+                    <SentrySettingsPanel onBack={() => handleIntegrationSelect(null)} />
+                  )}
                 </div>
               )}
             </div>

@@ -4,5 +4,6 @@ public enum MissionStatus {
     BACKLOG,    // 계획됨 (대기)
     THREADING,  // 진행 중
     WOVEN,      // 완료됨
+    DROPPED,    // 취소/포기됨
     ARCHIVED    // 보관됨
 }

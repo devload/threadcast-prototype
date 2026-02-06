@@ -6,4 +6,6 @@ export { useUIStore, useToast } from './uiStore';
 export { useAIQuestionStore } from './aiQuestionStore';
 export { useWorkspaceStore } from './workspaceStore';
 export { useJiraStore } from './jiraStore';
+export { useSentryStore } from './sentryStore';
 export { usePmAgentStore } from './pmAgentStore';
+export { useAnalysisStore, handleAnalysisCompletedEvent, handleAnalysisStatusChangedEvent } from './analysisStore';

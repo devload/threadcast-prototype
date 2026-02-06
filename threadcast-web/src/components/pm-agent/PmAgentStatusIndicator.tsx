@@ -4,6 +4,7 @@ import { Cpu, Loader2, AlertCircle } from 'lucide-react';
 import { usePmAgentStore } from '../../stores/pmAgentStore';
 import { useUIStore } from '../../stores/uiStore';
 import { useTranslation } from '../../hooks/useTranslation';
+import { Tooltip } from '../common/Tooltip';
 
 interface PmAgentStatusIndicatorProps {
   className?: string;
@@ -39,6 +40,7 @@ export function PmAgentStatusIndicator({
         dotColor: 'bg-slate-400',
         label: t('pmAgent.checking'),
         icon: <Loader2 size={14} className="animate-spin" />,
+        showTooltip: false,
       };
     }
 
@@ -49,6 +51,7 @@ export function PmAgentStatusIndicator({
         dotColor: 'bg-red-500',
         label: t('pmAgent.needsConnection'),
         icon: <AlertCircle size={14} />,
+        showTooltip: true,
       };
     }
 
@@ -61,6 +64,7 @@ export function PmAgentStatusIndicator({
           ? t('pmAgent.workingOn', { title: agentInfo.currentTodoTitle.slice(0, 20) })
           : t('pmAgent.working'),
         icon: <Cpu size={14} />,
+        showTooltip: false,
       };
     }
 
@@ -71,6 +75,7 @@ export function PmAgentStatusIndicator({
       dotColor: 'bg-green-500',
       label: t('pmAgent.ready'),
       icon: <Cpu size={14} />,
+      showTooltip: false,
     };
   };
 
@@ -91,7 +96,13 @@ export function PmAgentStatusIndicator({
       }
     >
       <span className={clsx('w-2 h-2 rounded-full', config.dotColor)} />
-      {config.icon}
+      {config.showTooltip ? (
+        <Tooltip content={t('pmAgent.connectionTooltip')}>
+          <span className="cursor-help">{config.icon}</span>
+        </Tooltip>
+      ) : (
+        config.icon
+      )}
       {showLabel && <span>{config.label}</span>}
       {status === 'WORKING' && agentInfo?.activeTodoCount && agentInfo.activeTodoCount > 0 && (
         <span className="ml-1 px-1.5 py-0.5 bg-white/50 dark:bg-slate-800/50 rounded text-[10px]">

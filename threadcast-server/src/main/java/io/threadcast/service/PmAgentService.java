@@ -8,8 +8,10 @@ import io.threadcast.dto.request.PmAgentHeartbeatRequest;
 import io.threadcast.dto.response.PmAgentStatusResponse;
 import io.threadcast.repository.PmAgentRepository;
 import io.threadcast.repository.WorkspaceRepository;
+import io.threadcast.service.terminal.TodoTerminalService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -21,13 +23,24 @@ import java.util.Optional;
 import java.util.UUID;
 
 @Service
-@RequiredArgsConstructor
 @Slf4j
 public class PmAgentService {
 
     private final PmAgentRepository pmAgentRepository;
     private final WorkspaceRepository workspaceRepository;
     private final SimpMessagingTemplate messagingTemplate;
+    private final TodoTerminalService terminalService;
+
+    public PmAgentService(
+            PmAgentRepository pmAgentRepository,
+            WorkspaceRepository workspaceRepository,
+            SimpMessagingTemplate messagingTemplate,
+            @Lazy TodoTerminalService terminalService) {
+        this.pmAgentRepository = pmAgentRepository;
+        this.workspaceRepository = workspaceRepository;
+        this.messagingTemplate = messagingTemplate;
+        this.terminalService = terminalService;
+    }
 
     private static final int HEARTBEAT_TIMEOUT_SECONDS = 60;
 
@@ -109,16 +122,40 @@ public class PmAgentService {
 
     /**
      * PM Agent 상태 조회
+     * SessionCast 연결 상태를 우선적으로 확인
      */
     @Transactional(readOnly = true)
     public PmAgentStatusResponse getStatus(UUID workspaceId) {
+        // SessionCast 연결 상태 확인 (실제 relay 연결 여부)
+        boolean sessionCastConnected = terminalService.isConnected();
+
         Optional<PmAgent> agentOpt = pmAgentRepository.findByWorkspaceId(workspaceId);
 
         if (agentOpt.isEmpty()) {
+            // DB에 agent 없어도 SessionCast가 연결되어 있으면 connected 상태 반환
+            if (sessionCastConnected) {
+                return PmAgentStatusResponse.builder()
+                        .status(PmAgentStatus.CONNECTED)
+                        .online(true)
+                        .machineId("sessioncast")
+                        .label("SessionCast Agent")
+                        .build();
+            }
             return PmAgentStatusResponse.notConnected();
         }
 
         PmAgent agent = agentOpt.get();
+
+        // SessionCast가 연결되어 있지 않으면 DISCONNECTED로 표시
+        if (!sessionCastConnected) {
+            return PmAgentStatusResponse.builder()
+                    .status(PmAgentStatus.DISCONNECTED)
+                    .online(false)
+                    .machineId(agent.getMachineId())
+                    .label(agent.getLabel())
+                    .build();
+        }
+
         return PmAgentStatusResponse.from(agent);
     }
 

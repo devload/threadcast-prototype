@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useLocation, useParams } from 'react-router-dom';
-import { Settings, Home, Sparkles, PenLine, ChevronRight, Clock, Zap, Download, Link2 } from 'lucide-react';
-import { useMissionStore, useUIStore, useToast, useAuthStore, useAIQuestionStore, useTodoStore, useJiraStore } from '../stores';
+import { Sparkles, PenLine, ChevronRight, Clock, Zap, Download, Link2 } from 'lucide-react';
+import { useMissionStore, useUIStore, useToast, useAuthStore, useAIQuestionStore, useTodoStore, useJiraStore, useSentryStore } from '../stores';
+import { TopBar } from '../components/layout';
 import { useOnboardingStore } from '../components/onboarding';
 import { api, aiAnalysisService } from '../services';
 import { MissionBoard } from '../components/mission/MissionBoard';
@@ -13,6 +14,7 @@ import { Input, TextArea } from '../components/form/Input';
 import { Select } from '../components/form/Select';
 import { Button } from '../components/common/Button';
 import { JiraImportModal } from '../components/jira';
+import { SentryImportModal } from '../components/sentry';
 import { JiraTicketSelector } from '../components/mission/JiraTicketSelector';
 import type { JiraIssue } from '../services/jiraService';
 import { useTranslation } from '../hooks/useTranslation';
@@ -47,10 +49,13 @@ export function MissionsPage() {
 
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isJiraImportOpen, setIsJiraImportOpen] = useState(false);
+  const [isSentryImportOpen, setIsSentryImportOpen] = useState(false);
   const [selectedMission, setSelectedMission] = useState<Mission | null>(null);
 
   // JIRA integration
-  const { integration, fetchStatus } = useJiraStore();
+  const { integration: jiraIntegration, fetchStatus: fetchJiraStatus } = useJiraStore();
+  // Sentry integration
+  const { integration: sentryIntegration, fetchStatus: fetchSentryStatus } = useSentryStore();
   const [newMission, setNewMission] = useState({
     title: '',
     description: '',
@@ -82,9 +87,10 @@ export function MissionsPage() {
     if (workspaceId) {
       fetchMissions(workspaceId);
       fetchQuestions(workspaceId);
-      fetchStatus(workspaceId);
+      fetchJiraStatus(workspaceId);
+      fetchSentryStatus(workspaceId);
     }
-  }, [workspaceId, fetchMissions, fetchQuestions, fetchStatus]);
+  }, [workspaceId, fetchMissions, fetchQuestions, fetchJiraStatus, fetchSentryStatus]);
 
   // Register tour context when tour is active
   useEffect(() => {
@@ -112,18 +118,6 @@ export function MissionsPage() {
       fetchTodos(selectedMission.id);
     }
   }, [selectedMission?.id, fetchTodos]);
-
-  const handleViewChange = (view: string) => {
-    if (!workspaceId) return;
-    switch (view) {
-      case 'missions':
-        navigate(`/workspaces/${workspaceId}/missions`);
-        break;
-      case 'timeline':
-        navigate(`/workspaces/${workspaceId}/timeline`);
-        break;
-    }
-  };
 
   // Reset modal state when closing
   const handleCloseCreateModal = () => {
@@ -195,7 +189,7 @@ export function MissionsPage() {
         description: newMission.description || undefined,
         priority: newMission.priority,
         jiraIssueKey: selectedJiraIssue.key,
-        jiraIssueUrl: `${integration?.baseUrl}/browse/${selectedJiraIssue.key}`,
+        jiraIssueUrl: `${jiraIntegration?.baseUrl}/browse/${selectedJiraIssue.key}`,
       };
     } else {
       missionData = {
@@ -343,58 +337,45 @@ export function MissionsPage() {
   return (
     <div className="h-full flex flex-col overflow-hidden">
       {/* Top Bar */}
-      <div className="h-14 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 flex items-center px-6 justify-between flex-shrink-0">
-        <div className="flex items-center gap-4">
-          <button
-            onClick={() => navigate('/workspaces')}
-            className="flex items-center gap-2 text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
-            title="Home"
-          >
-            <Home size={20} />
-          </button>
-          <div className="h-6 w-px bg-slate-200 dark:bg-slate-600" />
-          <h1 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
-            {user?.name ? t('nav.myWorkspace', { name: user.name }) : t('nav.myWorkspaceDefault')}
-          </h1>
-          <div className="view-switcher">
-            <button
-              className={`view-btn ${activeView === 'missions' ? 'active' : ''}`}
-              onClick={() => handleViewChange('missions')}
-            >
-              🎯 {t('nav.missions')}
-            </button>
-            <button
-              className={`view-btn ${activeView === 'timeline' ? 'active' : ''}`}
-              onClick={() => handleViewChange('timeline')}
-            >
-              📊 {t('nav.timeline')}
-            </button>
+      <TopBar
+        navigation="home"
+        homeLink="/workspaces"
+        title={user?.name ? t('nav.myWorkspace', { name: user.name }) : t('nav.myWorkspaceDefault')}
+        tabs={[
+          { id: 'missions', label: t('nav.missions'), icon: '🎯', path: workspaceId ? `/workspaces/${workspaceId}/missions` : '/workspaces' },
+          { id: 'timeline', label: t('nav.timeline'), icon: '📊', path: workspaceId ? `/workspaces/${workspaceId}/timeline` : '/workspaces' },
+        ]}
+        activeTab={activeView}
+        actionLabel={t('mission.newMission')}
+        onActionClick={() => setIsCreateModalOpen(true)}
+        actionDataTour="create-mission-btn"
+        extraActions={(jiraIntegration?.connected || sentryIntegration?.connected) ? (
+          <div className="flex items-center gap-2">
+            {jiraIntegration?.connected && (
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() => setIsJiraImportOpen(true)}
+                className="flex items-center gap-1.5"
+              >
+                <Download size={16} />
+                JIRA Import
+              </Button>
+            )}
+            {sentryIntegration?.connected && (
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() => setIsSentryImportOpen(true)}
+                className="flex items-center gap-1.5 text-purple-600 hover:text-purple-700 border-purple-200 hover:border-purple-300"
+              >
+                <Download size={16} />
+                Sentry Import
+              </Button>
+            )}
           </div>
-        </div>
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => navigate('/settings')}
-            className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
-            title={t('settings.title')}
-          >
-            <Settings size={20} className="text-slate-500 dark:text-slate-400" />
-          </button>
-          {integration?.connected && (
-            <Button
-              size="sm"
-              variant="secondary"
-              onClick={() => setIsJiraImportOpen(true)}
-              className="flex items-center gap-1.5"
-            >
-              <Download size={16} />
-              JIRA Import
-            </Button>
-          )}
-          <Button size="sm" onClick={() => setIsCreateModalOpen(true)} data-tour="create-mission-btn">
-            {t('mission.newMission')}
-          </Button>
-        </div>
-      </div>
+        ) : undefined}
+      />
 
       {/* AI Question Banner */}
       {aiQuestionsCount > 0 && (
@@ -483,6 +464,13 @@ export function MissionsPage() {
           // Refresh todos after dependency changes in graph view
           if (selectedMission) {
             fetchTodos(selectedMission.id);
+          }
+        }}
+        onDelete={() => {
+          // Close modal and refresh missions after deletion
+          setSelectedMission(null);
+          if (currentWorkspaceId) {
+            fetchMissions(currentWorkspaceId);
           }
         }}
       />
@@ -955,6 +943,18 @@ export function MissionsPage() {
             fetchMissions(workspaceId);
           }
           setIsJiraImportOpen(false);
+        }}
+      />
+
+      {/* Sentry Import Modal */}
+      <SentryImportModal
+        isOpen={isSentryImportOpen}
+        onClose={() => setIsSentryImportOpen(false)}
+        onImportComplete={() => {
+          if (workspaceId) {
+            fetchMissions(workspaceId);
+          }
+          setIsSentryImportOpen(false);
         }}
       />
     </div>

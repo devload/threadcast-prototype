@@ -1,6 +1,6 @@
 import { clsx } from 'clsx';
 import { Clock, History, ChevronRight, MessageCircleQuestion, Settings2, Terminal, Play, Square, Loader2, Trash2 } from 'lucide-react';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import type { Todo, StepType, TimelineEvent } from '../../types';
 import { Drawer, ConfirmDialog } from '../feedback/Modal';
 import { Button } from '../common/Button';
@@ -8,6 +8,7 @@ import { useAIQuestionStore } from '../../stores/aiQuestionStore';
 import { MetaEditor } from '../meta/MetaEditor';
 import { metaService, api, timelineService, todoService, type MetaData } from '../../services';
 import { TerminalViewer } from '../terminal';
+import { SentryIssueBadge } from '../sentry';
 
 interface TodoDetailDrawerProps {
   isOpen: boolean;
@@ -158,6 +159,15 @@ export function TodoDetailDrawer({
     setEffectiveMeta(effectiveRes || {});
   };
 
+  // Extract Sentry info from effectiveMeta (must be before early return to satisfy Rules of Hooks)
+  const sentryInfo = useMemo(() => {
+    const sentry = effectiveMeta?.sentry as { issueId?: string; shortId?: string; permalink?: string } | undefined;
+    if (sentry?.issueId && sentry?.permalink) {
+      return { issueId: sentry.issueId, issueUrl: sentry.permalink };
+    }
+    return null;
+  }, [effectiveMeta]);
+
   if (!todo) return null;
 
   const { id, title, description, status, steps, estimatedTime, complexity, aiContext } = todo;
@@ -282,6 +292,9 @@ export function TodoDetailDrawer({
                 <Clock size={12} />
                 {estimatedTime}min
               </span>
+            )}
+            {sentryInfo && (
+              <SentryIssueBadge issueId={sentryInfo.issueId} issueUrl={sentryInfo.issueUrl} size="sm" />
             )}
           </div>
 

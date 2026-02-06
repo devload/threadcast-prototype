@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { clsx } from 'clsx';
-import { Play, Pause, Sparkles, List, GitBranch, Lock, ExternalLink, Trash2 } from 'lucide-react';
+import { Play, Pause, Sparkles, List, GitBranch, Lock, ExternalLink, Trash2, XCircle } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import type { Mission, Todo, MissionStatus } from '../../types';
 import { Modal, ConfirmDialog } from '../feedback/Modal';
@@ -36,7 +36,8 @@ const statusBadgeStyles: Record<MissionStatus, { label: string; className: strin
   WOVEN: { label: '✅ Woven', className: 'bg-green-50 text-green-600' },
   COMPLETED: { label: '✅ Completed', className: 'bg-green-50 text-green-600' },
   TANGLED: { label: '❌ Tangled', className: 'bg-red-50 text-red-600' },
-  ARCHIVED: { label: 'Archived', className: 'bg-purple-50 text-purple-600' },
+  DROPPED: { label: '🗑️ Dropped', className: 'bg-slate-200 text-slate-500' },
+  ARCHIVED: { label: '📦 Archived', className: 'bg-purple-50 text-purple-600' },
   SKIPPED: { label: 'Skipped', className: 'bg-slate-100 text-slate-500' },
 };
 
@@ -142,6 +143,20 @@ export function MissionDetailModal({
     startAnalysis(mission);
   };
 
+  const handleDrop = async () => {
+    if (!mission) return;
+    setIsDeleting(true);
+    try {
+      await missionService.updateStatus(mission.id, 'DROPPED');
+      onClose();
+      onDelete?.();
+    } catch (error) {
+      console.error('Failed to drop mission:', error);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   const handleDelete = async () => {
     if (!mission) return;
     setIsDeleting(true);
@@ -157,22 +172,40 @@ export function MissionDetailModal({
     }
   };
 
+  const isDropped = status === 'DROPPED';
+
   const footer = (
-    <>
+    <div className="flex items-center justify-between w-full">
+      {/* 왼쪽: Drop/Delete 버튼 */}
       <div className="flex items-center gap-2">
-        <Button
-          variant="secondary"
-          leftIcon={<Trash2 size={16} />}
-          onClick={() => setShowDeleteConfirm(true)}
-          className="text-red-600 hover:bg-red-50 border-red-200"
-        >
-          {t('common.delete')}
-        </Button>
+        {!isDropped && !isWoven && (
+          <Button
+            variant="secondary"
+            leftIcon={<XCircle size={16} />}
+            onClick={handleDrop}
+            disabled={isDeleting}
+            className="text-slate-600 hover:bg-slate-100 border-slate-300"
+          >
+            Drop
+          </Button>
+        )}
+        {isDropped && (
+          <Button
+            variant="secondary"
+            leftIcon={<Trash2 size={16} />}
+            onClick={() => setShowDeleteConfirm(true)}
+            className="text-red-600 hover:bg-red-50 border-red-200"
+          >
+            {t('common.delete')}
+          </Button>
+        )}
+      </div>
+
+      {/* 오른쪽: 주요 액션 버튼들 */}
+      <div className="flex items-center gap-3">
         <span className="text-xs text-slate-400">
           {t('common.pressEscToClose')}
         </span>
-      </div>
-      <div className="flex gap-2">
         {/* AI로 Todo 자동 생성 버튼 */}
         {!isWoven && todos.length === 0 && (
           <Button
@@ -204,7 +237,7 @@ export function MissionDetailModal({
           </Button>
         )}
       </div>
-    </>
+    </div>
   );
 
   return (

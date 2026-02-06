@@ -129,6 +129,21 @@ public class TimelineService {
     }
 
     @Transactional
+    public void recordMissionDropped(Mission mission) {
+        TimelineEvent event = TimelineEvent.create(
+                mission.getWorkspace(),
+                mission,
+                null,
+                EventType.MISSION_DROPPED,
+                ActorType.USER,
+                "Mission dropped: " + mission.getTitle(),
+                null
+        );
+        timelineEventRepository.save(event);
+        webSocketService.notifyTimelineEvent(mission.getWorkspace().getId(), event);
+    }
+
+    @Transactional
     public void recordTodoCreated(Todo todo) {
         TimelineEvent event = TimelineEvent.create(
                 todo.getMission().getWorkspace(),

@@ -9,7 +9,9 @@ import io.threadcast.dto.request.StartWeavingRequest;
 import io.threadcast.dto.response.MissionResponse;
 import io.threadcast.exception.BadRequestException;
 import io.threadcast.exception.NotFoundException;
+import io.threadcast.repository.AIQuestionRepository;
 import io.threadcast.repository.MissionRepository;
+import io.threadcast.repository.TimelineEventRepository;
 import io.threadcast.repository.TodoRepository;
 import io.threadcast.repository.WorkspaceRepository;
 import lombok.RequiredArgsConstructor;
@@ -29,6 +31,8 @@ public class MissionService {
     private final MissionRepository missionRepository;
     private final WorkspaceRepository workspaceRepository;
     private final TodoRepository todoRepository;
+    private final TimelineEventRepository timelineEventRepository;
+    private final AIQuestionRepository aiQuestionRepository;
     private final TimelineService timelineService;
     private final WebSocketService webSocketService;
     private final GitWorktreeService worktreeService;
@@ -106,6 +110,10 @@ public class MissionService {
             case WOVEN -> {
                 mission.complete();
                 timelineService.recordMissionCompleted(mission);
+            }
+            case DROPPED -> {
+                mission.drop();
+                timelineService.recordMissionDropped(mission);
             }
             case ARCHIVED -> {
                 mission.archive();
@@ -196,10 +204,23 @@ public class MissionService {
 
     @Transactional
     public void deleteMission(UUID id) {
-        Mission mission = missionRepository.findById(id)
-                .orElseThrow(() -> new NotFoundException("Mission not found: " + id));
+        Mission mission = missionRepository.findByIdWithTodos(id);
+        if (mission == null) {
+            throw new NotFoundException("Mission not found: " + id);
+        }
 
         UUID workspaceId = mission.getWorkspace().getId();
+
+        // Delete related data for all todos in this mission first
+        for (Todo todo : mission.getTodos()) {
+            aiQuestionRepository.deleteByTodoId(todo.getId());
+            timelineEventRepository.deleteByTodoId(todo.getId());
+        }
+
+        // Delete timeline events for the mission itself
+        timelineEventRepository.deleteByMissionId(id);
+
+        // Now delete the mission (cascades to todos due to CascadeType.ALL)
         missionRepository.delete(mission);
 
         webSocketService.notifyMissionDeleted(workspaceId, id);

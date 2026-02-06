@@ -8,7 +8,9 @@ import io.threadcast.dto.request.UpdateTodoRequest;
 import io.threadcast.dto.response.TodoResponse;
 import io.threadcast.exception.BadRequestException;
 import io.threadcast.exception.NotFoundException;
+import io.threadcast.repository.AIQuestionRepository;
 import io.threadcast.repository.MissionRepository;
+import io.threadcast.repository.TimelineEventRepository;
 import io.threadcast.repository.TodoRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Lazy;
@@ -25,6 +27,8 @@ public class TodoService {
 
     private final TodoRepository todoRepository;
     private final MissionRepository missionRepository;
+    private final TimelineEventRepository timelineEventRepository;
+    private final AIQuestionRepository aiQuestionRepository;
     private final TimelineService timelineService;
     private final WebSocketService webSocketService;
     private final TodoOrchestrationService orchestrationService;
@@ -32,11 +36,15 @@ public class TodoService {
     public TodoService(
             TodoRepository todoRepository,
             MissionRepository missionRepository,
+            TimelineEventRepository timelineEventRepository,
+            AIQuestionRepository aiQuestionRepository,
             TimelineService timelineService,
             WebSocketService webSocketService,
             @Lazy TodoOrchestrationService orchestrationService) {
         this.todoRepository = todoRepository;
         this.missionRepository = missionRepository;
+        this.timelineEventRepository = timelineEventRepository;
+        this.aiQuestionRepository = aiQuestionRepository;
         this.timelineService = timelineService;
         this.webSocketService = webSocketService;
         this.orchestrationService = orchestrationService;
@@ -174,6 +182,10 @@ public class TodoService {
 
         Mission mission = todo.getMission();
         UUID missionId = mission.getId();
+
+        // Delete related data first to avoid FK constraint violation
+        aiQuestionRepository.deleteByTodoId(id);
+        timelineEventRepository.deleteByTodoId(id);
 
         mission.getTodos().remove(todo);
         todoRepository.delete(todo);

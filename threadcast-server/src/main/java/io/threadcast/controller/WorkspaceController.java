@@ -15,9 +15,12 @@ import io.threadcast.repository.TimelineEventRepository;
 import io.threadcast.repository.UserRepository;
 import io.threadcast.repository.WorkspaceRepository;
 import io.threadcast.security.JwtTokenProvider;
+import io.threadcast.security.UserPrincipal;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
@@ -42,8 +45,12 @@ public class WorkspaceController {
     @GetMapping
     @Transactional(readOnly = true)
     public ResponseEntity<ApiResponse<List<WorkspaceResponse>>> getMyWorkspaces(
-            @RequestHeader("Authorization") String authHeader) {
-        UUID userId = getUserIdFromToken(authHeader);
+            @AuthenticationPrincipal UserPrincipal principal) {
+        if (principal == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(ApiResponse.error("UNAUTHORIZED", "Not authenticated"));
+        }
+        UUID userId = principal.getId();
         // Fetch workspaces with projects first
         List<Workspace> workspaces = workspaceRepository.findByOwnerIdWithProjects(userId);
         // Then fetch missions in same transaction
@@ -79,9 +86,13 @@ public class WorkspaceController {
 
     @PostMapping
     public ResponseEntity<ApiResponse<WorkspaceResponse>> createWorkspace(
-            @RequestHeader("Authorization") String authHeader,
+            @AuthenticationPrincipal UserPrincipal principal,
             @RequestBody CreateWorkspaceRequest request) {
-        UUID userId = getUserIdFromToken(authHeader);
+        if (principal == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(ApiResponse.error("UNAUTHORIZED", "Not authenticated"));
+        }
+        UUID userId = principal.getId();
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new NotFoundException("User not found: " + userId));
 
@@ -434,8 +445,12 @@ public class WorkspaceController {
     @Transactional
     public ResponseEntity<ApiResponse<Map<String, Boolean>>> deleteWorkspace(
             @PathVariable UUID id,
-            @RequestHeader("Authorization") String authHeader) {
-        UUID userId = getUserIdFromToken(authHeader);
+            @AuthenticationPrincipal UserPrincipal principal) {
+        if (principal == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(ApiResponse.error("UNAUTHORIZED", "Not authenticated"));
+        }
+        UUID userId = principal.getId();
         Workspace workspace = workspaceRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Workspace not found: " + id));
 

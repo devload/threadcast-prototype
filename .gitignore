@@ -33,3 +33,7 @@ build/
 
 # Storybook
 storybook-static/
+
+# Gradle
+.gradle/
+threadcast-server/.gradle/

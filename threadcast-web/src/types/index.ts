@@ -1,5 +1,5 @@
 // Enums
-export type MissionStatus = 'BACKLOG' | 'PENDING' | 'THREADING' | 'IN_PROGRESS' | 'WOVEN' | 'COMPLETED' | 'TANGLED' | 'ARCHIVED' | 'SKIPPED';
+export type MissionStatus = 'BACKLOG' | 'PENDING' | 'THREADING' | 'IN_PROGRESS' | 'WOVEN' | 'COMPLETED' | 'TANGLED' | 'DROPPED' | 'ARCHIVED' | 'SKIPPED';
 export type TodoStatus = 'BACKLOG' | 'PENDING' | 'THREADING' | 'IN_PROGRESS' | 'WOVEN' | 'COMPLETED' | 'TANGLED' | 'ARCHIVED' | 'SKIPPED';
 export type StepType = 'ANALYSIS' | 'DESIGN' | 'IMPLEMENTATION' | 'VERIFICATION' | 'REVIEW' | 'INTEGRATION';
 export type StepStatus = 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'FAILED' | 'SKIPPED';
@@ -93,6 +93,9 @@ export interface Mission {
   // JIRA 연동 정보
   jiraIssueKey?: string;
   jiraIssueUrl?: string;
+  // Sentry 연동 정보
+  sentryIssueId?: string;
+  sentryIssueUrl?: string;
 }
 
 export interface TodoStats {
@@ -328,12 +331,22 @@ export interface RegisterRequest {
 }
 
 // AI Analysis Types
+export interface ProjectInsights {
+  framework: string;
+  stateManagement: string;
+  styling: string;
+  existingPatterns: string[];
+}
+
 export interface AIAnalysisResult {
   missionId: string;
   suggestedTodos: SuggestedTodo[];
   questions: AIQuestionSuggestion[];
   confidence: number;
   analysisTime: number;
+  projectInsights?: ProjectInsights;  // From Workspace Agent analysis
+  pendingRequestId?: string;          // Analysis request ID (HTTP callback architecture)
+  status?: 'PENDING' | 'COMPLETED' | 'FAILED';  // Analysis status
 }
 
 export interface SuggestedTodo {
@@ -344,6 +357,8 @@ export interface SuggestedTodo {
   estimatedTime: number;
   isUncertain: boolean;    // Flag for uncertain items
   uncertainReason?: string;
+  relatedFiles?: string[]; // From Workspace Agent analysis
+  reasoning?: string;      // From Workspace Agent analysis
 }
 
 export interface AIQuestionSuggestion {

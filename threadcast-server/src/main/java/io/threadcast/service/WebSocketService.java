@@ -161,6 +161,34 @@ public class WebSocketService {
         log.info("Notified todo dependencies changed: {} ({})", todo.getTitle(), todo.getId());
     }
 
+    /**
+     * Notify frontend that an analysis request has been completed.
+     */
+    public void notifyAnalysisCompleted(UUID workspaceId, UUID requestId, String status, Object analysis) {
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("requestId", requestId);
+        payload.put("status", status);
+        payload.put("analysis", analysis);
+
+        Map<String, Object> event = createEvent("ANALYSIS_COMPLETED", payload);
+        messagingTemplate.convertAndSend("/topic/workspaces/" + workspaceId + "/analysis", event);
+        messagingTemplate.convertAndSend("/topic/workspaces/" + workspaceId, event);
+        log.info("Notified analysis completed: {} (status: {})", requestId, status);
+    }
+
+    /**
+     * Notify frontend that an analysis request status has changed.
+     */
+    public void notifyAnalysisStatusChanged(UUID workspaceId, UUID requestId, String status) {
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("requestId", requestId);
+        payload.put("status", status);
+
+        Map<String, Object> event = createEvent("ANALYSIS_STATUS_CHANGED", payload);
+        messagingTemplate.convertAndSend("/topic/workspaces/" + workspaceId + "/analysis", event);
+        log.info("Notified analysis status changed: {} -> {}", requestId, status);
+    }
+
     private Map<String, Object> createEvent(String eventType, Object payload) {
         Map<String, Object> event = new HashMap<>();
         event.put("eventId", UUID.randomUUID().toString());

@@ -3,8 +3,10 @@ import { clsx } from 'clsx';
 import { X, Plus, Sparkles, PenLine, Link2 } from 'lucide-react';
 import { Button } from '../common/Button';
 import { JiraTicketSelector } from './JiraTicketSelector';
+import { SentryIssueSelector } from './SentryIssueSelector';
 import type { Priority } from '../../types';
 import type { JiraIssue } from '../../services/jiraService';
+import type { SentryIssue } from '../../services/sentryService';
 
 export interface CreateMissionFormData {
   title: string;
@@ -36,7 +38,8 @@ const priorityColors: Record<Priority, string> = {
 
 const suggestedTags = ['backend', 'frontend', 'api', 'database', 'auth', 'ui', 'test', 'docs', 'refactor', 'feature'];
 
-type CreateMode = 'manual' | 'jira';
+type CreateMode = 'manual' | 'integration';
+type IntegrationSource = 'jira' | 'sentry';
 
 export function CreateMissionForm({
   onSubmit,
@@ -45,6 +48,7 @@ export function CreateMissionForm({
   defaultPriority = 'MEDIUM',
 }: CreateMissionFormProps) {
   const [createMode, setCreateMode] = useState<CreateMode>('manual');
+  const [integrationSource, setIntegrationSource] = useState<IntegrationSource>('jira');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [priority, setPriority] = useState<Priority>(defaultPriority);
@@ -52,9 +56,11 @@ export function CreateMissionForm({
   const [tagInput, setTagInput] = useState('');
   const [errors, setErrors] = useState<{ title?: string }>({});
   const [selectedJiraIssue, setSelectedJiraIssue] = useState<JiraIssue | null>(null);
+  const [selectedSentryIssue, setSelectedSentryIssue] = useState<SentryIssue | null>(null);
 
   const handleJiraIssueSelect = (issue: JiraIssue) => {
     setSelectedJiraIssue(issue);
+    setSelectedSentryIssue(null);
     setTitle(issue.summary);
     setDescription(issue.description || '');
 
@@ -77,6 +83,44 @@ export function CreateMissionForm({
         setTags(prev => [...prev, typeTag]);
       }
     }
+    // Add jira tag
+    if (!tags.includes('jira')) {
+      setTags(prev => [...prev, 'jira']);
+    }
+  };
+
+  const handleSentryIssueSelect = (issue: SentryIssue) => {
+    setSelectedSentryIssue(issue);
+    setSelectedJiraIssue(null);
+    setTitle(`[${issue.shortId}] ${issue.title}`);
+    setDescription(issue.culprit ? `Culprit: ${issue.culprit}\n\nLevel: ${issue.level}\nEvents: ${issue.count}\nLast seen: ${issue.lastSeen}` : '');
+
+    // Map Sentry level to our priority
+    const level = issue.level?.toLowerCase() || '';
+    if (level === 'fatal') {
+      setPriority('CRITICAL');
+    } else if (level === 'error') {
+      setPriority('HIGH');
+    } else if (level === 'warning') {
+      setPriority('MEDIUM');
+    } else {
+      setPriority('LOW');
+    }
+
+    // Add tags
+    const newTags = ['sentry', 'bug'];
+    if (issue.level) {
+      newTags.push(issue.level.toLowerCase());
+    }
+    setTags(prev => {
+      const combined = [...prev];
+      newTags.forEach(tag => {
+        if (!combined.includes(tag)) {
+          combined.push(tag);
+        }
+      });
+      return combined;
+    });
   };
 
   const handleAddTag = (tag: string) => {
@@ -141,35 +185,88 @@ export function CreateMissionForm({
         </button>
         <button
           type="button"
-          onClick={() => setCreateMode('jira')}
+          onClick={() => setCreateMode('integration')}
           className={clsx(
             'flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium rounded-md transition-colors',
-            createMode === 'jira'
+            createMode === 'integration'
               ? 'bg-white text-slate-900 shadow-sm'
               : 'text-slate-600 hover:text-slate-900'
           )}
         >
           <Link2 size={16} />
-          JIRA에서 가져오기
+          Integration
         </button>
       </div>
 
-      {/* JIRA Ticket Selector */}
-      {createMode === 'jira' && (
-        <div className="border border-slate-200 rounded-lg p-4 bg-slate-50">
-          <JiraTicketSelector
-            onSelect={handleJiraIssueSelect}
-            selectedIssueKey={selectedJiraIssue?.key}
-          />
-          {selectedJiraIssue && (
-            <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-              <div className="flex items-center gap-2 text-sm">
-                <span className="font-mono text-blue-600">{selectedJiraIssue.key}</span>
-                <span className="text-slate-500">→</span>
-                <span className="font-medium text-slate-900">아래 내용으로 Mission 생성</span>
-              </div>
-            </div>
-          )}
+      {/* Integration Selector */}
+      {createMode === 'integration' && (
+        <div className="border border-slate-200 rounded-lg overflow-hidden bg-slate-50">
+          {/* Integration Source Tabs */}
+          <div className="flex border-b border-slate-200">
+            <button
+              type="button"
+              onClick={() => setIntegrationSource('jira')}
+              className={clsx(
+                'flex-1 px-4 py-3 text-sm font-medium transition-colors flex items-center justify-center gap-2',
+                integrationSource === 'jira'
+                  ? 'bg-white text-blue-600 border-b-2 border-blue-600'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+              )}
+            >
+              <JiraIcon className="w-4 h-4" />
+              JIRA
+            </button>
+            <button
+              type="button"
+              onClick={() => setIntegrationSource('sentry')}
+              className={clsx(
+                'flex-1 px-4 py-3 text-sm font-medium transition-colors flex items-center justify-center gap-2',
+                integrationSource === 'sentry'
+                  ? 'bg-white text-purple-600 border-b-2 border-purple-600'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+              )}
+            >
+              <SentryIcon className="w-4 h-4" />
+              Sentry
+            </button>
+          </div>
+
+          {/* Integration Content */}
+          <div className="p-4">
+            {integrationSource === 'jira' ? (
+              <>
+                <JiraTicketSelector
+                  onSelect={handleJiraIssueSelect}
+                  selectedIssueKey={selectedJiraIssue?.key}
+                />
+                {selectedJiraIssue && (
+                  <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                    <div className="flex items-center gap-2 text-sm">
+                      <span className="font-mono text-blue-600">{selectedJiraIssue.key}</span>
+                      <span className="text-slate-500">→</span>
+                      <span className="font-medium text-slate-900">아래 내용으로 Mission 생성</span>
+                    </div>
+                  </div>
+                )}
+              </>
+            ) : (
+              <>
+                <SentryIssueSelector
+                  onSelect={handleSentryIssueSelect}
+                  selectedIssueId={selectedSentryIssue?.id}
+                />
+                {selectedSentryIssue && (
+                  <div className="mt-4 p-3 bg-purple-50 border border-purple-200 rounded-lg">
+                    <div className="flex items-center gap-2 text-sm">
+                      <span className="font-mono text-purple-600">{selectedSentryIssue.shortId}</span>
+                      <span className="text-slate-500">→</span>
+                      <span className="font-medium text-slate-900">아래 내용으로 Mission 생성</span>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
         </div>
       )}
 
@@ -402,5 +499,22 @@ export function CreateMissionInline({
         </Button>
       )}
     </form>
+  );
+}
+
+// Icons
+function JiraIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="currentColor">
+      <path d="M11.53 2c0 2.4 1.97 4.35 4.35 4.35h1.78v1.7c0 2.4 1.94 4.34 4.34 4.35V2.84a.84.84 0 0 0-.84-.84H11.53zM6.77 6.8a4.362 4.362 0 0 0 4.34 4.38h1.8v1.7c0 2.4 1.93 4.35 4.33 4.35V7.63a.84.84 0 0 0-.83-.83H6.77zM2 11.6c0 2.4 1.95 4.34 4.35 4.35h1.78v1.7c.01 2.39 1.95 4.34 4.34 4.35v-9.57a.84.84 0 0 0-.84-.83H2z"/>
+    </svg>
+  );
+}
+
+function SentryIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 72 66" fill="currentColor">
+      <path d="M29,2.26a4.67,4.67,0,0,0-8,0L14.42,13.53A32.21,32.21,0,0,1,32.17,40.19H27.55A27.68,27.68,0,0,0,12.09,17.47L6,28a15.92,15.92,0,0,1,9.23,12.17H4.62A.76.76,0,0,1,4,39.06l2.94-5a10.74,10.74,0,0,0-3.36-1.9l-2.91,5a4.54,4.54,0,0,0,1.69,6.24A4.66,4.66,0,0,0,4.62,44H19.15a19.4,19.4,0,0,0-8-17.31l2.31-4A23.87,23.87,0,0,1,23.76,44H36.07a35.88,35.88,0,0,0-16.41-31.8l4.67-8a.77.77,0,0,1,1.05-.27c.53.29,20.29,34.77,20.66,35.17a.76.76,0,0,1-.68,1.13H40.6q.09,1.91,0,3.81h4.78A4.59,4.59,0,0,0,50,42.67a4.49,4.49,0,0,0-.62-2.29Z"/>
+    </svg>
   );
 }

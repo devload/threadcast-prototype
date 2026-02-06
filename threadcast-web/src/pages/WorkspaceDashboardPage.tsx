@@ -1,12 +1,11 @@
 import { useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Home, Settings, RefreshCw } from 'lucide-react';
 import { useWorkspaceStore } from '../stores/workspaceStore';
 import { useMissionStore } from '../stores/missionStore';
 import { useUIStore } from '../stores/uiStore';
 import { useAIQuestionStore } from '../stores/aiQuestionStore';
 import { useTranslation } from '../hooks/useTranslation';
-import { Button } from '../components/common/Button';
+import { TopBar } from '../components/layout';
 
 export const WorkspaceDashboardPage = () => {
   const { t } = useTranslation();
@@ -75,60 +74,22 @@ export const WorkspaceDashboardPage = () => {
 
   return (
     <div className="h-full flex flex-col overflow-hidden">
-      {/* Top Bar - consistent with MissionsPage */}
-      <div className="h-14 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 flex items-center px-6 justify-between flex-shrink-0">
-        <div className="flex items-center gap-4">
-          <button
-            onClick={() => navigate('/workspaces')}
-            className="flex items-center gap-2 text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
-            title="Switch Workspace"
-          >
-            <Home size={20} />
-          </button>
-          <div className="h-6 w-px bg-slate-200 dark:bg-slate-600" />
-          <h1 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
-            {currentWorkspace.name}
-          </h1>
-          <div className="view-switcher">
-            <button
-              className="view-btn active"
-              onClick={() => workspaceId && navigate(`/workspaces/${workspaceId}`)}
-            >
-              🏠 Dashboard
-            </button>
-            <button
-              className="view-btn"
-              onClick={() => workspaceId && navigate(`/workspaces/${workspaceId}/missions`)}
-            >
-              🎯 {t('nav.missions')}
-            </button>
-            <button
-              className="view-btn"
-              onClick={() => workspaceId && navigate(`/workspaces/${workspaceId}/timeline`)}
-            >
-              📊 {t('nav.timeline')}
-            </button>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => currentWorkspace?.id && fetchWorkspaceDashboard(currentWorkspace.id)}
-            className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
-            title="Refresh"
-          >
-            <RefreshCw size={20} className={`text-slate-500 dark:text-slate-400 ${isLoading ? 'animate-spin' : ''}`} />
-          </button>
-          <button
-            className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
-            title={t('settings.title')}
-          >
-            <Settings size={20} className="text-slate-500 dark:text-slate-400" />
-          </button>
-          <Button size="sm" onClick={() => workspaceId && navigate(`/workspaces/${workspaceId}/missions`)} data-tour="dashboard-new-mission">
-            + {t('workspace.newMission')}
-          </Button>
-        </div>
-      </div>
+      <TopBar
+        navigation="home"
+        homeLink="/workspaces"
+        title={currentWorkspace.name}
+        tabs={[
+          { id: 'dashboard', label: 'Dashboard', icon: '🏠', path: `/workspaces/${workspaceId}` },
+          { id: 'missions', label: t('nav.missions'), icon: '🎯', path: `/workspaces/${workspaceId}/missions` },
+          { id: 'timeline', label: t('nav.timeline'), icon: '📊', path: `/workspaces/${workspaceId}/timeline` },
+        ]}
+        activeTab="dashboard"
+        onRefresh={() => currentWorkspace?.id && fetchWorkspaceDashboard(currentWorkspace.id)}
+        isRefreshing={isLoading}
+        actionLabel={`+ ${t('workspace.newMission')}`}
+        onActionClick={() => workspaceId && navigate(`/workspaces/${workspaceId}/missions`)}
+        actionDataTour="dashboard-new-mission"
+      />
 
       {/* Main Content - scrollable */}
       <div className="flex-1 overflow-auto p-6">
@@ -191,7 +152,7 @@ export const WorkspaceDashboardPage = () => {
                 projects.map((project) => (
                   <div
                     key={project.id}
-                    className="p-4 hover:bg-gray-50 cursor-pointer transition-colors"
+                    className="p-4 hover:bg-gray-50 active:bg-gray-100 active:scale-[0.99] cursor-pointer transition-all"
                     onClick={() => navigate(`/projects/${project.id}`)}
                   >
                     <div className="flex items-start justify-between">
@@ -251,7 +212,7 @@ export const WorkspaceDashboardPage = () => {
                 recentMissions.map((mission) => (
                   <div
                     key={mission.id}
-                    className={`p-4 hover:bg-gray-50 cursor-pointer transition-colors border-l-4 ${getStatusBgColor(mission.status)}`}
+                    className={`p-4 hover:bg-gray-50 active:bg-gray-100 active:scale-[0.99] cursor-pointer transition-all border-l-4 ${getStatusBgColor(mission.status)}`}
                     onClick={() => workspaceId && navigate(`/workspaces/${workspaceId}/missions?selected=${mission.id}`)}
                   >
                     <div className="flex items-start justify-between">

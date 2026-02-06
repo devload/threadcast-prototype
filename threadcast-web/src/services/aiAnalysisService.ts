@@ -1,5 +1,6 @@
 import type { Mission, AIAnalysisResult, SuggestedTodo, AIQuestionSuggestion, Complexity } from '../types';
-import { api, DEMO_MODE } from './api';
+import { DEMO_MODE } from './api';
+import { workspaceAgentService, type SuggestedTodoFromAgent, type UncertainItem } from './workspaceAgentService';
 
 // Utility function for delay
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -304,9 +305,9 @@ export const aiAnalysisService = {
 
   /**
    * Analyze a mission and generate suggested todos
-   * Uses mock data in DEMO_MODE, otherwise calls backend API
+   * Uses Workspace Agent for real code analysis, falls back to mock in DEMO_MODE
    */
-  analyzeMission: async (mission: Mission): Promise<AIAnalysisResult> => {
+  analyzeMission: async (mission: Mission, onProgress?: (message: string) => void): Promise<AIAnalysisResult> => {
     // Use mock data in DEMO_MODE
     if (DEMO_MODE) {
       // Simulate analysis delay (1.5-2.5 seconds)
@@ -325,18 +326,42 @@ export const aiAnalysisService = {
       };
     }
 
-    // Call backend API
+    // Try new HTTP Callback Architecture (Analysis Request API)
     try {
-      return await api.post<AIAnalysisResult>(`/missions/${mission.id}/analyze`, {
-        title: mission.title,
-        description: mission.description,
-      });
-    } catch (error) {
-      // Fallback to mock data if API fails
-      console.warn('AI Analysis API failed, using mock data:', error);
+      const workspaceId = mission.workspaceId;
+      if (!workspaceId) {
+        throw new Error('Mission has no workspaceId');
+      }
 
+      onProgress?.('분석 요청 생성 중...');
+
+      // Create analysis request - this queues it for PM Agent
+      // Results will be delivered via WebSocket (ANALYSIS_COMPLETED event)
+      const analysisRequest = await workspaceAgentService.requestMissionAnalysis(
+        workspaceId,
+        mission.id,
+        mission.title,
+        mission.description || '',
+        onProgress
+      );
+
+      // Return a placeholder result - actual results come via WebSocket
+      // The UI should subscribe to ANALYSIS_COMPLETED events
+      return {
+        missionId: mission.id,
+        suggestedTodos: [],
+        questions: [],
+        confidence: 0,
+        analysisTime: 0,
+        pendingRequestId: analysisRequest.id, // Used to track the pending request
+        status: 'PENDING' as const,
+      };
+    } catch (error) {
+      console.warn('Analysis request failed, falling back to template-based analysis:', error);
+
+      // Fallback to mock data if API fails
       const analysisTime = 1.5 + Math.random();
-      await delay(500); // Shorter delay for fallback
+      await delay(500);
 
       const suggestedTodos = generateMockTodos(mission);
       const questions = generateMockQuestions(mission, suggestedTodos);
@@ -345,9 +370,55 @@ export const aiAnalysisService = {
         missionId: mission.id,
         suggestedTodos,
         questions,
-        confidence: 0.7 + Math.random() * 0.15, // 70-85% (slightly lower for fallback)
+        confidence: 0.7 + Math.random() * 0.15, // Lower confidence for fallback
         analysisTime,
       };
+    }
+  },
+
+  /**
+   * Parse analysis result from completed AnalysisRequest
+   * Called when ANALYSIS_COMPLETED WebSocket event is received
+   */
+  parseAnalysisResult: (resultJson: string, missionId: string): AIAnalysisResult | null => {
+    try {
+      const analysis = JSON.parse(resultJson);
+
+      const suggestedTodos: SuggestedTodo[] = (analysis.suggestedTodos || []).map(
+        (todo: SuggestedTodoFromAgent, index: number) => ({
+          id: `agent-${Date.now()}-${index}`,
+          title: todo.title,
+          description: todo.description,
+          complexity: todo.complexity as Complexity,
+          estimatedTime: todo.estimatedTime,
+          isUncertain: todo.isUncertain || false,
+          uncertainReason: todo.uncertainReason,
+          relatedFiles: todo.relatedFiles,
+          reasoning: todo.reasoning,
+        })
+      );
+
+      const questions: AIQuestionSuggestion[] = (analysis.uncertainItems || []).map(
+        (item: UncertainItem, index: number) => ({
+          id: `q-agent-${Date.now()}-${index}`,
+          question: item.question,
+          context: item.recommendation || '',
+          relatedTodoId: suggestedTodos[item.todoIndex]?.id || '',
+          options: item.options,
+        })
+      );
+
+      return {
+        missionId,
+        suggestedTodos,
+        questions,
+        confidence: 0.9,
+        analysisTime: 10,
+        projectInsights: analysis.projectInsights,
+      };
+    } catch (e) {
+      console.error('Failed to parse analysis result:', e);
+      return null;
     }
   },
 };

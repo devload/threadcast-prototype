@@ -73,6 +73,18 @@ public class Mission extends BaseTimeEntity {
     @Column(length = 500)
     private String jiraIssueUrl;
 
+    /**
+     * 연결된 Sentry 이슈 ID
+     */
+    @Column(length = 50)
+    private String sentryIssueId;
+
+    /**
+     * 연결된 Sentry 이슈 URL
+     */
+    @Column(length = 500)
+    private String sentryIssueUrl;
+
     @OneToMany(mappedBy = "mission", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("orderIndex ASC")
     @Builder.Default
@@ -122,6 +134,10 @@ public class Mission extends BaseTimeEntity {
 
     public void archive() {
         this.status = MissionStatus.ARCHIVED;
+    }
+
+    public void drop() {
+        this.status = MissionStatus.DROPPED;
     }
 
     public void updateProgress() {

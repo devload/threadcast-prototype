@@ -1,6 +1,7 @@
 import { clsx } from 'clsx';
 import { MoreHorizontal, CheckSquare, ExternalLink } from 'lucide-react';
 import type { Mission, MissionStatus, Priority } from '../../types';
+import { SentryIssueBadge } from '../sentry';
 
 // Strip markdown syntax for plain text preview
 function stripMarkdown(text: string): string {
@@ -36,6 +37,7 @@ const statusDotColors: Record<MissionStatus, string> = {
   WOVEN: 'bg-green-500',
   COMPLETED: 'bg-green-500',
   TANGLED: 'bg-red-500',
+  DROPPED: 'bg-slate-400',
   ARCHIVED: 'bg-purple-500',
   SKIPPED: 'bg-slate-300',
 };
@@ -58,9 +60,10 @@ export function MissionCard({
   onDragEnd,
   aiQuestionCount = 0,
 }: MissionCardProps) {
-  const { id, title, description, status, priority, progress, todoStats, tags, jiraIssueKey, jiraIssueUrl } = mission;
+  const { id, title, description, status, priority, progress, todoStats, tags, jiraIssueKey, jiraIssueUrl, sentryIssueId, sentryIssueUrl } = mission;
   const hasAIQuestion = aiQuestionCount > 0;
   const hasJiraLink = !!jiraIssueKey;
+  const hasSentryLink = !!sentryIssueId;
 
   const completedTodos = todoStats.woven;
   const totalTodos = todoStats.total;
@@ -106,6 +109,10 @@ export function MissionCard({
               {jiraIssueKey}
               <ExternalLink size={9} />
             </a>
+          )}
+          {/* Sentry 배지 */}
+          {hasSentryLink && sentryIssueUrl && (
+            <SentryIssueBadge issueId={sentryIssueId} issueUrl={sentryIssueUrl} size="sm" />
           )}
         </div>
         <div className="flex items-center gap-2">

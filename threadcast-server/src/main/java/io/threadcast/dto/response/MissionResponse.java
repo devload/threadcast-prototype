@@ -32,6 +32,8 @@ public class MissionResponse {
     private Boolean autoStartEnabled;
     private String jiraIssueKey;
     private String jiraIssueUrl;
+    private String sentryIssueId;
+    private String sentryIssueUrl;
 
     @Data
     @Builder
@@ -74,7 +76,9 @@ public class MissionResponse {
                 .completedAt(mission.getCompletedAt())
                 .autoStartEnabled(mission.getAutoStartEnabled())
                 .jiraIssueKey(mission.getJiraIssueKey())
-                .jiraIssueUrl(mission.getJiraIssueUrl());
+                .jiraIssueUrl(mission.getJiraIssueUrl())
+                .sentryIssueId(mission.getSentryIssueId())
+                .sentryIssueUrl(mission.getSentryIssueUrl());
 
         if (mission.getTodos() != null && !mission.getTodos().isEmpty()) {
             TodoStats stats = TodoStats.builder()

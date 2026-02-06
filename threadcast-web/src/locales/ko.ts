@@ -321,6 +321,7 @@ export const ko = {
     statusChecking: 'AI 상태 확인 중...',
     notConnected: 'AI 연결 안됨',
     connected: 'AI 연결됨',
+    connectionTooltip: 'SwiftCast가 실행되고 있는지 확인하세요.\n연결되면 AI가 자동으로 작업을 시작합니다.',
   },
 
   // Sidebar
@@ -335,7 +336,7 @@ export const ko = {
 
   // Autonomy
   autonomy: {
-    hint: '이 설정은 모든 Mission과 Todo의 기본값이 됩니다',
+    hint: '낮음: AI가 자주 질문함 | 높음: AI가 스스로 결정',
   },
 
   // Meta Editor

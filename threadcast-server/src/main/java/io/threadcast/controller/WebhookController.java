@@ -3,11 +3,15 @@ package io.threadcast.controller;
 import io.threadcast.domain.Todo;
 import io.threadcast.domain.enums.StepStatus;
 import io.threadcast.domain.enums.StepType;
+import io.threadcast.dto.request.AnalysisCallbackRequest;
 import io.threadcast.dto.request.SessionMappingRequest;
 import io.threadcast.dto.request.StepUpdateWebhookRequest;
 import io.threadcast.dto.request.SwiftcastWebhookRequest;
+import io.threadcast.dto.response.ApiResponse;
 import io.threadcast.dto.response.StepProgressResponse;
 import io.threadcast.repository.TodoRepository;
+import io.threadcast.service.AnalysisService;
+import io.threadcast.service.PmAgentService;
 import io.threadcast.service.StepProgressService;
 import io.threadcast.service.TimelineService;
 import io.threadcast.service.terminal.TodoTerminalService;
@@ -36,6 +40,8 @@ public class WebhookController {
     private final TimelineService timelineService;
     private final TodoRepository todoRepository;
     private final SimpMessagingTemplate messagingTemplate;
+    private final PmAgentService pmAgentService;
+    private final AnalysisService analysisService;
 
     /**
      * Step progress update webhook from AI workers.
@@ -126,6 +132,9 @@ public class WebhookController {
             request.getSessionId() != null ?
                 request.getSessionId().substring(0, Math.min(12, request.getSessionId().length())) + "..." :
                 "null");
+
+        // Auto-heartbeat PM Agent when receiving SwiftCast webhook
+        autoHeartbeatPmAgent(request.getTodoId(), request.getSessionId());
 
         try {
             switch (request.getEvent()) {
@@ -384,5 +393,82 @@ public class WebhookController {
         event.put("payload", payload);
 
         messagingTemplate.convertAndSend("/topic/todos/" + todoId, event);
+    }
+
+    /**
+     * Analysis result callback from Workspace Agent.
+     * Called when Workspace Agent completes code analysis and sends results via HTTP POST.
+     */
+    @PostMapping("/analysis-callback")
+    public ResponseEntity<ApiResponse<Map<String, Boolean>>> handleAnalysisCallback(
+            @RequestBody AnalysisCallbackRequest request) {
+
+        log.info("Received analysis callback: requestId={}, status={}",
+                request.getRequestId(), request.getStatus());
+
+        try {
+            analysisService.handleAnalysisCallback(request);
+            return ResponseEntity.ok(ApiResponse.success(Map.of("received", true)));
+        } catch (Exception e) {
+            log.error("Failed to process analysis callback: {}", e.getMessage(), e);
+            return ResponseEntity.internalServerError()
+                    .body(ApiResponse.error("CALLBACK_FAILED", e.getMessage()));
+        }
+    }
+
+    /**
+     * Auto-heartbeat PM Agent when receiving SwiftCast webhook.
+     * This keeps PM Agent status as "connected" without modifying SwiftCast code.
+     */
+    private void autoHeartbeatPmAgent(String todoId, String sessionId) {
+        try {
+            UUID workspaceId = null;
+            String todoTitle = null;
+
+            // Try to get workspaceId from todoId
+            if (todoId != null) {
+                var todoOpt = todoRepository.findByIdWithMissionAndWorkspace(UUID.fromString(todoId));
+                if (todoOpt.isPresent()) {
+                    var todo = todoOpt.get();
+                    workspaceId = todo.getMission().getWorkspace().getId();
+                    todoTitle = todo.getTitle();
+                }
+            }
+
+            // Try to get workspaceId from sessionId mapping
+            if (workspaceId == null && sessionId != null) {
+                var mappingOpt = terminalService.getMappingBySwiftcastSessionId(sessionId);
+                if (mappingOpt.isPresent()) {
+                    var todo = mappingOpt.get().getTodo();
+                    workspaceId = todo.getMission().getWorkspace().getId();
+                    todoTitle = todo.getTitle();
+                }
+            }
+
+            if (workspaceId != null) {
+                // Send heartbeat with current work info
+                var heartbeatRequest = new io.threadcast.dto.request.PmAgentHeartbeatRequest();
+                if (todoId != null) {
+                    heartbeatRequest.setCurrentTodoId(UUID.fromString(todoId));
+                    heartbeatRequest.setCurrentTodoTitle(todoTitle);
+                }
+
+                try {
+                    pmAgentService.heartbeat(workspaceId, heartbeatRequest);
+                    log.debug("Auto-heartbeat PM Agent: workspaceId={}", workspaceId);
+                } catch (IllegalArgumentException e) {
+                    // PM Agent not registered yet, register it first
+                    var registerRequest = new io.threadcast.dto.request.PmAgentRegisterRequest();
+                    registerRequest.setWorkspaceId(workspaceId);
+                    registerRequest.setMachineId("swiftcast-auto");
+                    registerRequest.setLabel("SwiftCast Agent");
+                    registerRequest.setAgentVersion("auto");
+                    pmAgentService.register(registerRequest);
+                    log.info("Auto-registered PM Agent: workspaceId={}", workspaceId);
+                }
+            }
+        } catch (Exception e) {
+            log.debug("Failed to auto-heartbeat PM Agent: {}", e.getMessage());
+        }
     }
 }

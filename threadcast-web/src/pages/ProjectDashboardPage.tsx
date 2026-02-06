@@ -4,6 +4,7 @@ import { useWorkspaceStore } from '../stores/workspaceStore';
 import { useTimelineStore } from '../stores/timelineStore';
 import { useTranslation } from '../hooks/useTranslation';
 import { Spinner } from '../components/common/Loading';
+import { TopBar } from '../components/layout';
 import { ActivityChart, TodoStatusChart, WeeklyActivityChart } from '../components/dashboard';
 import type { ActivityDataPoint, TodoStatusData, WeeklyActivityData } from '../components/dashboard';
 import type { ProjectTodoSummary, ProjectLinkedMission } from '../types';
@@ -123,21 +124,34 @@ export const ProjectDashboardPage = () => {
   // Filter recent activities for this project
   const projectActivities = events.slice(0, 5);
 
-  // Generate chart data directly (no useMemo to avoid dependency issues)
+  // Generate daily activity data from real timeline events
   const dailyActivityData: ActivityDataPoint[] = (() => {
     const data: ActivityDataPoint[] = [];
     const today = new Date();
+
     for (let i = 6; i >= 0; i--) {
       const date = new Date(today);
       date.setDate(date.getDate() - i);
-      const baseCommits = Math.max(1, Math.floor(stats.commits / 7));
-      const baseAiActions = Math.max(1, Math.floor(stats.aiActions / 7));
-      const baseTodos = Math.max(0, Math.floor(stats.wovenTodos / 7));
+      const dateStr = date.toISOString().split('T')[0];
+
+      // Filter events for this date
+      const dayEvents = events.filter(e => {
+        const eventDate = new Date(e.createdAt).toISOString().split('T')[0];
+        return eventDate === dateStr;
+      });
+
+      // Count by type
+      const aiActions = dayEvents.filter(e => e.actorType === 'AI').length;
+      const todosCompleted = dayEvents.filter(e =>
+        e.eventType === 'TODO_COMPLETED' || e.eventType === 'STEP_COMPLETED'
+      ).length;
+      const commits = dayEvents.filter(e => e.actorType === 'USER').length;
+
       data.push({
-        date: date.toISOString().split('T')[0],
-        commits: Math.floor(baseCommits * (0.5 + Math.random())),
-        aiActions: Math.floor(baseAiActions * (0.5 + Math.random())),
-        todosCompleted: Math.floor(baseTodos * (0.3 + Math.random() * 0.7)),
+        date: dateStr,
+        commits,
+        aiActions,
+        todosCompleted,
       });
     }
     return data;
@@ -150,43 +164,47 @@ export const ProjectDashboardPage = () => {
     tangled: stats.tangledTodos,
   };
 
+  // Generate weekly activity data from real timeline events
   const weeklyActivityData: WeeklyActivityData[] = (() => {
-    const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-    const baseAi = Math.max(2, Math.floor(stats.aiActions / 7));
-    const baseUser = Math.max(1, Math.floor(stats.commits / 7));
-    return days.map((day) => ({
-      day,
-      ai: Math.floor(baseAi * (0.3 + Math.random() * 1.4)),
-      user: Math.floor(baseUser * (0.2 + Math.random() * 1.2)),
+    const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+    // Count events by day of week
+    const dayCounts = days.map(() => ({ ai: 0, user: 0 }));
+
+    events.forEach(e => {
+      const dayOfWeek = new Date(e.createdAt).getDay();
+      if (e.actorType === 'AI') {
+        dayCounts[dayOfWeek].ai++;
+      } else if (e.actorType === 'USER') {
+        dayCounts[dayOfWeek].user++;
+      }
+    });
+
+    // Return Monday-first order
+    return [1, 2, 3, 4, 5, 6, 0].map(i => ({
+      day: dayNames[i],
+      ai: dayCounts[i].ai,
+      user: dayCounts[i].user,
     }));
   })();
 
   return (
-    <div className="p-5 max-w-full overflow-auto">
+    <div className="h-full flex flex-col overflow-hidden">
       {/* Top Bar */}
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => currentWorkspace?.id ? navigate(`/workspaces/${currentWorkspace.id}`) : navigate('/workspaces')}
-            className="px-3 py-1.5 bg-gray-100 rounded-md text-sm text-gray-500 hover:bg-gray-200 transition-colors"
-          >
-            ← Workspace
-          </button>
-          <h1 className="text-lg font-semibold text-gray-900">{t('project.dashboard')}</h1>
-        </div>
-        <div className="flex items-center gap-2">
-          <button className="p-2 rounded-md text-gray-500 hover:bg-gray-100 transition-colors">⚙️</button>
-          <button
-            onClick={() => currentWorkspace?.id && projectId && fetchProjectDashboard(currentWorkspace.id, projectId)}
-            className="p-2 rounded-md text-gray-500 hover:bg-gray-100 transition-colors"
-          >
-            🔄
-          </button>
-          <button className="px-4 py-2 bg-indigo-600 text-white rounded-md text-sm font-medium hover:bg-purple-600 transition-colors">
-            + Add Todo
-          </button>
-        </div>
-      </div>
+      <TopBar
+        navigation="back"
+        backLink={currentWorkspace?.id ? `/workspaces/${currentWorkspace.id}` : '/workspaces'}
+        backLabel="Workspace"
+        title={t('project.dashboard')}
+        onRefresh={() => currentWorkspace?.id && projectId && fetchProjectDashboard(currentWorkspace.id, projectId)}
+        isRefreshing={isLoading}
+        actionLabel="+ Add Todo"
+        onActionClick={() => {/* TODO: Open create todo modal */}}
+      />
+
+      {/* Main Content - scrollable */}
+      <div className="flex-1 overflow-auto p-5">
 
       {/* Project Card */}
       <div className="bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-200 rounded-xl p-4 mb-4">
@@ -462,6 +480,7 @@ export const ProjectDashboardPage = () => {
             </div>
           </div>
         </div>
+      </div>
       </div>
     </div>
   );

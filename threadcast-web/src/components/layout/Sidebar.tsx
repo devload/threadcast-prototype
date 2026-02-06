@@ -9,6 +9,7 @@ import {
 import { SearchTrigger } from '../search';
 import { Logo } from '../common/Logo';
 import { SidebarFooter } from './SidebarFooter';
+import { InfoTooltip } from '../common/Tooltip';
 import { useTranslation } from '../../hooks/useTranslation';
 
 interface SidebarProps {
@@ -90,12 +91,16 @@ export function Sidebar({
 
       {/* AI Autonomy Section */}
       <div className="p-4 border-b border-slate-200">
-        <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-400 mb-3 px-2">
-          🤖 Workspace AI Autonomy
+        <div className="flex items-center gap-1.5 mb-3 px-2">
+          <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+            🤖 Workspace AI Autonomy
+          </span>
+          <InfoTooltip content={t('autonomy.hint')} position="right" />
         </div>
         <AutonomySlider
           value={autonomyLevel}
           onChange={onAutonomyChange}
+          showHint={false}
         />
       </div>
 

@@ -27,4 +27,9 @@ public interface AIQuestionRepository extends JpaRepository<AIQuestion, UUID> {
     List<AIQuestion> findByWorkspaceId(@Param("workspaceId") UUID workspaceId);
 
     long countByTodoIdAndStatus(UUID todoId, QuestionStatus status);
+
+    /**
+     * Delete all AI questions associated with a todo
+     */
+    void deleteByTodoId(UUID todoId);
 }

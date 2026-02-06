@@ -12,7 +12,7 @@ interface MissionBoardProps {
   aiQuestionsByMission?: Record<string, number>;
 }
 
-const statusOrder: MissionStatus[] = ['BACKLOG', 'THREADING', 'WOVEN', 'ARCHIVED'];
+const statusOrder: MissionStatus[] = ['BACKLOG', 'THREADING', 'WOVEN', 'DROPPED', 'ARCHIVED'];
 
 export function MissionBoard({
   missions = [],

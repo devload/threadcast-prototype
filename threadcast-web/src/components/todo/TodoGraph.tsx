@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useEffect } from 'react';
+import { useCallback, useEffect } from 'react';
 import {
   ReactFlow,
   Background,
@@ -164,7 +164,8 @@ export function TodoGraph({
 }: TodoGraphProps) {
   const { t } = useTranslation();
 
-  const initialNodes = useMemo(() => {
+  // Calculate initial nodes and edges directly (no useMemo to avoid React error #310)
+  const initialNodes = (() => {
     const nodes = layoutNodes(todos);
     // Add click handler to node data
     return nodes.map(node => ({
@@ -174,9 +175,9 @@ export function TodoGraph({
         onClick: onTodoClick,
       },
     }));
-  }, [todos, onTodoClick]);
+  })();
 
-  const initialEdges = useMemo(() => createEdges(todos), [todos]);
+  const initialEdges = createEdges(todos);
 
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);

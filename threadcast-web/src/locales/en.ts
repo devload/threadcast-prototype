@@ -323,6 +323,7 @@ export const en: TranslationKeys = {
     statusChecking: 'Checking AI status...',
     notConnected: 'AI Not Connected',
     connected: 'AI Connected',
+    connectionTooltip: 'Make sure SwiftCast is running.\nOnce connected, AI will start working automatically.',
   },
 
   // Sidebar
@@ -337,7 +338,7 @@ export const en: TranslationKeys = {
 
   // Autonomy
   autonomy: {
-    hint: 'This setting becomes the default for all Missions and Todos',
+    hint: 'Low: AI asks often | High: AI decides independently',
   },
 
   // Meta Editor

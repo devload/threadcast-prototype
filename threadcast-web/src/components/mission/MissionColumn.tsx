@@ -62,6 +62,12 @@ const statusConfig: Record<MissionStatus, { label: string; icon: string; color: 
     color: 'text-red-600',
     bgColor: 'bg-red-50',
   },
+  DROPPED: {
+    label: 'Dropped',
+    icon: '🗑️',
+    color: 'text-slate-500',
+    bgColor: 'bg-slate-100',
+  },
   ARCHIVED: {
     label: 'Archived',
     icon: '📦',

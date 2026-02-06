@@ -44,4 +44,14 @@ public interface TimelineEventRepository extends JpaRepository<TimelineEvent, UU
             @Param("eventType") EventType eventType,
             @Param("from") LocalDateTime from,
             @Param("to") LocalDateTime to);
+
+    /**
+     * Delete all timeline events associated with a todo
+     */
+    void deleteByTodoId(UUID todoId);
+
+    /**
+     * Delete all timeline events associated with a mission
+     */
+    void deleteByMissionId(UUID missionId);
 }

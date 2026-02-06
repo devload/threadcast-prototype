@@ -91,7 +91,7 @@ export function TimelineItem({ event, isLast = false }: TimelineItemProps) {
           <div className="mt-2 p-2 bg-slate-50 rounded text-xs text-slate-600">
             {Object.entries(event.metadata).map(([key, value]) => (
               <div key={key}>
-                <span className="font-medium">{key}:</span> {String(value)}
+                <span className="font-medium">{key}:</span> {typeof value === 'object' && value !== null ? JSON.stringify(value) : String(value)}
               </div>
             ))}
           </div>
