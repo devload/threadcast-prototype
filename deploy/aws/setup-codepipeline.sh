@@ -140,6 +140,7 @@ cat > /tmp/codebuild-policy.json << EOF
       ],
       "Resource": [
         "arn:aws:ssm:$REGION::document/AWS-RunShellScript",
+        "arn:aws:ssm:$REGION:$ACCOUNT_ID:*",
         "arn:aws:ec2:$REGION:$ACCOUNT_ID:instance/$INSTANCE_ID"
       ]
     },
