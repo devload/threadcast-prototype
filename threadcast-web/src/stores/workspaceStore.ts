@@ -18,6 +18,7 @@ interface WorkspaceState {
   setCurrentWorkspace: (workspace: Workspace | null) => void;
   createWorkspace: (name: string, description: string, path: string) => Promise<Workspace>;
   updateWorkspace: (id: string, data: Partial<Workspace>) => Promise<void>;
+  deleteWorkspace: (id: string) => Promise<void>;
 
   // Projects
   fetchProjects: (workspaceId: string) => Promise<void>;
@@ -116,6 +117,23 @@ export const useWorkspaceStore = create<WorkspaceState>()(
           }));
         } catch (error: unknown) {
           const message = error instanceof Error ? error.message : 'Failed to update workspace';
+          set({ error: message, isLoading: false });
+          throw error;
+        }
+      },
+
+      deleteWorkspace: async (id) => {
+        set({ isLoading: true, error: null });
+        try {
+          await api.delete(`/workspaces/${id}`);
+          set((state) => ({
+            workspaces: state.workspaces.filter((w) => w.id !== id),
+            currentWorkspace:
+              state.currentWorkspace?.id === id ? null : state.currentWorkspace,
+            isLoading: false,
+          }));
+        } catch (error: unknown) {
+          const message = error instanceof Error ? error.message : 'Failed to delete workspace';
           set({ error: message, isLoading: false });
           throw error;
         }

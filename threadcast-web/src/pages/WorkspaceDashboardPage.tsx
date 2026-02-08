@@ -1,20 +1,25 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { Trash2 } from 'lucide-react';
 import { useWorkspaceStore } from '../stores/workspaceStore';
 import { useMissionStore } from '../stores/missionStore';
 import { useUIStore } from '../stores/uiStore';
 import { useAIQuestionStore } from '../stores/aiQuestionStore';
 import { useTranslation } from '../hooks/useTranslation';
 import { TopBar } from '../components/layout';
+import { ConfirmDialog } from '../components/feedback/Modal';
 
 export const WorkspaceDashboardPage = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { workspaceId: urlWorkspaceId } = useParams<{ workspaceId: string }>();
-  const { currentWorkspace, fetchWorkspaceDashboard, isLoading } = useWorkspaceStore();
+  const { currentWorkspace, fetchWorkspaceDashboard, deleteWorkspace, isLoading } = useWorkspaceStore();
   const { fetchMissions } = useMissionStore();
   const { fetchQuestions } = useAIQuestionStore();
   const { currentWorkspaceId, setCurrentWorkspaceId } = useUIStore();
+
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isDeleteLoading, setIsDeleteLoading] = useState(false);
 
   // Use URL workspaceId or fallback to store
   const workspaceId = urlWorkspaceId || currentWorkspaceId;
@@ -41,6 +46,20 @@ export const WorkspaceDashboardPage = () => {
       </div>
     );
   }
+
+  const handleDeleteWorkspace = async () => {
+    if (!currentWorkspace) return;
+    setIsDeleteLoading(true);
+    try {
+      await deleteWorkspace(currentWorkspace.id);
+      navigate('/workspaces');
+    } catch (error) {
+      console.error('Failed to delete workspace:', error);
+    } finally {
+      setIsDeleteLoading(false);
+      setShowDeleteConfirm(false);
+    }
+  };
 
   const stats = currentWorkspace.stats;
   const projects = currentWorkspace.projects || [];
@@ -89,6 +108,15 @@ export const WorkspaceDashboardPage = () => {
         actionLabel={`+ ${t('workspace.newMission')}`}
         onActionClick={() => workspaceId && navigate(`/workspaces/${workspaceId}/missions`)}
         actionDataTour="dashboard-new-mission"
+        extraActions={
+          <button
+            onClick={() => setShowDeleteConfirm(true)}
+            className="p-2 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors"
+            title="Delete workspace"
+          >
+            <Trash2 size={18} />
+          </button>
+        }
       />
 
       {/* Main Content - scrollable */}
@@ -292,6 +320,18 @@ export const WorkspaceDashboardPage = () => {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        isOpen={showDeleteConfirm}
+        onClose={() => setShowDeleteConfirm(false)}
+        onConfirm={handleDeleteWorkspace}
+        title="Delete Workspace"
+        message={`"${currentWorkspace.name}" 워크스페이스를 삭제하시겠습니까? 모든 미션, Todo, 데이터가 영구 삭제됩니다.`}
+        confirmLabel="삭제"
+        cancelLabel="취소"
+        variant="danger"
+        isLoading={isDeleteLoading}
+      />
     </div>
   );
 };

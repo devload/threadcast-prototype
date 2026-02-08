@@ -5,6 +5,7 @@ import io.threadcast.domain.enums.*;
 import io.threadcast.dto.request.StepUpdateWebhookRequest;
 import io.threadcast.dto.response.StepProgressResponse;
 import io.threadcast.exception.NotFoundException;
+import io.threadcast.repository.TerminalSessionMappingRepository;
 import io.threadcast.repository.TodoRepository;
 import io.threadcast.repository.TodoStepRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -44,10 +45,19 @@ class StepProgressServiceTest {
     private TodoStepRepository todoStepRepository;
 
     @Mock
+    private TerminalSessionMappingRepository mappingRepository;
+
+    @Mock
     private WebSocketService webSocketService;
 
     @Mock
     private TimelineService timelineService;
+
+    @Mock
+    private io.threadcast.service.terminal.TodoTerminalService terminalService;
+
+    @Mock
+    private TodoOrchestrationService orchestrationService;
 
     @InjectMocks
     private StepProgressService stepProgressService;

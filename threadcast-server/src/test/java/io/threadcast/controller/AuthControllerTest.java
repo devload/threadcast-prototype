@@ -7,6 +7,7 @@ import io.threadcast.dto.response.AuthResponse;
 import io.threadcast.dto.response.UserResponse;
 import io.threadcast.exception.BadRequestException;
 import io.threadcast.exception.UnauthorizedException;
+import io.threadcast.repository.UserRepository;
 import io.threadcast.service.AuthService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -35,6 +36,9 @@ class AuthControllerTest {
 
     @MockBean
     private AuthService authService;
+
+    @MockBean
+    private UserRepository userRepository;
 
     @Test
     void register_withValidRequest_shouldReturnCreated() throws Exception {

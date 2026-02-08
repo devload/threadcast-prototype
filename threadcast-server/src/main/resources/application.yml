@@ -184,6 +184,10 @@ sessioncast:
 threadcast:
   hub:
     auto-start: false
+  callback:
+    host: api.threadcast.io
+    scheme: https
+    port: 443
 
 logging:
   level:

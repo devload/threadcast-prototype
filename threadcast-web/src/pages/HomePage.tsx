@@ -1,13 +1,13 @@
 import { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { LogOut, ChevronDown, HelpCircle, Settings } from 'lucide-react';
+import { LogOut, ChevronDown, HelpCircle, Settings, Trash2 } from 'lucide-react';
 import { useWorkspaceStore } from '../stores/workspaceStore';
 import { useAuthStore } from '../stores/authStore';
 import { useTranslation } from '../hooks/useTranslation';
 import { Workspace } from '../types';
 import { Logo } from '../components/common/Logo';
 import { WelcomeModal, SetupChecklist, EmptyStateGuide, useOnboardingStore } from '../components/onboarding';
-import { Modal } from '../components/feedback/Modal';
+import { Modal, ConfirmDialog } from '../components/feedback/Modal';
 import { Input, TextArea } from '../components/form/Input';
 import { Button } from '../components/common/Button';
 
@@ -30,7 +30,7 @@ interface WorkspaceWithQuestions extends Workspace {
 export const HomePage = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { workspaces, fetchWorkspaces, setCurrentWorkspace, createWorkspace, isLoading } = useWorkspaceStore();
+  const { workspaces, fetchWorkspaces, setCurrentWorkspace, createWorkspace, deleteWorkspace, isLoading } = useWorkspaceStore();
   const { isAuthenticated, isLoading: authLoading, fetchUser, user, logout } = useAuthStore();
   const { startTour, completeSetupStep, resetOnboarding, setHasSeenWelcome, isTourActive, setTourContext } = useOnboardingStore();
   const [showUserMenu, setShowUserMenu] = useState(false);
@@ -40,6 +40,11 @@ export const HomePage = () => {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newWorkspace, setNewWorkspace] = useState({ name: '', description: '', path: '' });
   const [isCreating, setIsCreating] = useState(false);
+
+  // Workspace 삭제
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [workspaceToDelete, setWorkspaceToDelete] = useState<Workspace | null>(null);
+  const [isDeleteLoading, setIsDeleteLoading] = useState(false);
   const helpMenuRef = useRef<HTMLDivElement>(null);
   const userMenuRef = useRef<HTMLDivElement>(null);
   const [globalStats, setGlobalStats] = useState<GlobalStats>({
@@ -189,6 +194,26 @@ export const HomePage = () => {
       }
     } catch (error) {
       console.error('Failed to create demo workspace:', error);
+    }
+  };
+
+  const handleDeleteWorkspace = (e: React.MouseEvent, workspace: Workspace) => {
+    e.stopPropagation();
+    setWorkspaceToDelete(workspace);
+    setShowDeleteConfirm(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!workspaceToDelete) return;
+    setIsDeleteLoading(true);
+    try {
+      await deleteWorkspace(workspaceToDelete.id);
+      setShowDeleteConfirm(false);
+      setWorkspaceToDelete(null);
+    } catch (error) {
+      console.error('Failed to delete workspace:', error);
+    } finally {
+      setIsDeleteLoading(false);
     }
   };
 
@@ -446,6 +471,7 @@ export const HomePage = () => {
                   key={workspace.id}
                   workspace={workspace}
                   onClick={() => handleWorkspaceClick(workspace)}
+                  onDelete={(e) => handleDeleteWorkspace(e, workspace)}
                 />
               ))}
 
@@ -533,6 +559,22 @@ export const HomePage = () => {
         </div>
       </Modal>
 
+      {/* Delete Workspace Confirmation */}
+      <ConfirmDialog
+        isOpen={showDeleteConfirm}
+        onClose={() => {
+          setShowDeleteConfirm(false);
+          setWorkspaceToDelete(null);
+        }}
+        onConfirm={handleConfirmDelete}
+        title="Delete Workspace"
+        message={`"${workspaceToDelete?.name}" 워크스페이스를 삭제하시겠습니까? 모든 미션, Todo, 데이터가 영구 삭제됩니다.`}
+        confirmLabel="삭제"
+        cancelLabel="취소"
+        variant="danger"
+        isLoading={isDeleteLoading}
+      />
+
     </div>
   );
 };
@@ -572,9 +614,11 @@ const StatCard = ({
 const WorkspaceCard = ({
   workspace,
   onClick,
+  onDelete,
 }: {
   workspace: WorkspaceWithQuestions;
   onClick: () => void;
+  onDelete: (e: React.MouseEvent) => void;
 }) => {
   const hasAlert = (workspace.pendingQuestionCount || 0) > 0;
   const stats = workspace.stats;
@@ -588,7 +632,7 @@ const WorkspaceCard = ({
 
   return (
     <div
-      className={`bg-white border rounded-2xl p-6 cursor-pointer transition-all relative overflow-hidden hover:border-indigo-500 hover:-translate-y-1 hover:shadow-lg hover:shadow-indigo-100 ${
+      className={`bg-white border rounded-2xl p-6 cursor-pointer transition-all relative overflow-hidden group hover:border-indigo-500 hover:-translate-y-1 hover:shadow-lg hover:shadow-indigo-100 ${
         hasAlert ? 'border-pink-300' : 'border-gray-200'
       }`}
       onClick={onClick}
@@ -601,6 +645,17 @@ const WorkspaceCard = ({
             {workspace.pendingQuestionCount} questions
           </div>
         </>
+      )}
+
+      {/* Delete button - visible on hover */}
+      {!hasAlert && (
+        <button
+          onClick={onDelete}
+          className="absolute top-4 right-4 p-1.5 rounded-lg opacity-0 group-hover:opacity-100 hover:bg-red-100 transition-all"
+          title="Delete workspace"
+        >
+          <Trash2 size={16} className="text-red-400 hover:text-red-600" />
+        </button>
       )}
 
       <div className="flex items-start gap-4 mb-4">

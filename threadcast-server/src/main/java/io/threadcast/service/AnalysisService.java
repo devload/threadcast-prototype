@@ -48,6 +48,12 @@ public class AnalysisService {
     @Value("${threadcast.callback.host:localhost}")
     private String callbackHost;
 
+    @Value("${threadcast.callback.scheme:http}")
+    private String callbackScheme;
+
+    @Value("${threadcast.callback.port:#{null}}")
+    private Integer callbackPort;
+
     /**
      * 분석 요청을 생성하고 PM Agent 명령 큐에 추가
      */
@@ -83,7 +89,8 @@ public class AnalysisService {
 
     private PmAgentCommand createAnalyzeCommand(Workspace workspace, AnalysisRequest analysisRequest,
                                                  String missionTitle, String missionDescription) {
-        String callbackUrl = String.format("http://%s:%d/api/webhooks/analysis-callback", callbackHost, serverPort);
+        int port = callbackPort != null ? callbackPort : serverPort;
+        String callbackUrl = String.format("%s://%s:%d/api/webhooks/analysis-callback", callbackScheme, callbackHost, port);
 
         Map<String, Object> payload = new LinkedHashMap<>();
         payload.put("requestId", analysisRequest.getId().toString());

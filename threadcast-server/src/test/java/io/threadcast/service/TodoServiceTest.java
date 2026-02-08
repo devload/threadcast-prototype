@@ -10,7 +10,9 @@ import io.threadcast.dto.request.UpdateTodoRequest;
 import io.threadcast.dto.response.TodoResponse;
 import io.threadcast.exception.BadRequestException;
 import io.threadcast.exception.NotFoundException;
+import io.threadcast.repository.AIQuestionRepository;
 import io.threadcast.repository.MissionRepository;
+import io.threadcast.repository.TimelineEventRepository;
 import io.threadcast.repository.TodoRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -38,10 +40,19 @@ class TodoServiceTest {
     private MissionRepository missionRepository;
 
     @Mock
+    private TimelineEventRepository timelineEventRepository;
+
+    @Mock
+    private AIQuestionRepository aiQuestionRepository;
+
+    @Mock
     private TimelineService timelineService;
 
     @Mock
     private WebSocketService webSocketService;
+
+    @Mock
+    private TodoOrchestrationService orchestrationService;
 
     @InjectMocks
     private TodoService todoService;
@@ -112,7 +123,7 @@ class TodoServiceTest {
 
     @Test
     void getTodo_withValidId_shouldReturnTodo() {
-        when(todoRepository.findByIdWithStepsAndDependencies(testTodo.getId())).thenReturn(Optional.of(testTodo));
+        when(todoRepository.findByIdWithMissionAndWorkspace(testTodo.getId())).thenReturn(Optional.of(testTodo));
 
         TodoResponse result = todoService.getTodo(testTodo.getId());
 
@@ -123,7 +134,7 @@ class TodoServiceTest {
     @Test
     void getTodo_withInvalidId_shouldThrowNotFoundException() {
         UUID invalidId = UUID.randomUUID();
-        when(todoRepository.findByIdWithStepsAndDependencies(invalidId)).thenReturn(Optional.empty());
+        when(todoRepository.findByIdWithMissionAndWorkspace(invalidId)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> todoService.getTodo(invalidId))
                 .isInstanceOf(NotFoundException.class)
@@ -172,7 +183,7 @@ class TodoServiceTest {
 
     @Test
     void updateStatus_toThreading_shouldStartTodo() {
-        when(todoRepository.findByIdWithSteps(testTodo.getId())).thenReturn(Optional.of(testTodo));
+        when(todoRepository.findByIdWithMissionAndWorkspace(testTodo.getId())).thenReturn(Optional.of(testTodo));
         when(todoRepository.save(any(Todo.class))).thenReturn(testTodo);
         when(missionRepository.save(any(Mission.class))).thenReturn(testMission);
 
@@ -192,7 +203,7 @@ class TodoServiceTest {
                 .build();
         testTodo.addDependency(dependency);
 
-        when(todoRepository.findByIdWithSteps(testTodo.getId())).thenReturn(Optional.of(testTodo));
+        when(todoRepository.findByIdWithMissionAndWorkspace(testTodo.getId())).thenReturn(Optional.of(testTodo));
 
         assertThatThrownBy(() -> todoService.updateStatus(testTodo.getId(), TodoStatus.THREADING))
                 .isInstanceOf(BadRequestException.class)
@@ -204,7 +215,7 @@ class TodoServiceTest {
         testTodo.setStatus(TodoStatus.THREADING);
         testTodo.startThreading();
 
-        when(todoRepository.findByIdWithSteps(testTodo.getId())).thenReturn(Optional.of(testTodo));
+        when(todoRepository.findByIdWithMissionAndWorkspace(testTodo.getId())).thenReturn(Optional.of(testTodo));
         when(todoRepository.save(any(Todo.class))).thenReturn(testTodo);
         when(missionRepository.save(any(Mission.class))).thenReturn(testMission);
 
@@ -218,7 +229,7 @@ class TodoServiceTest {
     void updateStatus_toTangled_shouldFailTodo() {
         testTodo.setStatus(TodoStatus.THREADING);
 
-        when(todoRepository.findByIdWithSteps(testTodo.getId())).thenReturn(Optional.of(testTodo));
+        when(todoRepository.findByIdWithMissionAndWorkspace(testTodo.getId())).thenReturn(Optional.of(testTodo));
         when(todoRepository.save(any(Todo.class))).thenReturn(testTodo);
         when(missionRepository.save(any(Mission.class))).thenReturn(testMission);
 
@@ -234,7 +245,7 @@ class TodoServiceTest {
         request.setTitle("Updated Title");
         request.setPriority(Priority.CRITICAL);
 
-        when(todoRepository.findById(testTodo.getId())).thenReturn(Optional.of(testTodo));
+        when(todoRepository.findByIdWithMissionAndWorkspace(testTodo.getId())).thenReturn(Optional.of(testTodo));
         when(todoRepository.save(any(Todo.class))).thenReturn(testTodo);
 
         TodoResponse result = todoService.updateTodo(testTodo.getId(), request);

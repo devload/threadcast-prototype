@@ -9,7 +9,9 @@ import io.threadcast.dto.request.CreateMissionRequest;
 import io.threadcast.dto.response.MissionResponse;
 import io.threadcast.exception.BadRequestException;
 import io.threadcast.exception.NotFoundException;
+import io.threadcast.repository.AIQuestionRepository;
 import io.threadcast.repository.MissionRepository;
+import io.threadcast.repository.TimelineEventRepository;
 import io.threadcast.repository.TodoRepository;
 import io.threadcast.repository.WorkspaceRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -26,6 +28,7 @@ import org.springframework.data.domain.Pageable;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -45,10 +48,19 @@ class MissionServiceTest {
     private TodoRepository todoRepository;
 
     @Mock
+    private TimelineEventRepository timelineEventRepository;
+
+    @Mock
+    private AIQuestionRepository aiQuestionRepository;
+
+    @Mock
     private TimelineService timelineService;
 
     @Mock
     private WebSocketService webSocketService;
+
+    @Mock
+    private GitWorktreeService worktreeService;
 
     @InjectMocks
     private MissionService missionService;
@@ -170,6 +182,8 @@ class MissionServiceTest {
     void updateStatus_toThreading_shouldStartMission() {
         when(missionRepository.findById(testMission.getId())).thenReturn(Optional.of(testMission));
         when(missionRepository.save(any(Mission.class))).thenReturn(testMission);
+        when(worktreeService.createMissionBranch(any(Mission.class)))
+                .thenReturn(CompletableFuture.completedFuture(null));
 
         MissionResponse result = missionService.updateStatus(testMission.getId(), MissionStatus.THREADING);
 
@@ -201,7 +215,7 @@ class MissionServiceTest {
 
     @Test
     void deleteMission_shouldDeleteAndNotify() {
-        when(missionRepository.findById(testMission.getId())).thenReturn(Optional.of(testMission));
+        when(missionRepository.findByIdWithTodos(testMission.getId())).thenReturn(testMission);
         doNothing().when(missionRepository).delete(testMission);
 
         missionService.deleteMission(testMission.getId());
