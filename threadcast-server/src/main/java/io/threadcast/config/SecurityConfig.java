@@ -2,6 +2,7 @@ package io.threadcast.config;
 
 import io.threadcast.security.JwtAuthenticationFilter;
 import io.threadcast.security.JwtTokenProvider;
+import io.threadcast.service.WorkspaceApiKeyService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -36,8 +37,9 @@ public class SecurityConfig {
     }
 
     @Bean
-    public JwtAuthenticationFilter jwtAuthenticationFilter(JwtTokenProvider jwtTokenProvider) {
-        return new JwtAuthenticationFilter(jwtTokenProvider);
+    public JwtAuthenticationFilter jwtAuthenticationFilter(JwtTokenProvider jwtTokenProvider,
+                                                           WorkspaceApiKeyService workspaceApiKeyService) {
+        return new JwtAuthenticationFilter(jwtTokenProvider, workspaceApiKeyService);
     }
 
     @Bean
@@ -48,9 +50,14 @@ public class SecurityConfig {
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/api/auth/**").permitAll()
-                .requestMatchers("/api/webhooks/**").permitAll()  // SwiftCast webhooks
-                .requestMatchers("/api/hub/**").permitAll()       // Hub management
-                .requestMatchers("/api/**").permitAll()           // Demo: All APIs open
+                .requestMatchers("/api/admin/oauth/**").permitAll()
+                .requestMatchers("/api/admin/auth/**").permitAll()
+                .requestMatchers("/api/admin/2fa/**").permitAll()
+                .requestMatchers("/api/admin/mock-login").permitAll()
+                .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                .requestMatchers("/api/webhooks/**").permitAll()
+                .requestMatchers("/api/hub/**").permitAll()
+                .requestMatchers("/api/**").permitAll()
                 .requestMatchers("/h2-console/**").permitAll()
                 .requestMatchers("/ws/**").permitAll()
                 .anyRequest().permitAll()
@@ -67,10 +74,12 @@ public class SecurityConfig {
         configuration.setAllowedOrigins(List.of(
             "http://localhost:3000",
             "http://localhost:5173",
+            "http://localhost:5174",
             "http://localhost:21001",
             "http://localhost:21002",
             "https://threadcast.io",
-            "https://www.threadcast.io"
+            "https://www.threadcast.io",
+            "https://manager.threadcast.io"
         ));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));

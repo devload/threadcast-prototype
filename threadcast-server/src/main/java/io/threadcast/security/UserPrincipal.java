@@ -10,4 +10,9 @@ import java.util.UUID;
 public class UserPrincipal {
     private UUID id;
     private String email;
+    private String role;
+
+    public UserPrincipal(UUID id, String email) {
+        this(id, email, "USER");
+    }
 }

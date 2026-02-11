@@ -1,5 +1,6 @@
 package io.threadcast.domain;
 
+import io.threadcast.domain.enums.UserRole;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -40,6 +41,22 @@ public class User extends BaseTimeEntity {
     @Column(nullable = false)
     @Builder.Default
     private Integer autonomyLevel = 3;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    @Builder.Default
+    private UserRole role = UserRole.USER;
+
+    @Column(length = 100)
+    private String totpSecret;
+
+    @Column(nullable = false)
+    @Builder.Default
+    private Boolean totpEnabled = false;
+
+    @Column(length = 20)
+    @Builder.Default
+    private String status = "active";
 
     @OneToMany(mappedBy = "owner", cascade = CascadeType.ALL)
     @Builder.Default

@@ -29,12 +29,17 @@ public class JwtTokenProvider {
     }
 
     public String generateAccessToken(UUID userId, String email) {
+        return generateAccessToken(userId, email, "USER");
+    }
+
+    public String generateAccessToken(UUID userId, String email, String role) {
         Date now = new Date();
         Date expiryDate = new Date(now.getTime() + accessTokenExpiration);
 
         return Jwts.builder()
                 .subject(userId.toString())
                 .claim("email", email)
+                .claim("role", role)
                 .issuedAt(now)
                 .expiration(expiryDate)
                 .signWith(secretKey)
@@ -71,6 +76,17 @@ public class JwtTokenProvider {
                 .getPayload();
 
         return claims.get("email", String.class);
+    }
+
+    public String getRoleFromToken(String token) {
+        Claims claims = Jwts.parser()
+                .verifyWith(secretKey)
+                .build()
+                .parseSignedClaims(token)
+                .getPayload();
+
+        String role = claims.get("role", String.class);
+        return role != null ? role : "USER";
     }
 
     public boolean validateToken(String token) {
