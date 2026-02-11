@@ -134,6 +134,50 @@ touch $THREADCAST_REQUEST_DIR/ready
 
 ---
 
+# Team Worker Mode (MCP Progress Reporting)
+
+**중요**: Team 모드에서 Worker로 스폰된 경우, 이 프로토콜을 **반드시** 따라야 합니다.
+
+이 모드는 Task 할당 메시지에 **todoId**가 포함되어 있을 때 활성화됩니다.
+
+## MCP 도구 사용 (필수)
+
+Worker는 ThreadCast MCP 도구를 사용하여 진행 상황을 백엔드에 보고해야 합니다. MCP 도구는 `mcp__threadcast__` 접두사로 사용 가능합니다.
+
+### 필수 호출 순서
+
+**1. 작업 시작 시:**
+```
+mcp__threadcast__threadcast_worker_start(todoId: "<todoId>")
+```
+
+**2. 각 Step 완료 후 (6단계 순서대로):**
+```
+mcp__threadcast__threadcast_worker_step_complete(todoId: "<todoId>", step: "ANALYSIS", result: "분석 결과 요약")
+mcp__threadcast__threadcast_worker_step_complete(todoId: "<todoId>", step: "DESIGN", result: "설계 결과 요약")
+mcp__threadcast__threadcast_worker_step_complete(todoId: "<todoId>", step: "IMPLEMENTATION", result: "구현 결과 요약")
+mcp__threadcast__threadcast_worker_step_complete(todoId: "<todoId>", step: "VERIFICATION", result: "검증 결과 요약")
+mcp__threadcast__threadcast_worker_step_complete(todoId: "<todoId>", step: "REVIEW", result: "리뷰 결과 요약")
+mcp__threadcast__threadcast_worker_step_complete(todoId: "<todoId>", step: "INTEGRATION", result: "통합 결과 요약")
+```
+
+**3. 작업 완료 시:**
+```
+mcp__threadcast__threadcast_worker_complete(todoId: "<todoId>", result: "전체 작업 완료 요약")
+```
+
+**4. 오류 발생 시:**
+```
+mcp__threadcast__threadcast_worker_fail(todoId: "<todoId>", failure: "오류 설명")
+```
+
+### 규칙
+- MCP 도구 호출은 **작업의 가장 첫 번째 행동** (worker_start)이어야 합니다
+- 각 Step을 실행한 후 **즉시** step_complete를 호출해야 합니다
+- MCP 호출 없이 작업을 완료하면 백엔드가 진행 상황을 추적할 수 없습니다
+
+---
+
 ## 일반 개발 가이드
 
 ### 빌드 명령어

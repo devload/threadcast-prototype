@@ -9,6 +9,7 @@ import io.threadcast.dto.response.MissionResponse;
 import io.threadcast.exception.NotFoundException;
 import io.threadcast.repository.MissionRepository;
 import io.threadcast.service.AIAnalysisService;
+import io.threadcast.service.AnalysisService;
 import io.threadcast.service.MetadataService;
 import io.threadcast.service.MissionService;
 import org.junit.jupiter.api.Test;
@@ -54,6 +55,9 @@ class MissionControllerTest {
 
     @MockBean
     private AIAnalysisService aiAnalysisService;
+
+    @MockBean
+    private AnalysisService analysisService;
 
     private MissionResponse createTestMissionResponse() {
         return MissionResponse.builder()

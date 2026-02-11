@@ -13,6 +13,7 @@ import io.threadcast.dto.response.MissionResponse;
 import io.threadcast.exception.NotFoundException;
 import io.threadcast.repository.MissionRepository;
 import io.threadcast.service.AIAnalysisService;
+import io.threadcast.service.AnalysisService;
 import io.threadcast.service.MetadataService;
 import io.threadcast.service.MissionService;
 import jakarta.validation.Valid;
@@ -39,6 +40,7 @@ public class MissionController {
     private final MissionRepository missionRepository;
     private final MetadataService metadataService;
     private final AIAnalysisService aiAnalysisService;
+    private final AnalysisService analysisService;
 
     @GetMapping
     public ResponseEntity<ApiResponse<Page<MissionResponse>>> getMissions(
@@ -170,6 +172,19 @@ public class MissionController {
         missionRepository.save(mission);
 
         return ResponseEntity.ok(ApiResponse.success(newMeta));
+    }
+
+    /**
+     * Generate TASKS.md for Claude Code Team mode.
+     * Creates a task file from the mission's todos with dependency info.
+     */
+    @PostMapping("/{id}/generate-tasks")
+    public ResponseEntity<ApiResponse<Map<String, String>>> generateTasks(@PathVariable UUID id) {
+        String filePath = analysisService.generateTasksFile(id);
+        return ResponseEntity.ok(ApiResponse.success(Map.of(
+                "missionId", id.toString(),
+                "tasksFilePath", filePath
+        )));
     }
 
     @SuppressWarnings("unchecked")

@@ -40,6 +40,7 @@ public class AnalysisService {
     private final WorkspaceRepository workspaceRepository;
     private final MissionRepository missionRepository;
     private final WebSocketService webSocketService;
+    private final TeamTaskGenerator teamTaskGenerator;
     private final ObjectMapper objectMapper;
 
     @Value("${server.port:21000}")
@@ -231,6 +232,21 @@ public class AnalysisService {
                 }
             }
         }
+    }
+
+    /**
+     * Generate TASKS.md for a mission.
+     * Can be called independently or after analysis completes.
+     *
+     * @param missionId Mission to generate tasks for
+     * @return Path to the generated TASKS.md file
+     */
+    @Transactional(readOnly = true)
+    public String generateTasksFile(UUID missionId) {
+        int port = callbackPort != null ? callbackPort : serverPort;
+        String apiUrl = String.format("%s://%s:%d/api", callbackScheme, callbackHost, port);
+        java.nio.file.Path tasksFile = teamTaskGenerator.generateTasksFile(missionId, apiUrl);
+        return tasksFile.toString();
     }
 
     /**
