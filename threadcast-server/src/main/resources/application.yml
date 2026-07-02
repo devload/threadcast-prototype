@@ -75,6 +75,13 @@ sentry:
   traces-sample-rate: 1.0
   environment: ${SENTRY_ENV:local}
   send-default-pii: false
+  ignored-exceptions-for-type:
+    - org.springframework.web.servlet.resource.NoResourceFoundException
+    - org.springframework.web.HttpRequestMethodNotSupportedException
+    - org.springframework.web.bind.MissingServletRequestParameterException
+    - org.springframework.web.bind.MethodArgumentTypeMismatchException
+    - org.springframework.web.HttpMediaTypeNotAcceptableException
+    - org.springframework.web.HttpMediaTypeNotSupportedException
 
 # Default Logging
 logging:
