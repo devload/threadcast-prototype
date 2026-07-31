@@ -79,7 +79,7 @@ sentry:
     - org.springframework.web.servlet.resource.NoResourceFoundException
     - org.springframework.web.HttpRequestMethodNotSupportedException
     - org.springframework.web.bind.MissingServletRequestParameterException
-    - org.springframework.web.bind.MethodArgumentTypeMismatchException
+    - org.springframework.web.method.annotation.MethodArgumentTypeMismatchException
     - org.springframework.web.HttpMediaTypeNotAcceptableException
     - org.springframework.web.HttpMediaTypeNotSupportedException
 
